@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { endpoints, formatMoney } from '../../../../contracts/index';
 import { call } from '../../api/client';
+import type { ApiTransport } from '../../api/client';
 import { captureDownloads, parseCsv } from '../../test/csv';
 import { fixtureFiles, transportOver } from '../../test/datasets';
 import { renderApp, tableRows } from '../../test/renderApp';
@@ -160,16 +161,21 @@ describe('Stages & Aging', () => {
     expect([stageCounts, ageCounts]).toEqual([25, 25]);
   });
 
-  it('lists open claims with no reported date or no dated stage event apart from the buckets instead of counting them as anything', async () => {
+  it('lists open claims with no reported date or no dated stage event apart from the buckets, and Overview flags what it leaves out of the turnaround and counts only posted payments as paid', async () => {
     const user = userEvent.setup();
     const files = fixtureFiles('test');
     const transport = transportOver({
       TEST: {
         ...files,
-        'claims.csv': (files['claims.csv'] ?? '').replace(
-          'TEST,CLM-104,POL-004,2026-10-15,2026-10-15',
-          'TEST,CLM-104,POL-004,2026-10-15,',
-        ),
+        // CLM-104 (open) and CLM-103 (closed) have no reported date.
+        'claims.csv': (files['claims.csv'] ?? '')
+          .replace('TEST,CLM-104,POL-004,2026-10-15,2026-10-15', 'TEST,CLM-104,POL-004,2026-10-15,')
+          .replace(
+            'TEST,CLM-103,POL-003,2026-10-10,2026-10-10',
+            'TEST,CLM-103,POL-003,2026-10-10,',
+          ),
+        // A pending and a void payment inside the period, which are not paid.
+        'claim_payments.csv': `${files['claim_payments.csv'] ?? ''}TEST,CPAY-X1,CLM-104,2026-10-20,1000,BWP,SYN-PAY-X1,PENDING\nTEST,CPAY-X2,CLM-105,2026-10-20,2000,BWP,SYN-PAY-X2,VOID\n`,
         'claim_events.csv': (files['claim_events.csv'] ?? '')
           .split('\n')
           .filter((line) => !line.includes('CLM-105'))
@@ -190,5 +196,80 @@ describe('Stages & Aging', () => {
 
     await user.click(screen.getByRole('link', { name: 'Open claims: Age unknown' }));
     await waitFor(() => expect(listed()).toEqual(['CLM-104']));
+
+    // Overview says what it leaves out: CLM-103 closed in the period but has no reported date, so it is out of the
+    // average and counted; CLM-104 and CLM-103 are not new in the period; and only posted payments are paid in it.
+    const nav = screen.getByRole('navigation', { name: 'Main navigation' });
+    await user.click(within(nav).getByRole('link', { name: 'Overview' }));
+    const card = (name: string) => screen.getByRole('region', { name });
+    await screen.findByRole('region', { name: 'Open claims' });
+    expect(card('Average closed turnaround')).toHaveTextContent('—');
+    expect(card('Average closed turnaround')).toHaveTextContent(
+      'Claims averaged: 0. Left out for missing dates: 1',
+    );
+    expect(card('New claims')).toHaveTextContent('3');
+    expect(card('Paid in period')).toHaveTextContent('P9,000.00');
+    expect(card('Paid in period')).toHaveTextContent('Posted payments on 2 claims');
+    await user.click(within(card('Paid in period')).getByRole('link'));
+    await waitFor(() => expect(listed()).toEqual(['CLM-102', 'CLM-103']));
+  });
+
+  it('offers the export only once everything the screen shows has loaded, and the file then has every section of the screen', async () => {
+    const user = userEvent.setup();
+    const downloads = captureDownloads();
+    const healthy = transportOver({});
+    // The names behind the product, broker and owner rows arrive after the figures do.
+    let slowFigures = false;
+    const slowNames: ApiTransport = async (url, init) => {
+      if (slowFigures && url.includes('/claim-facts')) {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      }
+      if (/\/api\/v1\/(users|brokers|products)(\?|$)/.test(url)) {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      }
+      return healthy(url, init);
+    };
+    renderApp('/stages', { transport: slowNames });
+
+    await screen.findByRole('table', { name: 'Open claims and their value by stage' });
+    const button = screen.getByRole('button', { name: 'Export CSV' });
+    expect(button).toBeDisabled();
+    expect(screen.queryByRole('tab', { name: 'Owner' })).not.toBeInTheDocument();
+
+    await waitFor(() => expect(button).toBeEnabled());
+    expect(screen.getByRole('tab', { name: 'Owner' })).toBeInTheDocument();
+    await user.click(button);
+    const sections = new Set(
+      parseCsv((await downloads.next()).text)
+        .slice(1)
+        .map((row) => row[0]),
+    );
+    expect([...sections]).toEqual([
+      'Open claims by stage',
+      'Open claims by age',
+      'Open claims and their value by Product',
+      'Open claims and their value by Broker',
+      'Open claims and their value by Owner',
+      'All open claims',
+    ]);
+
+    // While new figures are on their way the screen still shows the old ones, so the export waits for the new ones too.
+    slowFigures = true;
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Product' }),
+      'Property All Risk',
+    );
+    expect(button).toBeDisabled();
+    await waitFor(() => expect(button).toBeEnabled());
+    await user.click(button);
+    const narrowed = parseCsv((await downloads.next()).text);
+    expect(narrowed.at(-1)).toEqual([
+      'All open claims',
+      'All open claims',
+      '2',
+      '5000.00',
+      '42000.00',
+      '47000.00',
+    ]);
   });
 });

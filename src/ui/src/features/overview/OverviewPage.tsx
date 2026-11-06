@@ -105,8 +105,8 @@ export default function OverviewPage() {
   const scope = useClaimScope();
   const summary = scope.facts.data?.summary;
   const table = useMemo(
-    () => (summary === undefined ? undefined : overviewTable(summary)),
-    [summary],
+    () => (summary === undefined || !scope.settled ? undefined : overviewTable(summary)),
+    [summary, scope.settled],
   );
 
   return (

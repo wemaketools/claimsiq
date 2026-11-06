@@ -195,10 +195,10 @@ function GroupTabs({
 
 function Breakdowns({
   answer,
-  lookups,
+  groups,
 }: {
   answer: ClaimFactsAnswer;
-  lookups: ClaimLookups | undefined;
+  groups: Record<Group, GroupRow[]> | undefined;
 }) {
   const { summary } = answer;
   const stages = stageRows(summary);
@@ -255,12 +255,12 @@ function Breakdowns({
         rows={ages}
         summary={summary}
       />
-      {lookups === undefined ? (
+      {groups === undefined ? (
         <Card data-state="loading" title={t('stages.group.title')}>
           <SkeletonBlock lines={3} />
         </Card>
       ) : (
-        <GroupTabs groups={groupsOf(answer, lookups)} summary={summary} />
+        <GroupTabs groups={groups} summary={summary} />
       )}
     </>
   );
@@ -270,12 +270,20 @@ export default function StagesPage() {
   const scope = useClaimScope();
   const answer = scope.facts.data;
   const lookups = scope.lookups.lookups;
-  const table = useMemo(
+  // The screen and the export are both made from this one view, and the export waits until it is complete and current.
+  const view = useMemo(
     () =>
       answer === undefined || lookups === undefined
         ? undefined
-        : stagesTable(answer.summary, groupsOf(answer, lookups)),
+        : { answer, groups: groupsOf(answer, lookups) },
     [answer, lookups],
+  );
+  const table = useMemo(
+    () =>
+      view === undefined || !scope.settled
+        ? undefined
+        : stagesTable(view.answer.summary, view.groups),
+    [view, scope.settled],
   );
 
   return (
@@ -310,7 +318,7 @@ export default function StagesPage() {
       >
         {(data) => (
           <div className="ciq-page" aria-busy={scope.facts.isFetching}>
-            <Breakdowns answer={data} lookups={lookups} />
+            <Breakdowns answer={data} groups={view?.groups} />
           </div>
         )}
       </QueryView>

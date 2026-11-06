@@ -145,8 +145,8 @@ export default function ClaimsPage() {
   }, [facts, lookups, criterion, sort]);
   const paidInPeriod = criterion?.kind === 'paid-in-period';
   const table = useMemo(
-    () => (rows === undefined ? undefined : claimsTable(rows, paidInPeriod)),
-    [rows, paidInPeriod],
+    () => (rows === undefined || !scope.settled ? undefined : claimsTable(rows, paidInPeriod)),
+    [rows, paidInPeriod, scope.settled],
   );
 
   const pageCount = Math.max(1, Math.ceil((rows?.length ?? 0) / pageSize));

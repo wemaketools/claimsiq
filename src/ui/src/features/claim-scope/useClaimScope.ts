@@ -39,6 +39,8 @@ export interface ClaimScope {
   readonly period: PeriodOption;
   readonly setPeriod: (period: PeriodOption) => void;
   readonly facts: QueryResult<ClaimFactsAnswer>;
+  /** The figures on screen are the answer to the filters now chosen: no request is on its way. */
+  readonly settled: boolean;
   readonly lookups: LookupsResult;
 }
 
@@ -60,6 +62,7 @@ export function useClaimScope(): ClaimScope {
     period,
     setPeriod: (next) => setStored({ period: next }),
     facts,
+    settled: !facts.isFetching,
     lookups,
   };
 }
