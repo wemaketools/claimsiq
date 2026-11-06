@@ -41,7 +41,7 @@ export interface RenderOptions {
   readonly onUnauthorized?: () => void;
 }
 
-/** Renders a whole route tree (for example the application's own) inside the same providers. */
+/** Wires the API client adapters to the store for the test (restored afterwards), so pages that call the API see the signed-in user. */
 export function renderRouteTree(routes: RouteObject[], options: RenderOptions = {}) {
   const store = options.store ?? createAppStore(options.state);
   const auth = options.auth ?? stubAuth();

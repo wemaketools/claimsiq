@@ -36,11 +36,9 @@ function captureError(action: () => unknown): ConfigurationError {
 }
 
 describe('loadConfig', () => {
-  it('maps valid variables to the typed configuration with the pinned issuer and JWKS URL', () => {
-    // Act
+  it('maps valid variables to a frozen typed configuration with the pinned issuer and JWKS URL, and defaults blanks', () => {
     const config = loadConfig(VALID);
 
-    // Assert
     expect(config).toEqual({
       appEnv: 'local',
       logLevel: 'debug',
@@ -52,87 +50,54 @@ describe('loadConfig', () => {
         serviceRoleKey: 'service-role-key-value',
       },
     });
+    expect(Object.isFrozen(config)).toBe(true);
+    expect(Object.isFrozen(config.supabase)).toBe(true);
+    expect(loadConfig({ ...VALID, APP_ENV: '  ', LOG_LEVEL: '' })).toMatchObject({
+      appEnv: 'local',
+      logLevel: 'info',
+    });
+    expect([...SERVER_ENV_KEYS].sort()).toEqual(Object.keys(VALID).sort());
   });
 
-  it('defaults APP_ENV to local and LOG_LEVEL to info when they are blank', () => {
-    const config = loadConfig({ ...VALID, APP_ENV: '  ', LOG_LEVEL: '' });
-    expect(config.appEnv).toBe('local');
-    expect(config.logLevel).toBe('info');
-  });
-
-  it('lists EVERY bad variable by name and never returns a partial configuration', () => {
-    // Act
+  it('lists every bad variable by name without echoing a value, requires https outside local and refuses a reused key', () => {
     const error = captureError(() =>
       loadConfig({ APP_ENV: 'prod', LOG_LEVEL: 'verbose', SUPABASE_URL: 'not a url', SUPABASE_ANON_KEY: ' ' }),
     );
-
-    // Assert
     expect(error.variables.sort()).toEqual(
       ['APP_ENV', 'LOG_LEVEL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_URL'].sort(),
     );
-    expect(error.message).toContain('SUPABASE_SERVICE_ROLE_KEY');
-  });
-
-  it('never echoes a variable value in the error message', () => {
-    const error = captureError(() => loadConfig({ ...VALID, SUPABASE_URL: ['postgres://user', 'hunter2@db'].join(':') }));
-    expect(error.message).not.toContain('hunter2');
-  });
-
-  it('requires https for SUPABASE_URL outside APP_ENV=local', () => {
-    const error = captureError(() => loadConfig({ ...VALID, APP_ENV: 'production' }));
-    expect(error.variables).toEqual(['SUPABASE_URL']);
-  });
-
-  it('rejects a service-role key equal to the anon key', () => {
-    const error = captureError(() => loadConfig({ ...VALID, SUPABASE_SERVICE_ROLE_KEY: VALID.SUPABASE_ANON_KEY }));
-    expect(error.variables).toEqual(['SUPABASE_SERVICE_ROLE_KEY']);
-  });
-
-  it('returns a deeply frozen object', () => {
-    const config = loadConfig(VALID);
-    expect(Object.isFrozen(config)).toBe(true);
-    expect(Object.isFrozen(config.supabase)).toBe(true);
-  });
-
-  it('reads exactly the Stage A variable subset', () => {
-    expect([...SERVER_ENV_KEYS].sort()).toEqual(
-      ['APP_ENV', 'LOG_LEVEL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_URL'].sort(),
+    const secret = captureError(() =>
+      loadConfig({ ...VALID, SUPABASE_URL: ['postgres://user', 'hunter2@db'].join(':') }),
     );
+    expect(secret.message).not.toContain('hunter2');
+
+    expect(captureError(() => loadConfig({ ...VALID, APP_ENV: 'production' })).variables).toEqual([
+      'SUPABASE_URL',
+    ]);
+    expect(
+      captureError(() => loadConfig({ ...VALID, SUPABASE_SERVICE_ROLE_KEY: VALID.SUPABASE_ANON_KEY }))
+        .variables,
+    ).toEqual(['SUPABASE_SERVICE_ROLE_KEY']);
   });
 });
 
 describe('getConfig', () => {
-  it('parses process.env once and returns the cached object afterwards', () => {
-    // Arrange
+  it('parses process.env once and caches it, but does not cache a failed parse', () => {
     for (const [key, value] of Object.entries(VALID)) {
       vi.stubEnv(key, value);
     }
     resetConfigCache();
-
-    // Act
     const first = getConfig();
     vi.stubEnv('LOG_LEVEL', 'error');
-    const second = getConfig();
+    expect(getConfig()).toBe(first);
+    expect(first.logLevel).toBe('debug');
 
-    // Assert
-    expect(second).toBe(first);
-    expect(second.logLevel).toBe('debug');
-  });
-
-  it('does not cache a failed parse, so a fixed environment works on the next call', () => {
-    // Arrange
-    for (const [key, value] of Object.entries(VALID)) {
-      vi.stubEnv(key, value);
-    }
-    vi.stubEnv('SUPABASE_URL', '');
     resetConfigCache();
-
-    // Act
+    vi.stubEnv('SUPABASE_URL', '');
     const failed = tryGetConfig();
     vi.stubEnv('SUPABASE_URL', VALID.SUPABASE_URL);
     const recovered = tryGetConfig();
 
-    // Assert
     expect(failed.ok).toBe(false);
     expect(recovered.ok).toBe(true);
   });

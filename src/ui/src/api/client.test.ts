@@ -41,146 +41,85 @@ const closeClaim: ApiEndpoint<{ closed: boolean }> = {
   response: z.object({ closed: z.boolean() }),
 };
 
-describe('call: requests', () => {
-  it('sends the bearer token and the tenant, and fills the path and the query', async () => {
+describe('call', () => {
+  it('builds the request: path, query, bearer token, tenant, idempotency key; leaves token and tenant off public calls', async () => {
     adapters();
     const { requests } = installFetch({
       'GET /api/v1/test-claims/3': () => ({ body: { id: 3 } }),
+      'GET /api/v1/test-health': () => ({ body: { ok: true } }),
+      'POST /api/v1/test-claims/5/close': () => ({ body: { closed: true } }),
     });
 
     const result = await call(claim, {
       params: { claimId: 3 },
       query: { stage: ['new', 'triage'], q: 'roof', empty: undefined },
     });
+    await call(health);
+    await call(closeClaim, { params: { claimId: 5 }, body: {} }, { idempotencyKey: 'key-1' });
+    await call(closeClaim, { params: { claimId: 5 }, body: {} });
 
     expect(result).toEqual({ id: 3 });
     expect(requests[0]?.search).toBe('?stage=new&stage=triage&q=roof');
     expect(requests[0]?.headers.authorization).toBe('Bearer jwt-1');
     expect(requests[0]?.headers['x-tenant-id']).toBe('tenant-a');
-  });
-
-  it('omits the token and the tenant on public endpoints', async () => {
-    adapters();
-    const { requests } = installFetch({
-      'GET /api/v1/test-health': () => ({ body: { ok: true } }),
-    });
-
-    await call(health);
-
-    expect(requests[0]?.headers.authorization).toBeUndefined();
-    expect(requests[0]?.headers['x-tenant-id']).toBeUndefined();
-  });
-
-  it('sends no tenant header when no tenant is known', async () => {
-    adapters({ tenant: null });
-    const { requests } = installFetch({
-      'GET /api/v1/test-claims/1': () => ({ body: { id: 1 } }),
-    });
-
-    await call(claim, { params: { claimId: 1 } });
-
-    expect(requests[0]?.headers['x-tenant-id']).toBeUndefined();
-  });
-
-  it('sends the given idempotency key, or a generated one, on idempotent commands', async () => {
-    adapters();
-    const { requests } = installFetch({
-      'POST /api/v1/test-claims/5/close': () => ({ body: { closed: true } }),
-    });
-
-    await call(closeClaim, { params: { claimId: 5 }, body: {} }, { idempotencyKey: 'key-1' });
-    await call(closeClaim, { params: { claimId: 5 }, body: {} });
-
-    expect(requests[0]?.headers['idempotency-key']).toBe('key-1');
-    expect(requests[1]?.headers['idempotency-key']).toMatch(/^[0-9a-f-]{36}$/);
-  });
-
-  it('refuses a path whose parameter is missing', async () => {
-    adapters();
-    installFetch({});
-
+    expect(requests[1]?.headers.authorization).toBeUndefined();
+    expect(requests[1]?.headers['x-tenant-id']).toBeUndefined();
+    expect(requests[2]?.headers['idempotency-key']).toBe('key-1');
+    expect(requests[3]?.headers['idempotency-key']).toMatch(/^[0-9a-f-]{36}$/);
     await expect(call(claim)).rejects.toThrow('Missing path parameter "claimId"');
   });
-});
 
-describe('call: responses', () => {
-  it('normalizes problem+json into status, title, field errors and correlation id', async () => {
-    adapters();
+  it('normalizes failures: problem+json with field errors, 401 sign-out, 204, schema drift, network and plain server errors', async () => {
+    const onUnauthorized = vi.fn();
+    adapters({ onUnauthorized });
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
     installFetch({
       'POST /api/v1/test-claims/5/close': () =>
         problem(422, 'Validation failed', {
           code: 'VALIDATION_FAILED',
           errors: [{ field: 'reason', code: 'REQUIRED', message: 'Give a reason.' }],
         }),
-    });
-
-    const error = await call(closeClaim, { params: { claimId: 5 }, body: {} }).catch(
-      (caught: unknown) => caught,
-    );
-
-    expect(error).toBeInstanceOf(ApiError);
-    const apiError = error as ApiError;
-    expect(apiError.status).toBe(422);
-    expect(apiError.kind).toBe('validation');
-    expect(apiError.correlationId).toBe('corr-test-1');
-    expect(fieldErrorsFor(apiError, 'reason')).toHaveLength(1);
-  });
-
-  it('signs out on 401', async () => {
-    const onUnauthorized = vi.fn();
-    adapters({ onUnauthorized });
-    installFetch({ 'GET /api/v1/test-claims/1': () => problem(401, 'Unauthenticated') });
-
-    await expect(call(claim, { params: { claimId: 1 } })).rejects.toMatchObject({
-      kind: 'unauthenticated',
-    });
-
-    expect(onUnauthorized).toHaveBeenCalledTimes(1);
-  });
-
-  it('returns null for 204', async () => {
-    adapters();
-    installFetch({ 'GET /api/v1/test-claims/1': () => ({ status: 204 }) });
-
-    await expect(call(claim, { params: { claimId: 1 } })).resolves.toBeNull();
-  });
-
-  it('rejects a response that drifts from the schema in development builds', async () => {
-    adapters();
-    installFetch({ 'GET /api/v1/test-claims/1': () => ({ body: { id: 'one' } }) });
-    vi.spyOn(console, 'error').mockImplementation(() => undefined);
-
-    await expect(call(claim, { params: { claimId: 1 } })).rejects.toMatchObject({
-      kind: 'contract',
-    });
-  });
-
-  it('reports a network failure as a network error', async () => {
-    adapters();
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(() => Promise.reject(new TypeError('Failed to fetch'))),
-    );
-
-    await expect(call(claim, { params: { claimId: 1 } })).rejects.toMatchObject({
-      kind: 'network',
-      status: 0,
-    });
-  });
-
-  it('keeps a non-problem error status with the correlation header', async () => {
-    adapters();
-    installFetch({
-      'GET /api/v1/test-claims/1': () => ({
+      'GET /api/v1/test-claims/1': () => problem(401, 'Unauthenticated'),
+      'GET /api/v1/test-claims/2': () => ({ status: 204 }),
+      'GET /api/v1/test-claims/3': () => ({ body: { id: 'three' } }),
+      'GET /api/v1/test-claims/4': () => ({
         status: 500,
         body: 'oops',
         headers: { 'x-correlation-id': 'corr-9' },
       }),
     });
 
+    const validation = await call(closeClaim, { params: { claimId: 5 }, body: {} }).catch(
+      (caught: unknown) => caught,
+    );
+    expect(validation).toBeInstanceOf(ApiError);
+    expect(validation).toMatchObject({
+      status: 422,
+      kind: 'validation',
+      correlationId: 'corr-test-1',
+    });
+    expect(fieldErrorsFor(validation, 'reason')).toHaveLength(1);
+
     await expect(call(claim, { params: { claimId: 1 } })).rejects.toMatchObject({
+      kind: 'unauthenticated',
+    });
+    expect(onUnauthorized).toHaveBeenCalledTimes(1);
+    await expect(call(claim, { params: { claimId: 2 } })).resolves.toBeNull();
+    await expect(call(claim, { params: { claimId: 3 } })).rejects.toMatchObject({
+      kind: 'contract',
+    });
+    await expect(call(claim, { params: { claimId: 4 } })).rejects.toMatchObject({
       kind: 'server',
       correlationId: 'corr-9',
+    });
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.reject(new TypeError('Failed to fetch'))),
+    );
+    await expect(call(claim, { params: { claimId: 1 } })).rejects.toMatchObject({
+      kind: 'network',
+      status: 0,
     });
   });
 });

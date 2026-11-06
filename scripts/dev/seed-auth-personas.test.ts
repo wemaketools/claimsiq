@@ -7,13 +7,11 @@ function config(appEnv: string, url: string) {
 }
 
 describe('isLocalTarget', () => {
-  it.each([
-    ['local', 'http://127.0.0.1:54331', true],
-    ['local', 'http://localhost:54331', true],
-    ['local', 'https://abc.supabase.co', false],
-    ['production', 'http://127.0.0.1:54331', false],
-    ['local', 'not a url', false],
-  ])('is decided by environment %s and URL %s', (appEnv, url, expected) => {
-    expect(isLocalTarget(config(appEnv, url))).toBe(expected);
+  it('accepts only a local environment pointing at this machine', () => {
+    expect(isLocalTarget(config('local', 'http://127.0.0.1:54421'))).toBe(true);
+    expect(isLocalTarget(config('local', 'http://localhost:54421'))).toBe(true);
+    expect(isLocalTarget(config('local', 'https://abc.supabase.co'))).toBe(false);
+    expect(isLocalTarget(config('production', 'http://127.0.0.1:54421'))).toBe(false);
+    expect(isLocalTarget(config('local', 'not a url'))).toBe(false);
   });
 });

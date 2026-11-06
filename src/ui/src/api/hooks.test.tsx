@@ -23,127 +23,69 @@ const closeAll: ApiEndpoint<{ closed: number }> = {
   response: z.object({ closed: z.number() }),
 };
 
-function Summary() {
+function Claims() {
   const query = useApiQuery(summary, {});
-  if (query.status === 'loading') return <p>loading</p>;
-  if (query.status === 'error') return <p>error {query.error?.status}</p>;
-  return (
-    <p>
-      open {query.data?.open} {query.isFetching ? 'fetching' : 'idle'}
-    </p>
-  );
-}
-
-describe('useApiQuery', () => {
-  it('shows loading, then the data', async () => {
-    installFetch({ 'GET /api/v1/claims/summary': () => ({ body: { open: 4 } }) });
-    renderWithProviders(<Summary />, { state: { session: signedInSession() } });
-
-    expect(screen.getByText('loading')).toBeInTheDocument();
-    expect(await screen.findByText('open 4 idle')).toBeInTheDocument();
-  });
-
-  it('exposes the normalized error', async () => {
-    installFetch({ 'GET /api/v1/claims/summary': () => problem(403, 'Forbidden') });
-    renderWithProviders(<Summary />, { state: { session: signedInSession() } });
-
-    expect(await screen.findByText('error 403')).toBeInTheDocument();
-  });
-
-  it('re-runs when its endpoint is invalidated', async () => {
-    let open = 1;
-    installFetch({ 'GET /api/v1/claims/summary': () => ({ body: { open } }) });
-    renderWithProviders(<Summary />, { state: { session: signedInSession() } });
-    expect(await screen.findByText('open 1 idle')).toBeInTheDocument();
-
-    open = 5;
-    act(() => invalidateApiQueries('claims.'));
-
-    expect(await screen.findByText('open 5 idle')).toBeInTheDocument();
-  });
-
-  it('does not re-run when another endpoint is invalidated', async () => {
-    let open = 1;
-    installFetch({ 'GET /api/v1/claims/summary': () => ({ body: { open } }) });
-    renderWithProviders(<Summary />, { state: { session: signedInSession() } });
-    expect(await screen.findByText('open 1 idle')).toBeInTheDocument();
-
-    open = 5;
-    act(() => invalidateApiQueries('suppliers.'));
-
-    expect(screen.getByText('open 1 idle')).toBeInTheDocument();
-  });
-});
-
-function CloseButton() {
   const mutation = useApiMutation(closeAll);
   return (
     <>
-      <button
-        type="button"
-        disabled={mutation.pending}
-        onClick={() => void mutation.mutate({ body: {} }).catch(() => undefined)}
-      >
-        close
-      </button>
-      {mutation.data !== undefined && <p>closed {mutation.data.closed}</p>}
-      {mutation.error !== null && <p>failed {mutation.error.status}</p>}
-    </>
-  );
-}
-
-function Overlapping() {
-  const mutation = useApiMutation(closeAll);
-  return (
-    <>
+      <p data-testid="query">
+        {query.status === 'loading' && 'loading'}
+        {query.status === 'error' && `error ${query.error?.status}`}
+        {query.status === 'success' && `open ${query.data?.open}`}
+      </p>
       <button
         type="button"
         onClick={() => void mutation.mutate({ body: {} }).catch(() => undefined)}
       >
         close
       </button>
-      <p>{mutation.pending ? 'pending' : 'idle'}</p>
-      {mutation.data !== undefined && <p>closed {mutation.data.closed}</p>}
+      <p data-testid="mutation">
+        {mutation.pending ? 'pending' : 'idle'}
+        {mutation.data !== undefined && ` closed ${mutation.data.closed}`}
+        {mutation.error !== null && ` failed ${mutation.error.status}`}
+      </p>
     </>
   );
 }
 
-describe('useApiMutation', () => {
-  it('stays pending until the last of two overlapping commands has finished', async () => {
+describe('API hooks', () => {
+  it('load, re-run on a matching invalidation and surface errors; commands stay pending until the last overlapping one ends', async () => {
+    let open = 1;
+    let queryFails = false;
+    let commandFails = false;
     const releases: Array<() => void> = [];
     installFetch({
+      'GET /api/v1/claims/summary': () =>
+        queryFails ? problem(403, 'Forbidden') : { body: { open } },
       'POST /api/v1/claims/close-all': async () => {
+        if (commandFails) return problem(500, 'Internal');
         await new Promise<void>((resolve) => releases.push(resolve));
         return { body: { closed: releases.length } };
       },
     });
-    renderWithProviders(<Overlapping />, { state: { session: signedInSession() } });
+    renderWithProviders(<Claims />, { state: { session: signedInSession() } });
+    expect(screen.getByTestId('query')).toHaveTextContent('loading');
+    await waitFor(() => expect(screen.getByTestId('query')).toHaveTextContent('open 1'));
+
+    open = 5;
+    act(() => invalidateApiQueries('suppliers.'));
+    expect(screen.getByTestId('query')).toHaveTextContent('open 1');
+    act(() => invalidateApiQueries('claims.'));
+    await waitFor(() => expect(screen.getByTestId('query')).toHaveTextContent('open 5'));
+
     await userEvent.click(screen.getByRole('button', { name: 'close' }));
     await userEvent.click(screen.getByRole('button', { name: 'close' }));
     await waitFor(() => expect(releases).toHaveLength(2));
-
     await act(async () => releases[0]?.());
-    expect(screen.getByText('pending')).toBeInTheDocument();
-
+    expect(screen.getByTestId('mutation')).toHaveTextContent('pending');
     await act(async () => releases[1]?.());
-    expect(await screen.findByText('idle')).toBeInTheDocument();
-  });
+    await waitFor(() => expect(screen.getByTestId('mutation')).toHaveTextContent('idle closed 2'));
 
-  it('keeps the response of a command', async () => {
-    installFetch({ 'POST /api/v1/claims/close-all': () => ({ body: { closed: 3 } }) });
-    renderWithProviders(<CloseButton />, { state: { session: signedInSession() } });
-
+    commandFails = true;
+    queryFails = true;
     await userEvent.click(screen.getByRole('button', { name: 'close' }));
-
-    expect(await screen.findByText('closed 3')).toBeInTheDocument();
-  });
-
-  it('keeps the error of a failed command', async () => {
-    installFetch({ 'POST /api/v1/claims/close-all': () => problem(500, 'Internal') });
-    renderWithProviders(<CloseButton />, { state: { session: signedInSession() } });
-
-    await userEvent.click(screen.getByRole('button', { name: 'close' }));
-
-    expect(await screen.findByText('failed 500')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId('mutation')).toHaveTextContent('failed 500'));
+    act(() => invalidateApiQueries());
+    await waitFor(() => expect(screen.getByTestId('query')).toHaveTextContent('error 403'));
   });
 });

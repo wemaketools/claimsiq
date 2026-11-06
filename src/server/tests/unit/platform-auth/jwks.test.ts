@@ -33,63 +33,34 @@ function setup(responses: Array<Response | Error>, retryBackoffMs = 0) {
 }
 
 describe('createJwksCache', () => {
-  it('fetches once and serves a known kid from the cache afterwards', async () => {
-    // Arrange
-    const { cache, fetchMock } = setup([jsonResponse({ keys: [EC_KEY] })]);
-
-    // Act
-    const first = await cache.getKey('k1');
-    const second = await cache.getKey('k1');
-
-    // Assert
-    expect(first).toMatchObject({ kid: 'k1' });
-    expect(second).toMatchObject({ kid: 'k1' });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-  });
-
-  it('rejects an unknown kid from a fresh cache without another network round-trip', async () => {
-    // Arrange
-    const { cache, fetchMock } = setup([jsonResponse({ keys: [EC_KEY] })]);
-    await cache.getKey('k1');
-
-    // Act
-    const unknown = await cache.getKey('forged-kid');
-
-    // Assert
-    expect(unknown).toBeNull();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-  });
-
-  it('refetches after the TTL, so a rotated key becomes known', async () => {
-    // Arrange
+  it('fetches once, rejects an unknown kid without another request, refetches after the TTL so a rotated key is known, and keeps only public asymmetric keys', async () => {
     const rotated = { ...EC_KEY, kid: 'k2' };
-    const { cache, fetchMock, advance } = setup([jsonResponse({ keys: [EC_KEY] }), jsonResponse({ keys: [rotated] })]);
-    await cache.getKey('k1');
+    const { cache, fetchMock, advance } = setup([
+      jsonResponse({
+        keys: [
+          EC_KEY,
+          { ...EC_KEY, kid: 'private', d: 'secret-part' },
+          { kty: 'oct', kid: 'symmetric', k: 'c2VjcmV0' },
+        ],
+      }),
+      jsonResponse({ keys: [rotated] }),
+    ]);
+
+    const concurrent = await Promise.all([cache.getKey('k1'), cache.getKey('k1'), cache.getKey('k1')]);
+
+    expect(concurrent.every((key) => key?.kid === 'k1')).toBe(true);
+    expect(await cache.getKey('forged-kid')).toBeNull();
+    expect(await cache.getKey('private')).toBeNull();
+    expect(await cache.getKey('symmetric')).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
     advance(1500);
 
-    // Act
-    const key = await cache.getKey('k2');
-
-    // Assert
-    expect(key).toMatchObject({ kid: 'k2' });
+    expect(await cache.getKey('k2')).toMatchObject({ kid: 'k2' });
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it('keeps serving the previous set when a refresh fails within the stale window', async () => {
-    // Arrange
-    const { cache, advance } = setup([jsonResponse({ keys: [EC_KEY] }), new Error('network down')]);
-    await cache.getKey('k1');
-    advance(1500);
-
-    // Act
-    const key = await cache.getKey('k1');
-
-    // Assert
-    expect(key).toMatchObject({ kid: 'k1' });
-  });
-
-  it('does not retry the network on every lookup during an outage while the stale set is usable', async () => {
-    // Arrange
+  it('serves the stale set during an outage without hammering the network, retries after the back-off, and fails fast with nothing cached', async () => {
     const { cache, fetchMock, advance } = setup(
       [jsonResponse({ keys: [EC_KEY] }), new Error('network down'), new Error('still down')],
       1000,
@@ -97,59 +68,18 @@ describe('createJwksCache', () => {
     await cache.getKey('k1');
     advance(1500);
 
-    // Act: the first lookup after expiry fails once; the ones inside the back-off do not fetch.
-    await cache.getKey('k1');
+    expect(await cache.getKey('k1')).toMatchObject({ kid: 'k1' });
     advance(100);
     await cache.getKey('k1');
     await cache.getKey('k1');
-    const callsInBackoff = fetchMock.mock.calls.length;
-    advance(1000);
-    const key = await cache.getKey('k1');
-
-    // Assert
-    expect(callsInBackoff).toBe(2);
-    expect(fetchMock).toHaveBeenCalledTimes(3);
-    expect(key).toMatchObject({ kid: 'k1' });
-  });
-
-  it('still fails fast with nothing usable cached, back-off or not', async () => {
-    const { cache, fetchMock } = setup([new Error('down'), new Error('down')], 60_000);
-    await expect(cache.getKey('k1')).rejects.toBeInstanceOf(JwksUnavailableError);
-    await expect(cache.getKey('k1')).rejects.toBeInstanceOf(JwksUnavailableError);
     expect(fetchMock).toHaveBeenCalledTimes(2);
-  });
+    advance(1000);
+    expect(await cache.getKey('k1')).toMatchObject({ kid: 'k1' });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
 
-  it('throws JwksUnavailableError when nothing usable is cached', async () => {
-    const { cache } = setup([jsonResponse({ error: 'x' }, 503)]);
-    await expect(cache.getKey('k1')).rejects.toBeInstanceOf(JwksUnavailableError);
-  });
-
-  it('drops private and symmetric keys from the set', async () => {
-    // Arrange
-    const { cache } = setup([
-      jsonResponse({
-        keys: [
-          { ...EC_KEY, kid: 'private', d: 'secret-part' },
-          { kty: 'oct', kid: 'symmetric', k: 'c2VjcmV0' },
-          EC_KEY,
-        ],
-      }),
-    ]);
-
-    // Act
-    const privateKey = await cache.getKey('private');
-    const symmetric = await cache.getKey('symmetric');
-    const publicKey = await cache.getKey('k1');
-
-    // Assert
-    expect(privateKey).toBeNull();
-    expect(symmetric).toBeNull();
-    expect(publicKey).toMatchObject({ kid: 'k1' });
-  });
-
-  it('shares one request between concurrent lookups', async () => {
-    const { cache, fetchMock } = setup([jsonResponse({ keys: [EC_KEY] })]);
-    await Promise.all([cache.getKey('k1'), cache.getKey('k1'), cache.getKey('k1')]);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const empty = setup([new Error('down'), jsonResponse({ error: 'x' }, 503)], 60_000);
+    await expect(empty.cache.getKey('k1')).rejects.toBeInstanceOf(JwksUnavailableError);
+    await expect(empty.cache.getKey('k1')).rejects.toBeInstanceOf(JwksUnavailableError);
+    expect(empty.fetchMock).toHaveBeenCalledTimes(2);
   });
 });

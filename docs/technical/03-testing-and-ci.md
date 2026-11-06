@@ -13,19 +13,26 @@ Status: as built (scaffold). The decisions behind it (CI and checks, Bun) are in
 
 `bun run test` runs both root projects. Vitest is the runner everywhere; `bun test` is not used. Root tests see the values of the git-ignored `.env.local` (`vitest.config.ts` parses it), so they behave like the scripts.
 
-Conventions: test names state behavior, condition and outcome; AAA; deterministic and order-independent. Helpers for the SPA are in `src/ui/src/test`: `renderWithProviders` (store, stub auth, toasts, memory data router), `installFetch` (route-keyed `fetch` stub that records requests), `signedInSession` / `signedOutSession`, `readSourceFile` (reads a stylesheet for the contract tests in `theme/components.test.ts`, which assert layout and accessibility rules jsdom cannot measure).
+Conventions: fewer, broader tests. A test sets up once and walks a realistic flow with several assertions (sign in, walk the pages, switch persona and theme, reload) instead of many tests that each check one or two things; a test names the behavior it protects, and assertions that only pin a constant or a class name are left out. Tests are deterministic and order-independent. Helpers for the SPA are in `src/ui/src/test`:
+
+- `renderWithProviders(element, options)`: the element in the store, a stub auth context, toasts and a memory data router, with the API client adapters wired to the store.
+- `renderRouteTree(routes, options)`: the same providers around a whole route tree, for example the application's own (`buildRoutes`); `renderWithProviders` is built on it.
+- `restoreAfterEach(restore)`: registers the restore function returned by `configureApiClient` or `configureScreenLoader` to run after the current test, so no test leaks global state.
+- `installFetch`: route-keyed `fetch` stub that records requests.
+- `signedInSession` / `signedOutSession`: session states for a preloaded store.
+- `readSourceFile`: reads a stylesheet for the contract in `theme/components.test.ts`, which asserts the few layout and accessibility rules jsdom cannot measure.
 
 ## The local-stack skip
 
-`src/server/tests/unit/platform-auth/verify.local-stack.test.ts` verifies tokens issued by the real local Supabase Auth against its JWKS. It probes `<SUPABASE_URL>/auth/v1/health` once at load and skips the whole file when `.env.local` is missing or the stack does not answer, so `bun run test` passes on a machine without Docker (8 tests skipped). CI starts the stack first, so there they run. Because skipped tests hide regressions, CI never runs the unit project through the skip assertion; it relies on the stack step failing first.
+`src/server/tests/unit/platform-auth/verify.local-stack.test.ts` verifies tokens issued by the real local Supabase Auth against its JWKS. It probes `<SUPABASE_URL>/auth/v1/health` once at load and skips the whole file when `.env.local` is missing or the stack does not answer, so `bun run test` passes on a machine without Docker (1 test skipped). CI starts the stack first, so there they run. Because skipped tests hide regressions, CI never runs the unit project through the skip assertion; it relies on the stack step failing first.
 
 ## Count floors
 
-`bun run ci:test:ui` and `ci:test:unit` write a Vitest JSON report and run `scripts/ci/assert-test-run.ts`, which fails when the run did not succeed, when any test failed or was skipped, or when fewer than `--min-tests` tests ran (it catches silently dropped suites). The floors in `package.json` are sized to what exists: SPA 182, unit 64. Raise them in the same change that adds tests. `ci:test:unit` also fails on the 8 local-stack skips, so it is only meaningful where the stack is up; CI runs `test:unit` for that reason and `ci:test:ui` for the SPA.
+`bun run ci:test:ui` and `ci:test:unit` write a Vitest JSON report and run `scripts/ci/assert-test-run.ts`, which fails when the run did not succeed, when any test failed or was skipped, or when fewer than `--min-tests` tests ran (it catches silently dropped suites). The floors in `package.json` are sized to what exists: SPA 40, unit 13. Raise them in the same change that adds tests. `ci:test:unit` also fails on the 8 local-stack skips, so it is only meaningful where the stack is up; CI runs `test:unit` for that reason and `ci:test:ui` for the SPA.
 
 ## End-to-end
 
-`e2e_tests/playwright.config.ts` starts Vite itself on `WEB_PORT` (default 5380, strict port, never reusing a server) with the root `.env.local`. `specs/shell.spec.ts` signs in with the seeded demo accounts against the real local stack and covers the sign-in page, a wrong password, the six destinations and their empty states, the persona switch and theme surviving a reload, sign-out and the redirect of a signed-out visitor. It runs axe (WCAG 2.0/2.1 A and AA) on the sign-in page, the signed-in shell and the shell after a reload; any violation fails the test.
+`e2e_tests/playwright.config.ts` starts Vite itself on `WEB_PORT` (default 5380, strict port, never reusing a server) with the root `.env.local`. `specs/shell.spec.ts` has two flows against the real local stack: the signed-out one (redirect to sign-in, the sign-in page, a wrong password) and the signed-in one (a seeded demo account signs in, walks the six destinations and their empty states, switches persona and theme and keeps them across a reload, and signs out). It runs axe (WCAG 2.0/2.1 A and AA) on the sign-in page, the signed-in shell and the shell after a reload; any violation fails the test.
 
 Prerequisites: Docker running, `bun run supabase:start`, `.env.local` written, `bun run auth:personas`, and the browser once with `bunx playwright install chromium` (from `e2e_tests`).
 

@@ -27,21 +27,15 @@ function entries(file: string): Array<{ key: string; value: string; raw: string 
 
 const EXPECTED_KEYS = [...SERVER_ENV_KEYS, ...BROWSER_ENV_KEYS].sort();
 
-describe.each(['.env.example', '.env.local.example'])('%s', (file) => {
-  it('lists exactly the schema variables plus the browser-safe VITE_ keys', () => {
-    expect(entries(file).map((entry) => entry.key).sort()).toEqual(EXPECTED_KEYS);
-  });
-
-  it('contains no JWT-shaped value, Supabase secret or inline connection-string password', () => {
-    const text = readFileSync(join(repoRoot, file), 'utf8');
-    expect(text).not.toMatch(/eyJ[A-Za-z0-9_-]{10,}\.eyJ/);
-    expect(text).not.toMatch(/sb_(secret|publishable)_[A-Za-z0-9]/);
-    expect(text).not.toMatch(/:\/\/[^\s:/@]+:(?!<)[^\s@]+@/);
-  });
-});
-
-describe('.env.example', () => {
-  it('is alphabetical KEY="value"', () => {
+describe('environment files', () => {
+  it('list exactly the schema variables plus the browser-safe VITE_ keys, hold placeholders only, and keep .env.example an alphabetical KEY="value" export', () => {
+    for (const file of ['.env.example', '.env.local.example']) {
+      expect(entries(file).map((entry) => entry.key).sort(), file).toEqual(EXPECTED_KEYS);
+      const text = readFileSync(join(repoRoot, file), 'utf8');
+      expect(text, file).not.toMatch(/eyJ[A-Za-z0-9_-]{10,}\.eyJ/);
+      expect(text, file).not.toMatch(/sb_(secret|publishable)_[A-Za-z0-9]/);
+      expect(text, file).not.toMatch(/:\/\/[^\s:/@]+:(?!<)[^\s@]+@/);
+    }
     const list = entries('.env.example');
     expect(list.map((entry) => entry.key)).toEqual([...list.map((entry) => entry.key)].sort());
     for (const entry of list) {

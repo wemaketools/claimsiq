@@ -104,18 +104,35 @@ beforeEach(() => {
 });
 
 describe('AuthProvider', () => {
-  it('puts the signed-in user in the session slice and applies the stored theme', () => {
+  it('follows the Supabase session into the store, sends the token and tenant on API calls and signs out on 401 or on request', async () => {
     window.localStorage.setItem('ciq.theme', 'dark');
+    let pings = 0;
+    const { requests } = installFetch({
+      'GET /api/v1/ping': () => (++pings === 1 ? { body: { ok: true } } : problem(401, 'Expired')),
+    });
+    mocks.signInWithPassword.mockResolvedValue({ error: new Error('Invalid login credentials') });
     renderProvider();
+    act(() => emit('INITIAL_SESSION', null));
+    expect(screen.getByTestId('status')).toHaveTextContent('signedOut nobody dark -');
+    act(() => screen.getByRole('button', { name: 'sign in' }).click());
+    await waitFor(() =>
+      expect(mocks.signInWithPassword).toHaveBeenCalledWith({ email: 'a@b.c', password: 'pw' }),
+    );
 
-    act(() => emit('INITIAL_SESSION', session));
+    act(() => emit('SIGNED_IN', session));
 
     expect(screen.getByTestId('status')).toHaveTextContent('signedIn Finance dark');
     expect(document.documentElement.dataset.theme).toBe('dark');
-  });
+    act(() => screen.getByRole('button', { name: 'ping' }).click());
+    await waitFor(() => expect(requests).toHaveLength(1));
+    expect(requests[0]?.headers.authorization).toBe('Bearer jwt-from-session');
+    expect(requests[0]?.headers['x-tenant-id']).toBe('DEMO');
 
-  it('falls back to the email address when the account has no full name', () => {
-    renderProvider();
+    act(() => screen.getByRole('button', { name: 'ping' }).click());
+    await waitFor(() => expect(mocks.signOut).toHaveBeenCalledWith({ scope: 'local' }));
+    await waitFor(() =>
+      expect(screen.getByTestId('status')).toHaveTextContent('signedOut nobody dark expired'),
+    );
 
     act(() =>
       emit('SIGNED_IN', {
@@ -123,50 +140,10 @@ describe('AuthProvider', () => {
         user: { id: 'auth-2', email: 'x@claimsiq.local', user_metadata: {} },
       } as unknown as Session),
     );
-
     expect(screen.getByTestId('status')).toHaveTextContent('signedIn x@claimsiq.local');
-  });
-
-  it('sends the session token and the tenant on API calls', async () => {
-    const { requests } = installFetch({ 'GET /api/v1/ping': () => ({ body: { ok: true } }) });
-    renderProvider();
-    act(() => emit('INITIAL_SESSION', session));
-
-    act(() => screen.getByRole('button', { name: 'ping' }).click());
-
-    await waitFor(() => expect(requests).toHaveLength(1));
-    expect(requests[0]?.headers.authorization).toBe('Bearer jwt-from-session');
-    expect(requests[0]?.headers['x-tenant-id']).toBe('DEMO');
-  });
-
-  it('signs the user out when the API answers 401', async () => {
-    installFetch({ 'GET /api/v1/ping': () => problem(401, 'Unauthenticated') });
-    renderProvider();
-    act(() => emit('INITIAL_SESSION', session));
-
-    act(() => screen.getByRole('button', { name: 'ping' }).click());
-
-    await waitFor(() => expect(mocks.signOut).toHaveBeenCalledWith({ scope: 'local' }));
-    await waitFor(() =>
-      expect(screen.getByTestId('status')).toHaveTextContent('signedOut nobody light expired'),
-    );
-  });
-
-  it('reports a failed sign-in as a single generic result and signs out on request', async () => {
-    installFetch({});
-    mocks.signInWithPassword.mockResolvedValue({ error: new Error('Invalid login credentials') });
-    renderProvider();
-    act(() => emit('INITIAL_SESSION', null));
-    expect(screen.getByTestId('status')).toHaveTextContent('signedOut');
-
-    act(() => screen.getByRole('button', { name: 'sign in' }).click());
-    await waitFor(() =>
-      expect(mocks.signInWithPassword).toHaveBeenCalledWith({ email: 'a@b.c', password: 'pw' }),
-    );
     act(() => screen.getByRole('button', { name: 'sign out' }).click());
-
     await waitFor(() =>
-      expect(screen.getByTestId('status')).toHaveTextContent('signedOut nobody light user'),
+      expect(screen.getByTestId('status')).toHaveTextContent('signedOut nobody dark user'),
     );
   });
 });

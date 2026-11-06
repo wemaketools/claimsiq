@@ -63,67 +63,37 @@ beforeAll(async () => {
 });
 
 describe.skipIf(!stackUp)('verifyAccessToken against local Supabase Auth', () => {
-  it('accepts a token issued by local Supabase Auth for a demo persona', async () => {
-    // Act
-    const result = await verifyAccessToken(realToken);
+  it('accepts a token issued by Supabase Auth and rejects forged, downgraded, foreign, expired and anon-key tokens', async () => {
+    const accepted = await verifyAccessToken(realToken);
+    expect(accepted).toMatchObject({ ok: true, token: { email: PERSONA, algorithm: 'ES256' } });
 
-    // Assert
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.token.email).toBe(PERSONA);
-      expect(result.token.algorithm).toBe('ES256');
-    }
-  });
-
-  it('rejects the real token with a tampered payload (forged identity)', async () => {
-    const result = await verifyAccessToken(tamperPayload(realToken, { email: 'finance@claimsiq.local' }));
-    expect(result).toMatchObject({ ok: false, reason: 'invalid_signature_or_expired' });
-  });
-
-  it('rejects the real claims re-issued with alg none', async () => {
     const { header, payload } = decodeJwt(realToken);
-    const result = await verifyAccessToken(unsignedToken(payload, String(header.kid)));
-    expect(result).toMatchObject({ ok: false, reason: 'algorithm_not_allowed' });
-  });
-
-  it('rejects the real claims re-signed with HS256 using the anon key as the secret', async () => {
-    const { header, payload } = decodeJwt(realToken);
-    const token = await signHs256({ alg: 'HS256', typ: 'JWT', kid: header.kid }, payload, getConfig().supabase.anonKey);
-    await expect(verifyAccessToken(token)).resolves.toMatchObject({ ok: false, reason: 'algorithm_not_allowed' });
-  });
-
-  it('rejects a token signed by an unknown key with an unknown kid', async () => {
     const attacker = await generateEs256KeyPair('attacker-kid');
-    const { payload } = decodeJwt(realToken);
-    const token = await signEs256({ alg: 'ES256', typ: 'JWT', kid: attacker.kid }, payload, attacker.privateJwk);
-    await expect(verifyAccessToken(token)).resolves.toMatchObject({ ok: false, reason: 'unknown_kid' });
-  });
-
-  it('rejects an expired token signed with the stack key', async () => {
-    // Arrange
     const key = localStackSigningKey();
     const now = Math.floor(Date.now() / 1000);
-    const token = await signEs256(
-      { alg: 'ES256', typ: 'JWT', kid: key.kid },
-      sessionClaims(getConfig().supabase.authIssuer, { iat: now - 7200, exp: now - 5 }),
+    const stackHeader = { alg: 'ES256', typ: 'JWT', kid: key.kid };
+    const config = getConfig();
+
+    expect(await verifyAccessToken(tamperPayload(realToken, { email: 'finance@claimsiq.local' }))).toMatchObject({
+      ok: false,
+      reason: 'invalid_signature_or_expired',
+    });
+    expect(await verifyAccessToken(unsignedToken(payload, String(header.kid)))).toMatchObject({
+      ok: false,
+      reason: 'algorithm_not_allowed',
+    });
+    const hs256 = await signHs256({ alg: 'HS256', typ: 'JWT', kid: header.kid }, payload, config.supabase.anonKey);
+    expect(await verifyAccessToken(hs256)).toMatchObject({ ok: false, reason: 'algorithm_not_allowed' });
+    const unknownKey = await signEs256({ alg: 'ES256', typ: 'JWT', kid: attacker.kid }, payload, attacker.privateJwk);
+    expect(await verifyAccessToken(unknownKey)).toMatchObject({ ok: false, reason: 'unknown_kid' });
+    const expired = await signEs256(
+      stackHeader,
+      sessionClaims(config.supabase.authIssuer, { iat: now - 7200, exp: now - 5 }),
       key,
     );
-
-    // Act
-    const result = await verifyAccessToken(token);
-
-    // Assert
-    expect(result).toMatchObject({ ok: false, reason: 'invalid_signature_or_expired' });
-  });
-
-  it('rejects a token signed with the stack key but carrying a foreign issuer', async () => {
-    const key = localStackSigningKey();
-    const token = await signEs256({ alg: 'ES256', typ: 'JWT', kid: key.kid }, sessionClaims('https://other.supabase.co/auth/v1'), key);
-    await expect(verifyAccessToken(token)).resolves.toMatchObject({ ok: false, reason: 'issuer_mismatch' });
-  });
-
-  it('rejects the anon key, which is not a user session', async () => {
-    const result = await verifyAccessToken(getConfig().supabase.anonKey);
-    expect(result.ok).toBe(false);
+    expect(await verifyAccessToken(expired)).toMatchObject({ ok: false, reason: 'invalid_signature_or_expired' });
+    const foreign = await signEs256(stackHeader, sessionClaims('https://other.supabase.co/auth/v1'), key);
+    expect(await verifyAccessToken(foreign)).toMatchObject({ ok: false, reason: 'issuer_mismatch' });
+    expect((await verifyAccessToken(config.supabase.anonKey)).ok).toBe(false);
   });
 });
