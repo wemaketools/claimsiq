@@ -2,9 +2,15 @@
  * The e2e projects, each with the server it needs: the one home of both, so a project never starts another's server.
  * `E2E_PROJECT` (set by `test:e2e:prototype`) selects one; unset runs all.
  */
+/** The trimmed value of an environment variable; empty or whitespace counts as unset. Every env read goes through it. */
+export function envValue(name: string): string | undefined {
+  const raw = process.env[name]?.trim();
+  return raw === undefined || raw === '' ? undefined : raw;
+}
+
 function portFromEnv(name: string, fallback: number): number {
-  const raw = process.env[name];
-  if (raw === undefined || raw.trim() === '') return fallback;
+  const raw = envValue(name);
+  if (raw === undefined) return fallback;
   const value = Number(raw);
   if (!Number.isInteger(value) || value < 1024 || value > 65535) {
     throw new Error(`${name} must be a TCP port between 1024 and 65535, got "${raw}".`);
@@ -37,7 +43,7 @@ export const PROJECTS = [
   },
 ] as const;
 
-const selected = process.env.E2E_PROJECT;
+const selected = envValue('E2E_PROJECT');
 export const running = PROJECTS.filter((project) => selected === undefined || project.name === selected);
 if (running.length === 0) {
   throw new Error(`E2E_PROJECT must be one of ${PROJECTS.map((project) => project.name).join(', ')}, got "${selected}".`);

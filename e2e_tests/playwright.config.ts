@@ -15,10 +15,10 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig, devices } from '@playwright/test';
 
-import { running } from './projects';
+import { envValue, running } from './projects';
 
 const uiDir = fileURLToPath(new URL('../src/ui', import.meta.url));
-const isCI = Boolean(process.env.CI);
+const isCI = envValue('CI') !== undefined;
 
 export default defineConfig({
   testDir: './specs',
