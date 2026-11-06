@@ -159,7 +159,7 @@ function problemError(endpoint: ApiEndpoint, response: Response, payload: unknow
   return new ApiError({
     kind: kindOfStatus(response.status),
     status: response.status,
-    title: response.statusText || `HTTP ${response.status}`,
+    title: response.statusText || t('ui.error.title.http', { status: response.status }),
     correlationId: response.headers.get('x-correlation-id'),
     endpointId: endpoint.id,
   });

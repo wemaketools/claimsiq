@@ -49,11 +49,13 @@ export default defineConfig([
       ...sharedRules,
       'no-restricted-syntax': [
         'error',
-        {
-          selector:
-            "NewExpression[callee.name='ApiError'] > ObjectExpression > Property[key.name='title'] > :matches(Literal, TemplateLiteral)",
+        ...[
+          "NewExpression[callee.name='ApiError'] > ObjectExpression > Property[key.name='title'] > :matches(Literal, TemplateLiteral)",
+          "NewExpression[callee.name='ApiError'] > ObjectExpression > Property[key.name='title'] > :matches(ConditionalExpression, LogicalExpression) > :matches(Literal, TemplateLiteral)",
+        ].map((selector) => ({
+          selector,
           message: 'An ApiError title is shown to the user: take it from the catalog with t().',
-        },
+        })),
       ],
       'no-restricted-imports': 'off',
       '@typescript-eslint/no-restricted-imports': [

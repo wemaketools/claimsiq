@@ -110,6 +110,7 @@ export const shellCatalog = {
         network: 'The service could not be reached.',
         contract: 'The response did not match the API contract.',
         failed: 'The request failed.',
+        http: 'HTTP {status}',
       },
       loadTitle: 'This could not be loaded',
       network: 'The service could not be reached. Check your connection and try again.',
