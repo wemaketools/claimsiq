@@ -1,5 +1,6 @@
 /**
- * Shell journeys: real sign-in against local Supabase Auth, the six destinations (the claim screens show the shared
+ * Shell journeys: real sign-in against local Supabase Auth (a click on a demo role signs in through the server's demo
+ * sign-in endpoint; an e-mail off the list is refused), the six destinations (the claim screens show the shared
  * filter bar, the Action Queue its task filters), a supplier's figures, a task created, assigned and moved on in the Action
  * Queue and kept across a reload (in the database, through the real API), the persona switch and the theme toggle (both survive a reload), sign-out,
  * and axe accessibility checks.
@@ -13,7 +14,6 @@ import type { Page } from '@playwright/test';
 
 import { expectNoAxeViolations, expectNoHorizontalScroll, resetData } from './support';
 
-const PASSWORD = 'test1234';
 const DESTINATIONS = [
   'Overview',
   'Stages & Aging',
@@ -26,11 +26,12 @@ const DESTINATIONS = [
 /** Every screen has a filter bar; the Action Queue's is its own. */
 const FILTERS = (name: string): string => (name === 'Action Queue' ? 'Task filters' : 'Claim filters');
 
-async function signIn(page: Page, localPart: string): Promise<void> {
+/** A click on a demo role: the browser sends the email to the server, which signs the account in (no password in the page). */
+async function signInAsRole(page: Page, role: string, localPart: string): Promise<void> {
   await page.goto('/signin');
-  await page.getByLabel('Email address').fill(`${localPart}@claimsiq.local`);
-  await page.getByLabel('Password').fill(PASSWORD);
-  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  const signInRequest = page.waitForRequest('**/api/v1/auth/demo-sign-in');
+  await page.getByRole('button', { name: new RegExp(role) }).click();
+  expect((await signInRequest).postDataJSON()).toEqual({ email: `${localPart}@claimsiq.local` });
 }
 
 test.describe('shell', () => {
@@ -41,9 +42,13 @@ test.describe('shell', () => {
     await expect(page).toHaveURL(/\/signin$/);
     await expect(page.getByRole('heading', { name: 'Sign in', level: 1 })).toBeVisible();
     await expect(
-      page.getByRole('heading', { name: 'Demo accounts (local development only)' }),
+      page.getByRole('heading', { name: 'Demo accounts' }),
     ).toBeVisible();
     await expectNoAxeViolations(page);
+
+    const refused = await page.request.post('/api/v1/auth/demo-sign-in', { data: { email: 'someone.else@example.com' } });
+    expect(refused.status()).toBe(403);
+    expect(await refused.json()).toMatchObject({ code: 'DEMO_SIGN_IN_REFUSED' });
 
     await page.getByLabel('Email address').fill('head.of.claims@claimsiq.local');
     await page.getByLabel('Password').fill('not-the-password');
@@ -59,7 +64,7 @@ test.describe('shell', () => {
     page,
   }) => {
     await page.setViewportSize({ width: 1366, height: 768 });
-    await signIn(page, 'finance');
+    await signInAsRole(page, 'Finance', 'finance');
     await expect(page).toHaveURL(/\/overview$/);
     await resetData(page, 'DEMO');
     const sidebar = page.getByRole('complementary', { name: 'Main navigation and account' });

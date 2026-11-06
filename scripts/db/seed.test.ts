@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { DEMO_ACCOUNTS } from '../../src/ui/src/auth/demoAccountList.js';
+import { DEMO_ACCOUNTS } from '../../src/contracts/demoAccounts.js';
 import { z } from 'zod';
 
 import { ENTITIES, ENTITY_NAMES, PERSONA_IDS, TaskAuditEntry } from '../../src/contracts/index.js';

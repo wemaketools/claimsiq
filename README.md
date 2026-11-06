@@ -74,7 +74,7 @@ Every endpoint of `src/contracts/endpoints.ts` is served from the database. A re
 
 ```bash
 TOKEN=$(curl -s "$SUPABASE_URL/auth/v1/token?grant_type=password" -H "apikey: $SUPABASE_ANON_KEY" \
-  -H 'content-type: application/json' -d '{"email":"head.of.claims@claimsiq.local","password":"test1234"}' | jq -r .access_token)
+  -H 'content-type: application/json' -d '{"email":"head.of.claims@claimsiq.local","password":"'"${DEMO_SEED_PASSWORD:-test1234}"'"}' | jq -r .access_token)
 curl -s localhost:5274/api/v1/claim-facts -H "Authorization: Bearer $TOKEN" -H 'X-Tenant-Id: TEST' | jq .summary.totals
 ```
 
@@ -82,7 +82,7 @@ curl -s localhost:5274/api/v1/claim-facts -H "Authorization: Bearer $TOKEN" -H '
 
 ### Demo accounts
 
-Every account uses the password **`test1234`** (local only). There is one per persona:
+There is one account per persona. Locally they all have the password **`test1234`**, unless `DEMO_SEED_PASSWORD` is set in `.env.local`; `bun run auth:personas` gives the accounts that password. On the sign-in page, a click on a demo role signs in through the server (`POST /api/v1/auth/demo-sign-in`, which takes only the e-mail and uses the password from the server's own environment), so the page holds no password. If the server has none (any hosted environment without `DEMO_SEED_PASSWORD`) or refuses, the e-mail is filled into the form instead. The accounts:
 
 | Account | Persona |
 |---|---|

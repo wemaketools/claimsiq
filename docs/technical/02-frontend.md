@@ -12,7 +12,7 @@ Status: as built (scaffold, data layer, the claim screens: Overview, Stages & Ag
 | `components/shell/` | `AppShell`, `Sidebar`, `Topbar`, `UserCard`, `PrototypeBanner` |
 | `app/` | Store and slices (`session`, `dataContext`, `filters`), `dataContextActions.ts`, `router.tsx`, `RouteGuard`, the feature registry, `personas.ts`, `tenant.ts` |
 | `api/` | `client.ts` (`call(endpoint)`), `hooks.ts` (`useApiQuery`, `useApiMutation`, `invalidateApiQueries`), `endpoint.ts`, `problem.ts`, `mockTransport.ts` (the in-browser mock API as the transport; imported only by prototype builds) |
-| `auth/` | `authMode` (the build-time mode), `SupabaseAuthProvider` and `PrototypeAuthProvider` (the shared effects are in `sessionEffects.ts`), sign-in (`PrototypeSignIn` in prototype builds), forgot and reset password, `DemoAccounts` (the card of demo accounts, shared) and the development-only `DevDemoAccounts` |
+| `auth/` | `authMode` (the build-time mode), `SupabaseAuthProvider` and `PrototypeAuthProvider` (the shared effects are in `sessionEffects.ts`), sign-in (`PrototypeSignIn` in prototype builds), forgot and reset password, `DemoAccounts` (the card of demo accounts, shared) and `DemoSignInAccounts` (its content on the password page: the accounts of `src/contracts/demoAccounts.ts`, loaded lazily and not in a prototype build; a click calls `signInAsDemo`, which posts the e-mail to the server) |
 | `features/<feature>/` | `routes.tsx`, the page, `i18n/en.ts` |
 | `features/claim-scope/` | No route: what the claim screens share (see Claim screens) |
 | `features/claim-tasks/` | No route: what every screen that shows a task shares: the create (claim given or chosen), assign-owner and change-status dialogs, the status chip, the audit trail and the labels |

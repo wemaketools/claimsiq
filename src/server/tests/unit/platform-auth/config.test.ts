@@ -14,6 +14,7 @@ const VALID = {
   API_PORT: '5400',
   APP_ENV: 'local',
   LOG_LEVEL: 'debug',
+  DEMO_SEED_PASSWORD: 'demo-seed-pass',
   DATABASE_URL: 'postgresql://postgres:<local-db-password>@127.0.0.1:54322/postgres',
   SUPABASE_URL: 'http://127.0.0.1:54321/',
   SUPABASE_ANON_KEY: 'anon-key-value',
@@ -45,6 +46,7 @@ describe('loadConfig', () => {
       apiPort: 5400,
       appEnv: 'local',
       logLevel: 'debug',
+      seed: { demoPassword: 'demo-seed-pass' },
       database: { url: 'postgresql://postgres:<local-db-password>@127.0.0.1:54322/postgres' },
       supabase: {
         url: 'http://127.0.0.1:54321',

@@ -9,6 +9,7 @@
  * | `API_PORT`                  | no       | Port of the local API server (`bun run dev:api`), default 5274      |
  * | `APP_ENV`                   | no       | `local` (default) / `dev` / `preview` / `staging` / `production`   |
  * | `DATABASE_URL`              | no       | Postgres connection URL (direct, not a pooler); the db scripts and tests need it |
+ * | `DEMO_SEED_PASSWORD`        | no       | The password of the demo accounts in this environment (demo sign-in, `auth:personas`); `test1234` is its fallback only when `APP_ENV` is `local` |
  * | `LOG_LEVEL`                 | no       | `debug` / `info` (default) / `warn` / `error`                      |
  * | `SUPABASE_URL`              | yes      | Project URL; the JWT issuer is pinned to `<url>/auth/v1`            |
  * | `SUPABASE_ANON_KEY`         | yes      | Verification client (`getClaims` only)                              |
@@ -72,6 +73,9 @@ export const serverEnvSchema = z
         .regex(/^postgres(ql)?:\/\/\S+$/, 'DATABASE_URL must be a postgres:// or postgresql:// connection URL.')
         .optional(),
     ),
+    DEMO_SEED_PASSWORD: blankAsAbsent(
+      z.string().min(6, 'DEMO_SEED_PASSWORD must have at least 6 characters (the minimum of Supabase Auth).').max(72).optional(),
+    ),
     LOG_LEVEL: blankAsAbsent(z.enum(LOG_LEVELS, { error: `LOG_LEVEL must be one of ${LOG_LEVELS.join(', ')}.` }).default('info')),
     SUPABASE_URL: blankAsAbsent(httpUrl('SUPABASE_URL')),
     SUPABASE_ANON_KEY: blankAsAbsent(required('SUPABASE_ANON_KEY')),
@@ -110,6 +114,11 @@ export interface AppConfig {
   /** The port `bun run dev:api` listens on. */
   readonly apiPort: number;
   readonly logLevel: LogLevel;
+  /** What the demo accounts of this environment are given. */
+  readonly seed: {
+    /** `DEMO_SEED_PASSWORD`, or null when unset; `resolveDemoPassword` decides what null means. */
+    readonly demoPassword: string | null;
+  };
   readonly database: {
     /** The Postgres connection URL, or null when `DATABASE_URL` is unset. */
     readonly url: string | null;
@@ -133,6 +142,7 @@ export function toAppConfig(env: z.output<typeof serverEnvSchema>): AppConfig {
     appEnv: env.APP_ENV,
     apiPort: env.API_PORT,
     logLevel: env.LOG_LEVEL,
+    seed: { demoPassword: env.DEMO_SEED_PASSWORD ?? null },
     database: { url: env.DATABASE_URL ?? null },
     supabase: {
       url,

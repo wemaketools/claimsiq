@@ -24,7 +24,7 @@ import { ENTITY_TABLES, createDb } from '../../src/server/lib/db/index.js';
 import type { Database } from '../../src/server/lib/db/index.js';
 import { committedFixture } from '../../src/server/lib/seed/fixtureFiles.js';
 import { replaceDataSetRows } from '../../src/server/lib/seed/replace.js';
-import { DEMO_ACCOUNTS } from '../../src/ui/src/auth/demoAccountList.js';
+import { DEMO_ACCOUNTS } from '../../src/contracts/demoAccounts.js';
 import { requireLocalDatabaseUrl } from './local.js';
 
 type Db = Kysely<Database>;

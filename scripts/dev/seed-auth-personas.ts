@@ -2,14 +2,14 @@
  * `bun run auth:personas`: creates or updates the demo accounts in LOCAL Supabase Auth, one per persona.
  *
  * - Through the Auth Admin API (service-role key from `.env.local`, via src/server/lib/config): e-mail confirmed,
- *   password `test1234`, `user_metadata.full_name`. Existing accounts are updated to the same state, so the
+ *   the demo password (`DEMO_SEED_PASSWORD`, else the local default), `user_metadata.full_name`. Existing accounts are updated to the same state, so the
  *   script is idempotent and repairs a changed password.
  * - The accounts only exist to sign in. The persona switch in the app is a view and does not depend on the account.
  * - Refuses to run unless SUPABASE_URL points at this machine (127.0.0.1, localhost or ::1) and APP_ENV is local.
  * - Prints progress only; never prints keys or tokens.
  *
- * The list and the password come from src/ui/src/auth/demoAccountList.ts, the one place that also feeds the sign-in
- * quick-pick of development builds.
+ * The list comes from src/contracts/demoAccounts.ts, the one place that also feeds the sign-in page and the demo
+ * sign-in endpoint; the password is resolved like the endpoint resolves it.
  *
  * Usage: bun run auth:personas
  */
@@ -17,8 +17,9 @@ import { pathToFileURL } from 'node:url';
 
 import type { SupabaseClient, User } from '@supabase/supabase-js';
 
-import { DEMO_ACCOUNTS, DEMO_PASSWORD } from '../../src/ui/src/auth/demoAccountList.js';
-import type { DemoAccount } from '../../src/ui/src/auth/demoAccountList.js';
+import { DEMO_ACCOUNTS } from '../../src/contracts/demoAccounts.js';
+import type { DemoAccount } from '../../src/contracts/demoAccounts.js';
+import { resolveDemoPassword } from '../../src/server/lib/config/demo-password.js';
 import { ConfigurationError, getConfig } from '../../src/server/lib/config/index.js';
 import type { AppConfig } from '../../src/server/lib/config/index.js';
 import { getAdminClient } from '../../src/server/lib/supabase/index.js';
@@ -56,13 +57,14 @@ export interface SeedSummary {
 export async function seedAuthPersonas(
   admin: SupabaseClient,
   accounts: readonly DemoAccount[],
+  password: string,
 ): Promise<SeedSummary> {
   const users = await existingUsers(admin);
   let created = 0;
   let updated = 0;
   for (const account of accounts) {
     const attributes = {
-      password: DEMO_PASSWORD,
+      password,
       email_confirm: true,
       user_metadata: { full_name: account.fullName },
     };
@@ -107,9 +109,15 @@ async function main(): Promise<void> {
   process.stdout.write(
     `Provisioning ${DEMO_ACCOUNTS.length} demo accounts in local Supabase Auth (${config.supabase.url})...\n`,
   );
-  const summary = await seedAuthPersonas(getAdminClient(config), DEMO_ACCOUNTS);
+  const password = resolveDemoPassword(config.appEnv, config.seed.demoPassword);
+  if (!password.ok) {
+    process.stderr.write('Refusing to provision demo accounts: no demo password is configured.\n');
+    process.exitCode = 1;
+    return;
+  }
+  const summary = await seedAuthPersonas(getAdminClient(config), DEMO_ACCOUNTS, password.password);
   process.stdout.write(
-    `Done: ${summary.created} created, ${summary.updated} updated. Password for every account: ${DEMO_PASSWORD} (local only).\n`,
+    `Done: ${summary.created} created, ${summary.updated} updated. Every account has the demo password (DEMO_SEED_PASSWORD, else the local default; local only).\n`,
   );
 }
 

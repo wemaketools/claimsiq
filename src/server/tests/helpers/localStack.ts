@@ -1,11 +1,15 @@
 /** What the tests that talk to the local Supabase Auth stack share: whether it answers, and a real sign-in. */
+import { resolveDemoPassword } from '../../lib/config/demo-password.js';
 import { getConfig, tryGetConfig } from '../../lib/config/index.js';
 
-export const DEMO_PASSWORD = 'test1234';
-
-/** An access token issued by Supabase Auth for a demo account. */
-export async function passwordGrant(email: string, password = DEMO_PASSWORD): Promise<string> {
+/** An access token issued by Supabase Auth for a demo account, signed in with the environment's demo password. */
+export async function passwordGrant(email: string): Promise<string> {
   const config = getConfig();
+  const decision = resolveDemoPassword(config.appEnv, config.seed.demoPassword);
+  if (!decision.ok) {
+    throw new Error('No demo password is configured for this environment.');
+  }
+  const password = decision.password;
   const response = await fetch(`${config.supabase.url}/auth/v1/token?grant_type=password`, {
     method: 'POST',
     headers: { apikey: config.supabase.anonKey, 'content-type': 'application/json' },

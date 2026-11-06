@@ -19,6 +19,7 @@ export function stubAuth(overrides: Partial<PasswordAuthActions> = {}): Password
   return {
     mode: 'supabase',
     signIn: vi.fn(() => Promise.resolve({ ok: true })),
+    signInAsDemo: vi.fn(() => Promise.resolve({ ok: true as const })),
     signOut: vi.fn(() => Promise.resolve()),
     requestPasswordReset: vi.fn(() => Promise.resolve()),
     updatePassword: vi.fn(() => Promise.resolve({ ok: true })),

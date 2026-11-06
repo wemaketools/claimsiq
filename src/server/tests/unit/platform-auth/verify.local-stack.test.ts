@@ -30,7 +30,7 @@ let realToken: string;
 
 beforeAll(async () => {
   if (stackUp) {
-    realToken = await passwordGrant(PERSONA, 'test1234');
+    realToken = await passwordGrant(PERSONA);
   }
 });
 

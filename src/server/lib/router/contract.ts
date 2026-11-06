@@ -6,6 +6,8 @@
  *   - runs the handler, and checks its answer against the contract's response schema (a drifting handler is a 500, not a
  *     wrong answer on a screen).
  * A handler gets the tenant only through `ctx.tenant`, which opens `withTenant`.
+ * The entries of `publicEndpoints` (called before sign-in) are mounted by `mountPublicEndpoints`: no session, no tenant,
+ * no database, and the app registers them ahead of the session middleware.
  */
 import type { Context, Hono } from 'hono';
 
@@ -16,8 +18,9 @@ import {
   PersonaId,
   endpoints,
   isRealDate,
+  publicEndpoints,
 } from '../../../contracts/index.js';
-import type { EndpointContract, Endpoints } from '../../../contracts/index.js';
+import type { EndpointContract, Endpoints, PublicEndpoints } from '../../../contracts/index.js';
 import type { ReadModel } from '../../../read-model/index.js';
 import { InvalidValues, fieldProblems } from '../../../read-model/index.js';
 import type { AppConfig } from '../config/index.js';
@@ -59,6 +62,22 @@ type HandlerOf<E> = E extends EndpointContract<infer R, infer Q, infer B> ? Endp
 export type Handlers = { readonly [K in keyof Endpoints]: HandlerOf<Endpoints[K]> };
 export type HandlersOf<K extends keyof Endpoints> = Pick<Handlers, K>;
 
+/** What a public handler gets: the validated request and the configuration; nothing of a caller, because there is none yet. */
+export interface PublicRequestContext<Q, B> {
+  readonly config: AppConfig;
+  readonly correlationId: string;
+  readonly query: Q;
+  readonly body: B;
+}
+
+export interface PublicEndpointHandler<R, Q, B> {
+  run(ctx: PublicRequestContext<Q, B>): Promise<R>;
+}
+
+type PublicHandlerOf<E> = E extends EndpointContract<infer R, infer Q, infer B> ? PublicEndpointHandler<R, Q, B> : never;
+
+export type PublicHandlers = { readonly [K in keyof PublicEndpoints]: PublicHandlerOf<PublicEndpoints[K]> };
+
 export interface MountDeps {
   readonly config: AppConfig;
   readonly db: Db;
@@ -80,6 +99,14 @@ async function bodyOf(c: Context<ApiEnv>, endpoint: EndpointContract<unknown, un
     throw InvalidValues.fromZod(checked.error);
   }
   return checked.data;
+}
+
+function checkedAnswer(endpoint: EndpointContract<unknown, unknown, unknown>, result: unknown): object {
+  const checked = endpoint.response.safeParse(result);
+  if (!checked.success) {
+    throw new Error(`The answer of ${endpoint.id} does not match its contract: ${checked.error.issues.slice(0, 3).map((issue) => `${issue.path.join('.')}: ${issue.message}`).join('; ')}`);
+  }
+  return checked.data as object;
 }
 
 function queryOf(c: Context<ApiEnv>, endpoint: EndpointContract<unknown, unknown, unknown>): unknown {
@@ -122,11 +149,22 @@ export function mountEndpoints(app: Hono<ApiEnv>, handlers: Handlers, deps: Moun
         model: () => withTenant(deps.db, tenantId, (scope) => loadReadModel(scope)),
       });
 
-      const checked = endpoint.response.safeParse(result);
-      if (!checked.success) {
-        throw new Error(`The answer of ${endpoint.id} does not match its contract: ${checked.error.issues.slice(0, 3).map((issue) => `${issue.path.join('.')}: ${issue.message}`).join('; ')}`);
-      }
-      return c.json(checked.data as object, handler.status ?? 200);
+      return c.json(checkedAnswer(endpoint, result), handler.status ?? 200);
+    });
+  }
+}
+
+export function mountPublicEndpoints(app: Hono<ApiEnv>, handlers: PublicHandlers, deps: Pick<MountDeps, 'config'>): void {
+  for (const [key, endpoint] of Object.entries(publicEndpoints) as [keyof PublicEndpoints, EndpointContract<unknown, unknown, unknown>][]) {
+    const handler = handlers[key] as PublicEndpointHandler<unknown, unknown, unknown>;
+    app.on(endpoint.method, endpoint.path, async (c) => {
+      const result = await handler.run({
+        config: deps.config,
+        correlationId: c.get('correlationId'),
+        query: queryOf(c, endpoint),
+        body: await bodyOf(c, endpoint),
+      });
+      return c.json(checkedAnswer(endpoint, result));
     });
   }
 }

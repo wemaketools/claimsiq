@@ -14,7 +14,7 @@ import { withEdit } from '../../src/read-model/test-support/fixtureFiles.js';
 import { readFixtureFiles, readFixtureJson } from '../../src/server/lib/seed/fixtureFiles.js';
 import { loadConfig } from '../../src/server/lib/config/index.js';
 import { buildApp } from '../../src/server/lib/router/app.js';
-import { DEMO_ACCOUNTS } from '../../src/ui/src/auth/demoAccountList.js';
+import { DEMO_ACCOUNTS } from '../../src/contracts/demoAccounts.js';
 import { createScratchDatabase, reachableDatabaseUrl } from './scratchDatabase.js';
 import type { ScratchDatabase } from './scratchDatabase.js';
 import { findPersonaAccounts, seedDataSet } from './seed.js';

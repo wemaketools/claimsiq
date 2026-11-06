@@ -100,8 +100,12 @@ export const shellCatalog = {
       forgot: 'Forgot your password?',
     },
     demo: {
-      title: 'Demo accounts (local development only)',
-      subtitle: 'Choose a demo account to sign in with its local password ({password}).',
+      title: 'Demo accounts',
+      subtitle: 'Choose a role to sign in with its demo account.',
+      notConfigured:
+        'Demo sign-in is not set up in this environment. The email is filled in; enter the password of this account.',
+      failed:
+        'Demo sign-in did not work for this account. The email is filled in; enter its password instead.',
     },
     prototype: {
       subtitle: 'A prototype: no accounts are needed.',

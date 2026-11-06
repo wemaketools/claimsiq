@@ -12,7 +12,7 @@ import { getConfig } from '../../src/server/lib/config/index.js';
 import { toTenantId, withTenant } from '../../src/server/lib/db/index.js';
 import { TENANT_TABLES } from '../../src/server/lib/db/generated/schema.js';
 import { resolveTenantAccess } from '../../src/server/lib/tenancy/index.js';
-import { DEMO_ACCOUNTS } from '../../src/ui/src/auth/demoAccountList.js';
+import { DEMO_ACCOUNTS } from '../../src/contracts/demoAccounts.js';
 import { createScratchDatabase, reachableDatabaseUrl } from './scratchDatabase.js';
 import type { ScratchDatabase } from './scratchDatabase.js';
 import { findPersonaAccounts, seedFromFixtures } from './seed.js';

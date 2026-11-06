@@ -50,6 +50,8 @@ export interface EndpointContract<R, Q = undefined, B = undefined> {
   readonly query: z.ZodType<Q> | null;
   readonly body: z.ZodType<B> | null;
   readonly idempotent?: boolean;
+  /** Called before sign-in: no bearer token, no tenant. Only the entries of `publicEndpoints` are. */
+  readonly public?: boolean;
 }
 
 function endpoint<R, Q = undefined, B = undefined>(
@@ -261,3 +263,30 @@ export const endpoints = {
 } as const;
 
 export type Endpoints = typeof endpoints;
+
+export const DemoSignInBody = z.object({ email: z.string().trim().min(1).max(254) });
+export type DemoSignInBody = z.infer<typeof DemoSignInBody>;
+
+/** The Supabase Auth session the server signed the demo account in to; the browser adopts it with `setSession`. */
+export const DemoSession = z.object({
+  access_token: z.string().min(1),
+  refresh_token: z.string().min(1),
+  /** Unix seconds. */
+  expires_at: z.number().int(),
+});
+export type DemoSession = z.infer<typeof DemoSession>;
+
+/** The endpoints called before there is a session, so the API serves them ahead of the session and tenant middleware. */
+export const publicEndpoints = {
+  /** One-click sign-in of a demo role: the server signs the account in with the demo password of its environment. */
+  authDemoSignIn: endpoint({
+    id: 'auth.demoSignIn',
+    method: 'POST',
+    path: `${API}/auth/demo-sign-in`,
+    public: true,
+    body: DemoSignInBody,
+    response: DemoSession,
+  }),
+} as const;
+
+export type PublicEndpoints = typeof publicEndpoints;

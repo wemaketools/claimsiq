@@ -10,14 +10,23 @@ export class HttpProblem extends Error {
   readonly title: string;
   readonly errors: readonly FieldProblem[];
   readonly headers: Readonly<Record<string, string>>;
+  /** A stable machine-readable reason the page can branch on, or null. */
+  readonly code: string | null;
 
-  constructor(status: number, title: string, errors: readonly FieldProblem[] = [], headers: Readonly<Record<string, string>> = {}) {
+  constructor(
+    status: number,
+    title: string,
+    errors: readonly FieldProblem[] = [],
+    headers: Readonly<Record<string, string>> = {},
+    code: string | null = null,
+  ) {
     super(title);
     this.name = 'HttpProblem';
     this.status = status;
     this.title = title;
     this.errors = errors;
     this.headers = headers;
+    this.code = code;
   }
 }
 
@@ -26,6 +35,7 @@ export function problemResponse(problem: HttpProblem, correlationId: string): Re
     type: 'about:blank',
     title: problem.title,
     status: problem.status,
+    ...(problem.code === null ? {} : { code: problem.code }),
     ...(problem.errors.length > 0 ? { errors: problem.errors } : {}),
     correlationId,
   };

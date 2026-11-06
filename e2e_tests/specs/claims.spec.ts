@@ -16,8 +16,6 @@ import { expect, test } from '@playwright/test';
 
 import { expectNoAxeViolations, expectNoHorizontalScroll, resetData } from './support';
 
-const PASSWORD = 'test1234';
-
 test.describe('claim screens', () => {
   test('Overview, its click-through, filters, CSV and Stages & Aging work with the keyboard at 1366px and pass axe in both themes', async ({
     page,
@@ -29,9 +27,7 @@ test.describe('claim screens', () => {
       if (url.pathname.startsWith('/api/v1/')) apiCalls.push(`${request.method()} ${url.pathname}`);
     });
     await page.goto('/signin');
-    await page.getByLabel('Email address').fill('head.of.claims@claimsiq.local');
-    await page.getByLabel('Password').fill(PASSWORD);
-    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+    await page.getByRole('button', { name: /Head of Claims/ }).click();
     await expect(page).toHaveURL(/\/overview$/);
     await page.getByLabel('Data set').selectOption('TEST');
 

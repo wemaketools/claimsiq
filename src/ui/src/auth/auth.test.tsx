@@ -2,11 +2,11 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import { DEMO_ACCOUNTS } from '../../../contracts/index';
 import { PERSONA_IDS } from '../app/personas';
 import { t } from '../lib/i18n';
 import { LocationProbe, renderWithProviders, stubAuth } from '../test/render';
 import { signedInSession, signedOutSession } from '../test/fixtures';
-import { DEMO_ACCOUNTS, DEMO_ACCOUNTS_MARKER } from './demoAccountList';
 import { ForgotPasswordPage } from './ForgotPasswordPage';
 import { ResetPasswordPage } from './ResetPasswordPage';
 import { SignInPage } from './SignInPage';
@@ -50,20 +50,42 @@ describe('sign-in', () => {
     error.mockRestore();
   });
 
-  it('lists one demo account per persona in development builds and signs in with the chosen one; a signed-in visitor is sent on', async () => {
-    const auth = stubAuth();
+  it('lists one demo account per persona and signs in as the chosen one through the server; when the server cannot, it fills the email and says why; a signed-in visitor is sent on', async () => {
+    const auth = stubAuth({
+      signInAsDemo: vi
+        .fn()
+        .mockResolvedValueOnce({ ok: false, reason: 'not_configured' })
+        .mockResolvedValueOnce({ ok: false, reason: 'failed' })
+        .mockResolvedValue({ ok: true }),
+    });
     const { unmount } = renderWithProviders(<SignInPage />, {
       state: { session: signedOut },
       auth,
     });
-    expect(document.querySelector(`[data-marker="${DEMO_ACCOUNTS_MARKER}"]`)).not.toBeNull();
+    expect(screen.getByRole('heading', { name: 'Demo accounts' })).toBeInTheDocument();
     expect(DEMO_ACCOUNTS.map((account) => account.fullName)).toEqual(
       PERSONA_IDS.map((id) => t(`shell.persona.${id}`)),
     );
 
     await userEvent.click(await screen.findByRole('button', { name: /Finance/ }));
+    expect(auth.signInAsDemo).toHaveBeenLastCalledWith('finance@claimsiq.local');
+    expect(
+      await screen.findByText(/Demo sign-in is not set up in this environment/),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/Email address/)).toHaveValue('finance@claimsiq.local');
+    expect(screen.getByLabelText(/Password/)).toHaveFocus();
 
-    expect(auth.signIn).toHaveBeenCalledWith('finance@claimsiq.local', 'test1234');
+    await userEvent.click(screen.getByRole('button', { name: /Claims Handler/ }));
+    expect(
+      await screen.findByText(/Demo sign-in did not work for this account/),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/Email address/)).toHaveValue('claims.handler@claimsiq.local');
+
+    await userEvent.click(screen.getByRole('button', { name: /Head of Claims/ }));
+    await waitFor(() =>
+      expect(screen.queryByText(/Demo sign-in did not work/)).not.toBeInTheDocument(),
+    );
+    expect(auth.signIn).not.toHaveBeenCalled();
     unmount();
 
     renderWithProviders(<SignInPage />, {

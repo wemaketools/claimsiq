@@ -5,15 +5,18 @@
  * Middleware order, outermost first:
  *   1. security headers: so even a 401, a 404 and a 500 carry them
  *   2. correlation id: the id of the request, echoed in the response and in every problem document
- *   3. session: the Supabase access token (401), everything but `/health`
- *   4. tenant: `X-Tenant-Id` against the user's memberships on every request (400 without, 403 for a non-member)
- *   5. the routes: `/health` and one route per contract endpoint
+ *   3. the public routes (demo sign-in): called before there is a session or a tenant, so they come first
+ *   4. session: the Supabase access token (401), everything but `/health` and the public routes
+ *   5. tenant: `X-Tenant-Id` against the user's memberships on every request (400 without, 403 for a non-member)
+ *   6. the routes: `/health` and one route per contract endpoint
  * Anything thrown becomes problem+json in `onError`; an unexpected error answers 500 with the correlation id and the
  * cause only in the server log.
  */
 import { Hono } from 'hono';
 
 import { demoHandlers } from '../../domains/demo/handlers.js';
+import { demoSignInHandlers, signInWithSupabase } from '../../domains/demo-sign-in/handlers.js';
+import type { PasswordSignIn } from '../../domains/demo-sign-in/handlers.js';
 import { readHandlers } from '../../domains/reads/handlers.js';
 import { taskHandlers } from '../../domains/tasks/handlers.js';
 import { INVALID_VALUES_TITLE, InvalidValues } from '../../../read-model/index.js';
@@ -26,7 +29,7 @@ import { getDb } from '../db/index.js';
 import type { Db } from '../db/index.js';
 import { CORRELATION_ID_HEADER, HttpProblem, problemResponse, resolveCorrelationId } from '../errors/index.js';
 import { requireTenantAccess } from '../tenancy/middleware.js';
-import { mountEndpoints } from './contract.js';
+import { mountEndpoints, mountPublicEndpoints } from './contract.js';
 import type { Handlers } from './contract.js';
 import type { ApiEnv } from './env.js';
 
@@ -40,6 +43,8 @@ export interface AppDeps {
   /** The owner's connection: the membership lookup and the demo reset; tenant requests switch role inside `withTenant`. */
   readonly db: Db;
   readonly verify: TokenVerifier;
+  /** The password sign-in of the demo sign-in endpoint; Supabase Auth when omitted (tests stand in for it). */
+  readonly passwordSignIn?: PasswordSignIn;
   readonly now?: () => Date;
 }
 
@@ -72,7 +77,8 @@ export function buildApp(deps: AppDeps): ApiApp {
 
   app.get(HEALTH_PATH, (c) => c.json({ status: 'ok' }));
 
-  // Registered after the health route, which answers without calling `next`, so only the routes below need a session.
+  // The health route and the public routes answer without calling `next`, so only the routes below them need a session.
+  mountPublicEndpoints(app, demoSignInHandlers(deps.passwordSignIn ?? signInWithSupabase), { config: deps.config });
   app.use(`${API_BASE_PATH}/*`, requireSession(deps.verify), requireTenantAccess(deps.db));
 
   mountEndpoints(app, handlers, { config: deps.config, db: deps.db, now: deps.now ?? (() => new Date()) });
