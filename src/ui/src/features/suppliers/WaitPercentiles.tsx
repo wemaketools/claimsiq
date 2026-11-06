@@ -102,7 +102,7 @@ export function WaitPercentilesCard({
       title={t('suppliers.percentiles.title')}
       subtitle={t('suppliers.percentiles.subtitle', {
         target: answer.target_business_days,
-        minimum: answer.min_sample,
+        count: answer.min_sample,
       })}
     >
       <div className="ciq-stack">
@@ -110,7 +110,7 @@ export function WaitPercentilesCard({
           <EmptyState
             compact
             icon="truck"
-            title={t('suppliers.percentiles.nonePlaced', { minimum: answer.min_sample })}
+            title={t('suppliers.percentiles.nonePlaced', { count: answer.min_sample })}
           />
         ) : (
           <GroupedBarChart

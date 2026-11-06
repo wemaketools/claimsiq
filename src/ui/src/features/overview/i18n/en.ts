@@ -58,7 +58,11 @@ const en = {
     chart: 'Posted paid by month',
     month: 'Month',
     series: 'Posted paid (BWP)',
-    summary: '{total} posted on {payments} payments over {months} months.',
+    summary: '{total} posted on {payments} over {months}.',
+    payments_one: '{count} payment',
+    payments_other: '{count} payments',
+    months_one: '{count} month',
+    months_other: '{count} months',
     total: 'Posted paid to date',
     error: 'Paid by month could not be loaded',
     empty: {

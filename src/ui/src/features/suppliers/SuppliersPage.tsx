@@ -193,7 +193,7 @@ export default function SuppliersPage() {
         <p className="ciq-text-muted">
           {t('suppliers.basis', {
             target: answer.target_business_days,
-            minimum: answer.min_sample,
+            count: answer.min_sample,
           })}
         </p>
       )}

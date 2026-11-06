@@ -210,11 +210,21 @@ describe('Supplier Insights', () => {
 
     // The sample minimum is a rule setting: raised to 3, two requests are no longer enough for an average, while the
     // longest wait and the breaches stay what the cases say.
-    renderApp('/suppliers', {
+    const view2 = renderApp('/suppliers', {
       transport: transportOver({ ruleConfig: ruleConfigWith({ supplier_min_sample: 3 }) }),
     });
     await waitFor(() => expect(figures()[MMA]).toBeDefined());
     expect(figures()[MMA]).toEqual(['2', '—2 of 3 needed', '13', '2', '2', '0', '—None completed']);
     expect(placement()[MMA]).toEqual(['2Not enough data: 2 of 3 needed', '—', '—']);
+    view2.unmount();
+
+    // A minimum of one request reads in the singular, and no text on the page speaks of ranking suppliers, even to say it does not (the nearest-rank method is a percentile method, not a ranking).
+    renderApp('/suppliers', {
+      transport: transportOver({ ruleConfig: ruleConfigWith({ supplier_min_sample: 1 }) }),
+    });
+    await waitFor(() => expect(placement()[MMA]).toBeDefined());
+    expect(screen.getByText(/appears from 1 request and always shows/)).toBeInTheDocument();
+    expect(screen.getByText(/A supplier is placed from 1 request;/)).toBeInTheDocument();
+    expect(document.body).not.toHaveTextContent(/\branked\b|\branking\b|\brankings\b/i);
   });
 });
