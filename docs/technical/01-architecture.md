@@ -8,7 +8,7 @@ Status: as built (scaffold and data layer). The decisions behind it are in `docs
 |---|---|
 | `src/ui/` | The SPA, Bun workspace `@claimsiq/ui` (see [02-frontend.md](02-frontend.md)) |
 | `src/contracts/` | Pure TypeScript + zod (+ decimal.js for money), shared by the SPA, the mock API and the backend later: the 17 entities keyed (tenant_id, id), the typed endpoints, the data sets, the personas, the money and time helpers |
-| `src/mock-api/` | The Stage A mock API: `fixtures/` (CSV reader, loader, validation and quarantine), `api.ts` (the endpoints as a `fetch`-shaped function), `changes.ts` (tasks kept in browser storage). It takes no Node module outside its tests |
+| `src/mock-api/` | The Stage A mock API: `fixtures/` (CSV reader, loader, validation and quarantine), `api.ts` (the endpoints as a `fetch`-shaped function), `asOfViews.ts` (claims and invoices as an as-of date sees them), `changes.ts` (tasks kept in browser storage). It takes no Node module outside its tests |
 | `fixtures/v1/` | The spec's synthetic data: `test/` and `demo/` CSV folders, `expected_metrics.json`, `proposed_rule_config.json`, the README |
 | `src/server/lib/` | Platform modules only: `config` (the one reader of `process.env`), `supabase` (server clients, JWKS cache), `auth/verify.ts` (access-token verification) |
 | `src/server/tests/unit/` | Tests of those modules; the ones that verify real tokens need the local Supabase stack and skip themselves without it |

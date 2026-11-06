@@ -21,6 +21,8 @@ export function emptyChanges(): Changes {
   return { version: 1, next_task_number: 1, tasks: [], created_by_key: {} };
 }
 
+export const taskIdOf = (number: number): string => `TASK-${String(number).padStart(4, '0')}`;
+
 export function changesKey(dataSet: DataSetId, tenantId: string): string {
   return `ciq.mock.v1.${dataSet}.${tenantId}`;
 }

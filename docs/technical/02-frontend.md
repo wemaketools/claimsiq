@@ -23,7 +23,7 @@ Tokens and classes are the suite's, with the prefix `ciq`. Components use tokens
 
 ## Shell
 
-Dark sidebar (tenant label, wordmark, sub-brand, the six destinations, the user card), a 64px sticky top bar (page title, the data controls, **Viewing as** persona switch, theme toggle) and the main region. Below 1280px the sidebar is an icon rail by CSS; below 768px it is a drawer (closed: hidden from focus; open: focus moves to the first link; Escape or the scrim closes it). Pages put their title in the top bar through `PageHeader`, and their own actions in the page head.
+Dark sidebar (tenant label, wordmark, sub-brand, the six destinations, the user card), a sticky top bar of at least 64px (page title, the data controls, **Viewing as** persona switch, theme toggle; below 768px the data controls wrap onto a second row) and the main region. Below 1280px the sidebar is an icon rail by CSS; below 768px it is a drawer (closed: hidden from focus; open: focus moves to the first link; Escape or the scrim closes it). Pages put their title in the top bar through `PageHeader`, and their own actions in the page head.
 
 The persona is `session.persona`, written by `choosePersona` (which also stores it) and read once when the store is created. The user card shows the name of the account and the active persona.
 

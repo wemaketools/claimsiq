@@ -17,6 +17,8 @@ import {
 } from '../../contracts/index.js';
 import type { DataIssue, DataSetId, EntityDefinition, EntityName, Tenant } from '../../contracts/index.js';
 import { parseCsv } from './csv.js';
+import { createRowIndex } from './rowIndex.js';
+import type { Raw, RowIndex } from './rowIndex.js';
 
 /** File name to CSV text, for example `{ 'claims.csv': 'tenant_id,claim_id,…' }`. */
 export type FixtureFiles = Readonly<Record<string, string>>;
@@ -37,8 +39,6 @@ interface Problem {
   readonly problem: string;
   readonly fix: string;
 }
-
-type Raw = Record<string, unknown>;
 
 /** Evidence the rules need. When it is missing the row still loads and the rules say UNKNOWN. */
 const EVIDENCE: readonly { entity: EntityName; field: string; problem: string; fix: string }[] = [
@@ -93,23 +93,21 @@ function str(value: unknown): string {
 export function loadDataset(dataSet: DataSetId, files: FixtureFiles): LoadedDataset {
   const expected = DATA_SETS[dataSet];
   const accepted = new Map<EntityName, Raw[]>();
-  const ids = new Map<EntityName, Set<string>>();
+  const index = createRowIndex();
   const issues: DataIssue[] = [];
   const quarantinedLines = new Set<string>();
   const allocatedToInvoice = new Map<string, string>();
   const allocatedFromReceipt = new Map<string, string>();
 
-  const idsOf = (name: EntityName): Set<string> => ids.get(name) ?? new Set<string>();
 
   for (const name of ENTITY_NAMES) {
     const definition: EntityDefinition = ENTITIES[name];
     const kept: Raw[] = [];
     const seen = new Map<string, number>();
     accepted.set(name, kept);
-    ids.set(name, new Set<string>());
 
     const add = (kind: DataIssue['kind'], line: number, recordId: string | null, problem: Problem): void => {
-      issues.push({ kind, entity: name, file: definition.file, row: line, record_id: recordId, ...problem });
+      issues.push({ issue_no: issues.length + 1, kind, entity: name, file: definition.file, row: line, record_id: recordId, ...problem });
     };
 
     const text = files[definition.file];
@@ -166,7 +164,7 @@ export function loadDataset(dataSet: DataSetId, files: FixtureFiles): LoadedData
         for (const reference of definition.references) {
           const target = record[reference.field];
           if (target === null && reference.optional) continue;
-          if (typeof target === 'string' && !idsOf(reference.entity).has(target)) {
+          if (typeof target === 'string' && index.get(reference.entity, target) === undefined) {
             problems.push({
               field: reference.field,
               problem: `refers to ${reference.entity} "${target}", which is not in this data set (missing, or itself rejected)`,
@@ -174,7 +172,7 @@ export function loadDataset(dataSet: DataSetId, files: FixtureFiles): LoadedData
             });
           }
         }
-        problems.push(...sanityProblems(name, record, { allocatedToInvoice, allocatedFromReceipt }, accepted));
+        problems.push(...sanityProblems(name, record, { allocatedToInvoice, allocatedFromReceipt }, index));
       }
 
       if (problems.length > 0) {
@@ -182,11 +180,11 @@ export function loadDataset(dataSet: DataSetId, files: FixtureFiles): LoadedData
         quarantinedLines.add(`${name}:${row.line}`);
         continue;
       }
+      const record: Raw = parsed.success ? parsed.data : raw;
       if (recordId !== null) {
         seen.set(recordId, row.line);
-        idsOf(name).add(recordId);
+        index.add(name, recordId, record);
       }
-      const record: Raw = parsed.success ? parsed.data : raw;
       commitSums(name, record, allocatedToInvoice, allocatedFromReceipt);
       kept.push(record);
       for (const evidence of EVIDENCE) {
@@ -218,7 +216,7 @@ interface Sums {
 }
 
 /** Date and amount sanity that one field cannot express. */
-function sanityProblems(name: EntityName, record: Raw, sums: Sums, accepted: Map<EntityName, Raw[]>): Problem[] {
+function sanityProblems(name: EntityName, record: Raw, sums: Sums, index: RowIndex): Problem[] {
   const out: Problem[] = [];
   const before = (field: string, later: string, laterLabel: string): void => {
     const a = record[field];
@@ -244,8 +242,8 @@ function sanityProblems(name: EntityName, record: Raw, sums: Sums, accepted: Map
       break;
     case 'payment_allocation': {
       const amount = str(record.allocated_amount);
-      const invoice = accepted.get('invoice')?.find((row) => row.invoice_id === record.invoice_id);
-      const receipt = accepted.get('receipt')?.find((row) => row.receipt_id === record.receipt_id);
+      const invoice = index.get('invoice', str(record.invoice_id));
+      const receipt = index.get('receipt', str(record.receipt_id));
       const toInvoice = addMoney(sums.allocatedToInvoice.get(str(record.invoice_id)) ?? '0.00', amount);
       const fromReceipt = addMoney(sums.allocatedFromReceipt.get(str(record.receipt_id)) ?? '0.00', amount);
       if (invoice !== undefined && compareMoney(toInvoice, str(invoice.issued_amount)) > 0) {

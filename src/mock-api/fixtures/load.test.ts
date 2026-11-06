@@ -70,6 +70,7 @@ describe('loading the spec fixtures', () => {
     expect(loaded.records.receipt.some((r) => r.receipt_id === 'RCP-OTHER')).toBe(false);
     expect(loaded.records.payment_allocation.some((a) => a.allocation_id === 'ALLOC-OVER')).toBe(false);
 
+    expect(loaded.issues.map((issue) => issue.issue_no)).toEqual(loaded.issues.map((_issue, index) => index + 1));
     const quarantined = loaded.issues.filter((issue) => issue.kind === 'quarantined');
     for (const issue of loaded.issues) {
       expect(issue.row).toBeGreaterThanOrEqual(2);

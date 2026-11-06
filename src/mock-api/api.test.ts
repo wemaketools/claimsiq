@@ -109,6 +109,10 @@ describe('the mock API', () => {
     expect(invoices.body.items.flatMap((i) => i.allocations.map((a) => a.allocation_id)).sort()).toEqual(['ALLOC-001', 'ALLOC-002']);
 
     expect((await api.call(endpoints.claimsList, { asOf: '2026-02-30' })).status).toBe(400);
+
+    const later = { persona: 'finance', body: { subject_type: 'CLAIM', subject_id: 'CLM-105' } } as const;
+    expect((await api.call(endpoints.tasksCreate, { ...later, asOf: '2026-10-05' })).status).toBe(422);
+    expect((await api.call(endpoints.tasksCreate, later)).status).toBe(201);
   });
 
   it('keeps a created task across a refresh, records every change with actor and time, rejects bad input, and Reset restores the fixture', async () => {

@@ -68,6 +68,7 @@ describe('the data controls', () => {
 
   it('counts the data issues on its button and lists each with row, field, problem and fix', async () => {
     const issue = {
+      issue_no: 1,
       kind: 'quarantined',
       entity: 'claim',
       file: 'claims.csv',

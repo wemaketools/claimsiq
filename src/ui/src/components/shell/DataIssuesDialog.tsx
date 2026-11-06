@@ -75,7 +75,7 @@ export function DataIssuesDialog({ open, onClose }: DataIssuesDialogProps) {
               caption={t('shell.data.issuesDialog.caption', { dataSet })}
               columns={COLUMNS}
               rows={data.issues}
-              rowKey={(issue) => `${issue.file}:${issue.row}:${issue.field}:${issue.kind}`}
+              rowKey={(issue) => String(issue.issue_no)}
             />
           </>
         )}

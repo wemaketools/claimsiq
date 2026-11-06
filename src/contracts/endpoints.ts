@@ -1,7 +1,7 @@
 /**
  * The typed endpoints of the API, shared by the SPA (which calls them), the mock API (which implements them in the
- * browser for Stage A) and the backend later. Reads return raw records of the active tenant as of the as-of date;
- * metrics and rules are not computed here.
+ * browser for Stage A) and the backend later. Reads return raw records of the active tenant, limited by the as-of date
+ * where the mock API says so; metrics and rules are not computed here.
  *
  * Request context travels in headers: `X-Tenant-Id`, `X-As-Of` (a date, default 2026-10-21) and, on commands,
  * `X-Persona` (the actor).
@@ -94,6 +94,8 @@ export const TaskRecord = Task.extend({ audit: z.array(TaskAuditEntry) });
 export type TaskRecord = z.infer<typeof TaskRecord>;
 
 export const DataIssue = z.object({
+  /** Counts from 1 in the order found; unique in a list, so it is the key of a row. */
+  issue_no: z.number().int().min(1),
   /** `quarantined`: the row was rejected. `warning`: the row loaded, but evidence it should carry is missing. */
   kind: z.enum(['quarantined', 'warning']),
   entity: Text,

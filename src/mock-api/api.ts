@@ -3,8 +3,9 @@
  * for Stage A. `fetch` has the shape of the platform `fetch`, so the SPA's API client calls it through its transport
  * adapter and a real server can replace it without a UI change.
  *
- * Reads return the raw records of the tenant in `X-Tenant-Id` whose own date is on or before `X-As-Of`; nothing is
- * rewritten or computed (rules and metrics are not the API's job). Commands change a copy kept in `KeyValueStore`
+ * Reads return the raw records of the tenant in `X-Tenant-Id`. Claims and their child records, receipts, allocations
+ * and payment attempts are limited to those dated on or before `X-As-Of`; master data, invoices and tasks are not.
+ * Nothing is rewritten or computed (rules and metrics are not the API's job). Commands change a copy kept in `KeyValueStore`
  * and never the fixture.
  */
 import type { z } from 'zod';
@@ -19,17 +20,15 @@ import {
   instantOf,
   isDataSetId,
   isRealDate,
-  onOrBeforeAsOf,
 } from '../contracts/index.js';
 import type {
-  ClaimRecord,
   DataSetId,
   EndpointContract,
-  InvoiceRecord,
   TaskAuditEntry,
   TaskRecord,
 } from '../contracts/index.js';
-import { changesKey, clearChanges, readChanges, writeChanges } from './changes.js';
+import { claimRecords, invoiceRecords } from './asOfViews.js';
+import { changesKey, clearChanges, readChanges, taskIdOf, writeChanges } from './changes.js';
 import type { Changes } from './changes.js';
 import { loadDataset } from './fixtures/index.js';
 import type { FixtureFiles, LoadedDataset } from './fixtures/index.js';
@@ -124,50 +123,6 @@ export function createMockApi(options: MockApiOptions): MockApi {
     items: [...items],
   });
 
-  const within = (asOf: string, moment: string | null): boolean => moment === null || onOrBeforeAsOf(moment, asOf);
-
-  function byKey<T>(items: readonly T[], key: (item: T) => string): Map<string, T[]> {
-    const grouped = new Map<string, T[]>();
-    for (const item of items) {
-      const list = grouped.get(key(item));
-      if (list === undefined) grouped.set(key(item), [item]);
-      else list.push(item);
-    }
-    return grouped;
-  }
-
-  function claimRecords(data: LoadedDataset, asOf: string): ClaimRecord[] {
-    const { claim, claim_event, reserve_event, claim_payment, supplier_request } = data.records;
-    const events = byKey(claim_event, (row) => row.claim_id);
-    const reserves = byKey(reserve_event, (row) => row.claim_id);
-    const payments = byKey(claim_payment, (row) => row.claim_id);
-    const requests = byKey(supplier_request, (row) => row.claim_id);
-    return claim
-      .filter((row) => within(asOf, row.reported_at))
-      .map((row) => ({
-        ...row,
-        events: (events.get(row.claim_id) ?? []).filter((e) => within(asOf, e.event_at)),
-        reserve_events: (reserves.get(row.claim_id) ?? []).filter((e) => within(asOf, e.event_at)),
-        payments: (payments.get(row.claim_id) ?? []).filter((p) => within(asOf, p.paid_at)),
-        supplier_requests: (requests.get(row.claim_id) ?? []).filter((r) => within(asOf, r.requested_at)),
-      }));
-  }
-
-  function invoiceRecords(data: LoadedDataset, asOf: string): InvoiceRecord[] {
-    const { invoice, payment_allocation, receipt, payment_attempt } = data.records;
-    const receiptsById = new Map(receipt.filter((row) => within(asOf, row.received_at)).map((row) => [row.receipt_id, row]));
-    const allocations = byKey(
-      payment_allocation.filter((row) => within(asOf, row.posted_at) && receiptsById.has(row.receipt_id)),
-      (row) => row.invoice_id,
-    );
-    const attempts = byKey(payment_attempt.filter((row) => within(asOf, row.attempt_at)), (row) => row.invoice_id);
-    return invoice.map((row) => {
-      const own = allocations.get(row.invoice_id) ?? [];
-      const ownReceipts = [...new Set(own.map((a) => a.receipt_id))].flatMap((id) => receiptsById.get(id) ?? []);
-      return { ...row, allocations: own, receipts: ownReceipts, payment_attempts: attempts.get(row.invoice_id) ?? [] };
-    });
-  }
-
   function allTasks(data: LoadedDataset, changes: Changes): TaskRecord[] {
     const changed = new Set(changes.tasks.map((task) => task.task_id));
     const fixture = data.records.task.filter((task) => !changed.has(task.task_id)).map((task) => ({ ...task, audit: [] }));
@@ -204,10 +159,10 @@ export function createMockApi(options: MockApiOptions): MockApi {
     changes.tasks = [...others, task];
   }
 
-  const subjectExists = (data: LoadedDataset, type: string, id: string): boolean => {
+  const subjectExists = (data: LoadedDataset, asOf: string, type: string, id: string): boolean => {
     switch (type) {
       case 'CLAIM':
-        return data.records.claim.some((row) => row.claim_id === id);
+        return claimRecords(data, asOf, id).length > 0;
       case 'POLICY':
         return data.records.policy.some((row) => row.policy_id === id);
       case 'INVOICE':
@@ -224,7 +179,7 @@ export function createMockApi(options: MockApiOptions): MockApi {
   route(endpoints.claimsList, (c) => read(c, claimRecords(c.data, c.asOf)));
   route(endpoints.claimsGet, (c) => {
     const claimId = c.params.claimId;
-    const item = claimRecords(c.data, c.asOf).find((row) => row.claim_id === claimId);
+    const [item] = claimRecords(c.data, c.asOf, claimId);
     if (item === undefined) {
       throw new HttpProblem(404, `Claim "${claimId ?? ''}" does not exist as of ${c.asOf}.`);
     }
@@ -257,16 +212,16 @@ export function createMockApi(options: MockApiOptions): MockApi {
         return findTask(c.data, changes, earlierId);
       }
       const { subject_type, subject_id, assigned_to } = c.body;
-      if (!subjectExists(c.data, subject_type, subject_id)) {
-        fail('subject_id', `${subject_type.toLowerCase()} "${subject_id}" does not exist in this data set.`);
+      if (!subjectExists(c.data, c.asOf, subject_type, subject_id)) {
+        fail('subject_id', `${subject_type.toLowerCase()} "${subject_id}" does not exist in this data set as of ${c.asOf}.`);
       }
       if (assigned_to !== null) {
         requireUser(c.data, 'assigned_to', assigned_to);
       }
       const taken = new Set(allTasks(c.data, changes).map((task) => task.task_id));
       let number = changes.next_task_number;
-      while (taken.has(`TASK-${String(number).padStart(4, '0')}`)) number += 1;
-      const taskId = `TASK-${String(number).padStart(4, '0')}`;
+      while (taken.has(taskIdOf(number))) number += 1;
+      const taskId = taskIdOf(number);
       const at = instantOf(c.now);
       const created: TaskRecord = audit(
         {

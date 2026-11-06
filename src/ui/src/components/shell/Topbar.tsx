@@ -1,5 +1,5 @@
 /**
- * The top bar (64px, sticky): the menu button below 768px, the page title (from PageHeader), the data controls, the
+ * The top bar (at least 64px high, sticky; below 768px it wraps the data controls onto a second row): the menu button below 768px, the page title (from PageHeader), the data controls, the
  * persona switch and the theme toggle. The persona switch and the toggle are always the last items, so they never move between pages.
  * Pages never put actions here; their primary action renders in the page head (PageHeader).
  */
