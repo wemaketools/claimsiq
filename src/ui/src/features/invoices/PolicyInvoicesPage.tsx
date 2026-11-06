@@ -49,13 +49,9 @@ function invoiceRow(invoice: InvoiceRecord): InvoiceRow {
 const readable = (code: string): string =>
   code.charAt(0).toUpperCase() + code.slice(1).toLowerCase().replaceAll('_', ' ');
 
-function invoiceStatus(recorded: string): string {
-  const key = `invoices.status.${recorded}`;
-  return hasTranslation(key) ? t(key) : readable(recorded);
-}
-
-function policyStatus(recorded: string): string {
-  const key = `invoices.policyStatus.${recorded}`;
+/** The catalog text of a recorded status (`keyOf` names its key), else the code as words. */
+function statusText(recorded: string, keyOf: (code: string) => string): string {
+  const key = keyOf(recorded);
   return hasTranslation(key) ? t(key) : readable(recorded);
 }
 
@@ -94,7 +90,7 @@ const COLUMNS: DataTableColumn<InvoiceRow>[] = [
     header: t('invoices.column.status'),
     cell: (row) => (
       <Chip tone="neutral-outlined" size="sm">
-        {invoiceStatus(row.status)}
+        {statusText(row.status, (code) => `invoices.status.${code}`)}
       </Chip>
     ),
   },
@@ -193,7 +189,7 @@ export default function PolicyInvoicesPage() {
               {
                 key: 'status',
                 label: t('invoices.policy.status'),
-                value: policyStatus(policy.status),
+                value: statusText(policy.status, (code) => `invoices.policyStatus.${code}`),
               },
             ]}
           />
