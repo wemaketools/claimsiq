@@ -1,3 +1,4 @@
+/** The one import of the contracts: entities, endpoints, facts, money and the time helpers (`momentMs`, `chronological`) the rules and the screens share. */
 export * from './datasets.js';
 export * from './endpoints.js';
 export * from './entities.js';
