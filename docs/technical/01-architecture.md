@@ -62,7 +62,7 @@ A **prototype build** (`VITE_AUTH_MODE=prototype`, DD-45 to DD-47) has no Supaba
 
 ## Environment
 
-`.env.example` (deployed catalog) and `.env.local.example` (local) list exactly the variables of `src/server/lib/config/schema.ts` plus the browser-safe `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`; a unit test enforces that and that no value is a real key. Vite reads `.env.local` from the repository root (`envDir`). Nothing but the `VITE_` values (`VITE_AUTH_MODE` and the two Supabase ones) may reach the browser; a prototype build needs none of them set; `scan-bundle` fails the build if a server variable name, server code, a service-role key or the demo-accounts marker is in `src/ui/dist`.
+`.env.example` (deployed catalog) and `.env.local.example` (local) list exactly the variables of `src/server/lib/config/schema.ts` plus the browser-safe `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`; a unit test enforces that and that no value is a real key. Vite reads `.env.local` from the repository root (`envDir`). Nothing but the `VITE_` values (`VITE_AUTH_MODE` and the two Supabase ones) may reach the browser; a prototype build needs none of them set; `scan-bundle` fails the build if a server variable name, server code, a service-role key or the local demo password is in `src/ui/dist` (and, in a prototype build, a demo-account e-mail).
 
 ## Checks and CI
 

@@ -36,7 +36,7 @@ bun run db:reset              # build the local database: migrations, demo accou
 bun run dev                   # the API on http://127.0.0.1:5274 and the SPA on http://localhost:5273
 ```
 
-Open http://localhost:5273 and sign in. In local development builds the sign-in page lists the demo accounts for one-click sign-in (the list never exists in production builds). Stop the stack with `bun run supabase:stop`.
+Open http://localhost:5273 and sign in. The sign-in page lists the demo accounts; a click signs in through the server (see Demo accounts below), and a prototype build lists roles instead. Stop the stack with `bun run supabase:stop`.
 
 If you only want to look at the app, skip Supabase and `.env.local`: `bun run dev:prototype` runs the same app with a role click instead of a password (see "Prototype mode" below).
 
