@@ -16,9 +16,9 @@
  * - src/rules (the claims rules engine) is pure too: only zod, decimal.js, its own files and src/contracts, and no
  *   Node or browser APIs, so Collections and the SPA can reuse it. Its tests may use Node APIs.
  * - src/read-model (the record sets and the reads both transports answer through) is pure as well: zod, decimal.js,
- *   its own files, src/contracts and src/rules, and nothing of the server, the mock API or the SPA. Its tests and
- *   test-support may use Node APIs.
- * - The mock API runs in the browser for Stage A (no Node modules outside its tests) and is never
+ *   its own files, src/contracts and src/rules, and nothing of the server, the mock API or the SPA (test-support
+ *   included). Its tests and test-support may use Node APIs; its tests may read the server's fixture readers.
+ * - The mock API runs in the browser in prototype builds (no Node modules outside its tests) and is never
  *   reachable from src/server or api/.
  */
 import js from '@eslint/js';
@@ -61,6 +61,11 @@ const READ_MODEL_PURITY = {
   message:
     'src/read-model is pure: import only zod, decimal.js, files of src/read-model, src/contracts and src/rules. No Node, browser, mock API or server modules.',
 };
+const READ_MODEL_BOUNDARIES = [
+  MOCK_API_BOUNDARY,
+  SPA_BOUNDARY,
+  { group: ['**/server', '**/server/**'], message: 'src/read-model is shared with the browser: it never imports the server.' },
+];
 const PURE_GLOBALS = [
   'process',
   'Buffer',
@@ -143,22 +148,20 @@ export default defineConfig([
     },
   },
   {
+    // The boundary reaches test-support too: only the tests themselves may read the server's fixture readers.
+    name: 'claimsiq/read-model-boundary',
+    files: ['src/read-model/**/*.ts'],
+    ignores: ['src/read-model/**/*.test.ts'],
+    rules: {
+      'no-restricted-imports': ['error', { paths: processEnvImportPaths, patterns: READ_MODEL_BOUNDARIES }],
+    },
+  },
+  {
     name: 'claimsiq/read-model-purity',
     files: ['src/read-model/**/*.ts'],
     ignores: ['src/read-model/**/*.test.ts', 'src/read-model/test-support/**'],
     rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          paths: processEnvImportPaths,
-          patterns: [
-            READ_MODEL_PURITY,
-            MOCK_API_BOUNDARY,
-            SPA_BOUNDARY,
-            { group: ['**/server', '**/server/**'], message: 'src/read-model is shared with the browser: it never imports the server.' },
-          ],
-        },
-      ],
+      'no-restricted-imports': ['error', { paths: processEnvImportPaths, patterns: [READ_MODEL_PURITY, ...READ_MODEL_BOUNDARIES] }],
       'no-restricted-globals': [
         'error',
         ...PURE_GLOBALS.map((name) => ({ name, message: 'src/read-model is pure: no Node or browser APIs.' })),

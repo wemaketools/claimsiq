@@ -10,7 +10,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DATA_SET_IDS, endpoints } from '../../src/contracts/index.js';
 import type { DataSetId } from '../../src/contracts/index.js';
 import { createMockApi, memoryStore } from '../../src/mock-api/index.js';
-import { readFixtureFiles, readFixtureJson, withEdit } from '../../src/read-model/test-support/fixtureFiles.js';
+import { withEdit } from '../../src/read-model/test-support/fixtureFiles.js';
+import { readFixtureFiles, readFixtureJson } from '../../src/server/lib/seed/fixtureFiles.js';
 import { loadConfig } from '../../src/server/lib/config/index.js';
 import { buildApp } from '../../src/server/lib/router/app.js';
 import { DEMO_ACCOUNTS } from '../../src/ui/src/auth/demoAccountList.js';
@@ -100,7 +101,7 @@ describe.skipIf(serverUrl === null)('the API and the mock API', () => {
       const subject = tenant === 'TEST' ? 'CLM-101' : 'DCLM-002';
       const created = (await same(tenant, endpoints.tasksCreate.path, {
         method: 'POST',
-        body: { subject_type: 'CLAIM', subject_id: subject, priority: 'HIGH', due_at: '2026-10-01', note: 'Chase the supplier' },
+        body: { subject_type: 'CLAIM', subject_id: subject, assigned_to: 'USR-FIN', priority: 'HIGH', due_at: '2026-10-01', note: 'Chase the supplier' },
       })).body as unknown as { task_id: string };
       await same(tenant, `/api/v1/tasks/${created.task_id}/assign`, { method: 'POST', body: { assigned_to: 'USR-CLM' } });
       await same(tenant, `/api/v1/tasks/${created.task_id}/status`, { method: 'POST', body: { status: 'IN_PROGRESS', note: 'Called them' } });

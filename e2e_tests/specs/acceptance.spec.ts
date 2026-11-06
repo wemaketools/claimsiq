@@ -14,6 +14,7 @@ import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
+import { resetData } from './support';
 import { addTestOnlyRows } from './testOnlyRows';
 
 async function openTestDataSet(page: Page): Promise<void> {
@@ -255,9 +256,7 @@ test.describe('acceptance scenarios CLM-AT-01 to CLM-AT-16', () => {
     });
 
     await test.step('demo reset: the TEST fixture is back as loaded, without the task', async () => {
-      await page.getByRole('button', { name: 'Reset', exact: true }).click();
-      await page.getByRole('dialog').getByRole('button', { name: 'Reset', exact: true }).click();
-      await expect(page.getByText('The TEST fixture is back as loaded.')).toBeVisible();
+      await resetData(page, 'TEST');
       await goTo(page, 'Action Queue');
       await expect(page.getByText('No actions in the queue')).toBeVisible();
     });

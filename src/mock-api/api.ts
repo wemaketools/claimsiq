@@ -9,8 +9,6 @@
  * too: this module only builds the `ReadModel` from the fixtures and the changes kept in `KeyValueStore`, and never
  * changes the fixture.
  */
-import type { z } from 'zod';
-
 import {
   AS_OF_HEADER,
   DEFAULT_AS_OF,
@@ -25,11 +23,13 @@ import {
 import type { DataSetId, EndpointContract, TaskRecord } from '../contracts/index.js';
 import { parseRuleConfig } from '../rules/index.js';
 import {
-  TaskRuleViolation,
+  INVALID_VALUES_TITLE,
+  InvalidValues,
   assignedTask,
   claimNotFoundMessage,
   claimRecords,
   createdTask,
+  fieldProblems,
   loadDataset,
   reads,
   taskIdOf,
@@ -39,7 +39,6 @@ import type { FixtureFiles, LoadedDataset, ReadModel } from '../read-model/index
 import { changesKey, clearChanges, readChanges, writeChanges } from './changes.js';
 import type { Changes } from './changes.js';
 import { HttpProblem, jsonResponse, problemResponse } from './problem.js';
-import type { FieldProblem } from './problem.js';
 import type { KeyValueStore } from './storage.js';
 
 export interface MockApiOptions {
@@ -71,10 +70,6 @@ interface Route {
   readonly names: readonly string[];
   readonly status: number;
   readonly run: (context: Context<unknown, unknown>) => unknown;
-}
-
-function fieldProblems(error: z.ZodError): FieldProblem[] {
-  return error.issues.map((issue) => ({ field: issue.path.join('.'), code: issue.code, message: issue.message }));
 }
 
 function compile(path: string): { pattern: RegExp; names: string[] } {
@@ -141,7 +136,7 @@ export function createMockApi(options: MockApiOptions): MockApi {
   }
 
   const fail = (field: string, message: string): never => {
-    throw new HttpProblem(422, 'The request has invalid values.', [{ field, code: 'invalid', message }]);
+    throw InvalidValues.field(field, message);
   };
 
   function requireActor(context: Context<unknown, unknown>): PersonaId {
@@ -324,7 +319,7 @@ export function createMockApi(options: MockApiOptions): MockApi {
       }
       const checked = matched.endpoint.body.safeParse(payload);
       if (!checked.success) {
-        throw new HttpProblem(422, 'The request has invalid values.', fieldProblems(checked.error));
+        throw InvalidValues.fromZod(checked.error);
       }
       body = checked.data;
     }
@@ -350,10 +345,8 @@ export function createMockApi(options: MockApiOptions): MockApi {
         if (error instanceof HttpProblem) {
           return problemResponse(error);
         }
-        if (error instanceof TaskRuleViolation) {
-          return problemResponse(
-            new HttpProblem(422, 'The request has invalid values.', [{ field: error.field, code: 'invalid', message: error.message }]),
-          );
+        if (error instanceof InvalidValues) {
+          return problemResponse(new HttpProblem(422, INVALID_VALUES_TITLE, error.problems));
         }
         console.error('Mock API failure', error);
         return problemResponse(new HttpProblem(500, 'The mock API failed on this request.'));

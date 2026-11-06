@@ -54,6 +54,7 @@ export function AssignTaskDialog({ task, onClose }: TaskDialogProps) {
         label={t('claim-tasks.assign.owner')}
         placeholder={t('claim-tasks.assign.choose')}
         required
+        loading={users.status === 'loading'}
         value={owner}
         options={people.map((user) => ({ value: user.user_id, label: user.display_name }))}
         onChange={setOwner}

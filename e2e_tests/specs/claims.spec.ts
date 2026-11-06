@@ -14,7 +14,7 @@ import { readFileSync } from 'node:fs';
 
 import { expect, test } from '@playwright/test';
 
-import { expectNoAxeViolations, expectNoHorizontalScroll } from './support';
+import { expectNoAxeViolations, expectNoHorizontalScroll, resetData } from './support';
 
 const PASSWORD = 'test1234';
 
@@ -110,9 +110,7 @@ test.describe('claim screens', () => {
     await expectNoAxeViolations(page);
 
     // Reset shows a toast; with it on screen the page still passes axe (a status role on a list item used to fail it).
-    await page.getByRole('button', { name: 'Reset', exact: true }).click();
-    await page.getByRole('dialog').getByRole('button', { name: 'Reset', exact: true }).click();
-    await expect(page.getByText('The TEST fixture is back as loaded.')).toBeVisible();
+    await resetData(page, 'TEST');
     await expectNoAxeViolations(page);
     expect(apiCalls).toEqual(expect.arrayContaining(['GET /api/v1/claim-facts', 'GET /api/v1/claims', 'POST /api/v1/demo/reset']));
   });

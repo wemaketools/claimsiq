@@ -25,7 +25,7 @@ Conventions: fewer, broader tests. A test sets up once and walks a realistic flo
 
 ## Data-layer tests
 
-`src/contracts/contracts.test.ts` (the 17 entities and their keys, endpoint ids, decimal money, times), `src/read-model/fixtures/load.test.ts` (TEST 6 claims and 6 invoices, DEMO 30 and 36, no mixing, TEST reconciles to `expected_metrics.json`; a fixture with bad rows is quarantined with row, field, problem and fix and the good rows load) and `src/mock-api/api.test.ts` (tenant filtering, as-of reads, create task, the refused status change, the overdue flag, refresh over the same storage, Reset). Their helpers are in `src/read-model/test-support` (they read `fixtures/v1` from disk through the server's `seed/fixtureFiles.ts`). The SPA side is `components/shell/dataControls.test.tsx`.
+`src/contracts/contracts.test.ts` (the 17 entities and their keys, endpoint ids, decimal money, times), `src/read-model/fixtures/load.test.ts` (TEST 6 claims and 6 invoices, DEMO 30 and 36, no mixing, TEST reconciles to `expected_metrics.json`; a fixture with bad rows is quarantined with row, field, problem and fix and the good rows load) and `src/mock-api/api.test.ts` (tenant filtering, as-of reads, create task, the refused status change, the overdue flag, refresh over the same storage, Reset). Their helpers are `src/read-model/test-support` (`withEdit`, the generated claims fixture) and the server's `src/server/lib/seed/fixtureFiles.ts`, which reads `fixtures/v1` from disk; only tests import the latter into `src/read-model` (lint-enforced). The SPA side is `components/shell/dataControls.test.tsx`.
 
 ## Rules-engine tests
 

@@ -12,41 +12,16 @@ import { createScratchDatabase, reachableDatabaseUrl } from '../../../../../scri
 import type { ScratchDatabase } from '../../../../../scripts/db/scratchDatabase.js';
 import { findPersonaAccounts, seedFromFixtures } from '../../../../../scripts/db/seed.js';
 import { verifyAccessToken } from '../../../lib/auth/verify.js';
-import { getConfig, tryGetConfig } from '../../../lib/config/index.js';
+import { getConfig } from '../../../lib/config/index.js';
 import { buildApp } from '../../../lib/router/app.js';
 import { readFixtureJson } from '../../../lib/seed/fixtureFiles.js';
+import { passwordGrant, stackIsReachable } from '../../helpers/localStack.js';
 
-const PASSWORD = 'test1234';
 const HANDLER = 'claims.handler@claimsiq.local';
 const FINANCE = 'finance@claimsiq.local';
 
-async function signIn(email: string): Promise<string> {
-  const config = getConfig();
-  const response = await fetch(`${config.supabase.url}/auth/v1/token?grant_type=password`, {
-    method: 'POST',
-    headers: { apikey: config.supabase.anonKey, 'content-type': 'application/json' },
-    body: JSON.stringify({ email, password: PASSWORD }),
-  });
-  if (!response.ok) {
-    throw new Error(`Sign-in failed (${response.status}); run bun run supabase:start and bun run auth:personas.`);
-  }
-  return ((await response.json()) as { access_token: string }).access_token;
-}
-
 async function stackIsUp(): Promise<boolean> {
-  const loaded = tryGetConfig();
-  if (!loaded.ok || (await reachableDatabaseUrl()) === null) {
-    return false;
-  }
-  try {
-    const health = await fetch(`${loaded.config.supabase.url}/auth/v1/health`, {
-      headers: { apikey: loaded.config.supabase.anonKey },
-      signal: AbortSignal.timeout(2000),
-    });
-    return health.ok;
-  } catch {
-    return false;
-  }
+  return (await reachableDatabaseUrl()) !== null && (await stackIsReachable());
 }
 
 const serverUrl = await reachableDatabaseUrl();
@@ -66,10 +41,10 @@ describe.skipIf(!stackUp)('the API against the local stack', () => {
 
   beforeAll(async () => {
     scratch = await createScratchDatabase(serverUrl ?? '');
-    handlerToken = await signIn(HANDLER);
-    financeToken = await signIn(FINANCE);
+    handlerToken = await passwordGrant(HANDLER);
+    financeToken = await passwordGrant(FINANCE);
     // The scratch database stands in for Supabase Auth's users table: give it the real accounts' ids.
-    for (const [email, token] of [[HANDLER, handlerToken], [FINANCE, financeToken], ['head.of.claims@claimsiq.local', await signIn('head.of.claims@claimsiq.local')], ['supplier.coordinator@claimsiq.local', await signIn('supplier.coordinator@claimsiq.local')]] as const) {
+    for (const [email, token] of [[HANDLER, handlerToken], [FINANCE, financeToken], ['head.of.claims@claimsiq.local', await passwordGrant('head.of.claims@claimsiq.local')], ['supplier.coordinator@claimsiq.local', await passwordGrant('supplier.coordinator@claimsiq.local')]] as const) {
       const verified = await verifyAccessToken(token);
       if (!verified.ok) throw new Error(verified.detail);
       await sql`insert into auth.users (id, email) values (${verified.token.authUserId}, ${email})`.execute(scratch.db);
@@ -161,8 +136,10 @@ describe.skipIf(!stackUp)('the API against the local stack', () => {
     // Another tenant never sees it.
     const demoTasks = await request('/api/v1/tasks', as(handlerToken, 'DEMO'));
     expect(demoTasks.json.items).toEqual([]);
-    const demoTask = await request('/api/v1/tasks', { ...as(handlerToken, 'DEMO'), method: 'POST', body: { ...draft, subject_id: 'DCLM-002' } });
+    const demoTask = await request('/api/v1/tasks', { ...as(handlerToken, 'DEMO'), method: 'POST', body: { ...draft, subject_id: 'DCLM-002', assigned_to: 'USR-CLM' } });
     expect(demoTask.status).toBe(201);
+    // A task made with an owner logs the assignment too, as the later ones do.
+    expect((demoTask.json.audit as { action: string; to: string }[]).map((entry) => [entry.action, entry.to])).toEqual([['CREATED', 'OPEN'], ['ASSIGNED', 'USR-CLM']]);
 
     // Validation of the inputs by the contracts.
     expect((await request('/api/v1/tasks?status=NOPE', as(handlerToken, 'TEST'))).status).toBe(400);

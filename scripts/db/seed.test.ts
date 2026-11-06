@@ -10,7 +10,8 @@ import { DEMO_ACCOUNTS } from '../../src/ui/src/auth/demoAccountList.js';
 import { z } from 'zod';
 
 import { ENTITIES, ENTITY_NAMES, PERSONA_IDS, TaskAuditEntry } from '../../src/contracts/index.js';
-import { readFixtureFiles, readFixtureJson, withEdit } from '../../src/read-model/test-support/fixtureFiles.js';
+import { withEdit } from '../../src/read-model/test-support/fixtureFiles.js';
+import { readFixtureFiles, readFixtureJson } from '../../src/server/lib/seed/fixtureFiles.js';
 import { renderSchema, SCHEMA_FILE } from './generate-types.js';
 import { createScratchDatabase, reachableDatabaseUrl } from './scratchDatabase.js';
 import type { ScratchDatabase } from './scratchDatabase.js';

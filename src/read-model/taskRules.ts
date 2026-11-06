@@ -6,17 +6,7 @@ import type { z } from 'zod';
 
 import { TASK_STATUS_TRANSITIONS } from '../contracts/index.js';
 import type { CreateTaskBody, PersonaId, TaskAuditEntry, TaskRecord, TaskStatus } from '../contracts/index.js';
-
-/** A change the task rules refuse; `field` names the input at fault, for the 422 answer. */
-export class TaskRuleViolation extends Error {
-  readonly field: string;
-
-  constructor(field: string, message: string) {
-    super(message);
-    this.name = 'TaskRuleViolation';
-    this.field = field;
-  }
-}
+import { InvalidValues } from './problems.js';
 
 export const taskIdOf = (number: number): string => `TASK-${String(number).padStart(4, '0')}`;
 
@@ -30,13 +20,17 @@ function audited(task: TaskRecord, entry: Omit<TaskAuditEntry, 'task_id' | 'at' 
   return { ...task, audit: [...task.audit, { task_id: task.task_id, at: context.at, actor: context.actor, ...entry }] };
 }
 
+/**
+ * A new task with its audit trail: CREATED, and when it is made with an assignee also ASSIGNED (from nobody to that
+ * person), so the trail shows who was given the task and when, as it does for every later assignment.
+ */
 export function createdTask(
   tenantId: string,
   taskId: string,
   body: z.output<typeof CreateTaskBody>,
   context: TaskChangeContext,
 ): TaskRecord {
-  return audited(
+  const created = audited(
     {
       tenant_id: tenantId,
       task_id: taskId,
@@ -54,6 +48,9 @@ export function createdTask(
     { action: 'CREATED', from: null, to: 'OPEN', note: body.note },
     context,
   );
+  return body.assigned_to === null
+    ? created
+    : audited(created, { action: 'ASSIGNED', from: null, to: body.assigned_to, note: null }, context);
 }
 
 /** The task with its new assignee and one audit entry; the same object when nothing changes. */
@@ -74,7 +71,7 @@ export function taskWithStatus(task: TaskRecord, status: TaskStatus, note: strin
     return task;
   }
   if (!TASK_STATUS_TRANSITIONS[task.status].includes(status)) {
-    throw new TaskRuleViolation('status', `A task that is ${task.status} cannot become ${status}.`);
+    throw InvalidValues.field('status', `A task that is ${task.status} cannot become ${status}.`);
   }
   return audited(
     { ...task, status, updated_at: context.at },

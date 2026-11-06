@@ -209,6 +209,8 @@ export interface SelectProps
   readonly options: readonly SelectOption[];
   /** An empty first option, for example "All statuses" in a filter or "Select…" in a form. */
   readonly placeholder?: string;
+  /** The options are still on their way: the select is disabled and its empty option reads "Loading…". */
+  readonly loading?: boolean;
 }
 
 export function Select({
@@ -221,6 +223,7 @@ export function Select({
   onChange,
   options,
   placeholder,
+  loading = false,
   id: givenId,
   ...rest
 }: SelectProps) {
@@ -243,9 +246,13 @@ export function Select({
         aria-required={required || undefined}
         aria-invalid={error !== undefined || undefined}
         aria-describedby={describedBy(id, hint, error)}
+        aria-busy={loading || undefined}
         {...rest}
+        disabled={loading || rest.disabled}
       >
-        {placeholder !== undefined && <option value="">{placeholder}</option>}
+        {(loading || placeholder !== undefined) && (
+          <option value="">{loading ? t('ui.loading') : placeholder}</option>
+        )}
         {options.map((option) => (
           <option key={option.value} value={option.value} disabled={option.disabled}>
             {option.label}

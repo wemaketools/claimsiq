@@ -8,7 +8,6 @@
  * A handler gets the tenant only through `ctx.tenant`, which opens `withTenant`.
  */
 import type { Context, Hono } from 'hono';
-import type { z } from 'zod';
 
 import {
   AS_OF_HEADER,
@@ -20,12 +19,11 @@ import {
 } from '../../../contracts/index.js';
 import type { EndpointContract, Endpoints } from '../../../contracts/index.js';
 import type { ReadModel } from '../../../read-model/index.js';
-import { TaskRuleViolation } from '../../../read-model/index.js';
+import { InvalidValues, fieldProblems } from '../../../read-model/index.js';
 import type { AppConfig } from '../config/index.js';
 import { withTenant } from '../db/index.js';
 import type { Db, TenantId, TenantScope } from '../db/index.js';
 import { HttpProblem } from '../errors/index.js';
-import type { FieldProblem } from '../errors/index.js';
 import { loadReadModel } from '../read-model/load.js';
 import type { VerifiedToken } from '../auth/verify.js';
 import type { ApiEnv } from './env.js';
@@ -67,9 +65,6 @@ export interface MountDeps {
   readonly now: () => Date;
 }
 
-const fieldProblems = (error: z.ZodError): FieldProblem[] =>
-  error.issues.map((issue) => ({ field: issue.path.join('.'), code: issue.code, message: issue.message }));
-
 async function bodyOf(c: Context<ApiEnv>, endpoint: EndpointContract<unknown, unknown, unknown>): Promise<unknown> {
   if (endpoint.body === null) {
     return undefined;
@@ -82,7 +77,7 @@ async function bodyOf(c: Context<ApiEnv>, endpoint: EndpointContract<unknown, un
   }
   const checked = endpoint.body.safeParse(payload);
   if (!checked.success) {
-    throw new HttpProblem(422, 'The request has invalid values.', fieldProblems(checked.error));
+    throw InvalidValues.fromZod(checked.error);
   }
   return checked.data;
 }
@@ -111,29 +106,21 @@ export function mountEndpoints(app: Hono<ApiEnv>, handlers: Handlers, deps: Moun
       const body = await bodyOf(c, endpoint);
       const tenantId = c.get('tenantId');
 
-      let result: unknown;
-      try {
-        result = await handler.run({
-          config: deps.config,
-          db: deps.db,
-          tenantId,
-          session: c.get('session'),
-          asOf,
-          actor: actor.success ? actor.data : null,
-          query,
-          body,
-          params: c.req.param(),
-          idempotencyKey: c.req.header('Idempotency-Key') ?? null,
-          now: deps.now(),
-          tenant: (work) => withTenant(deps.db, tenantId, work),
-          model: () => withTenant(deps.db, tenantId, (scope) => loadReadModel(scope)),
-        });
-      } catch (error) {
-        if (error instanceof TaskRuleViolation) {
-          throw new HttpProblem(422, 'The request has invalid values.', [{ field: error.field, code: 'invalid', message: error.message }]);
-        }
-        throw error;
-      }
+      const result = await handler.run({
+        config: deps.config,
+        db: deps.db,
+        tenantId,
+        session: c.get('session'),
+        asOf,
+        actor: actor.success ? actor.data : null,
+        query,
+        body,
+        params: c.req.param(),
+        idempotencyKey: c.req.header('Idempotency-Key') ?? null,
+        now: deps.now(),
+        tenant: (work) => withTenant(deps.db, tenantId, work),
+        model: () => withTenant(deps.db, tenantId, (scope) => loadReadModel(scope)),
+      });
 
       const checked = endpoint.response.safeParse(result);
       if (!checked.success) {

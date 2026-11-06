@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { DATA_SETS, ENTITIES, ENTITY_NAMES, sumMoney } from '../../contracts/index.js';
-import { readFixtureFiles, readFixtureJson, withEdit } from '../test-support/fixtureFiles.js';
+import { readFixtureFiles, readFixtureJson } from '../../server/lib/seed/fixtureFiles.js';
+import { withEdit } from '../test-support/fixtureFiles.js';
 import { quarantinedRowCount } from '../reads.js';
 import { loadDataset } from './load.js';
 

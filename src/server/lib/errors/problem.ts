@@ -1,13 +1,8 @@
 /** `application/problem+json` answers: the shape the SPA's API client normalizes into an `ApiError`. */
+import type { FieldProblem } from '../../../read-model/index.js';
 
 export const PROBLEM_JSON = 'application/problem+json';
 export const CORRELATION_ID_HEADER = 'X-Correlation-Id';
-
-export interface FieldProblem {
-  readonly field: string;
-  readonly code: string;
-  readonly message: string;
-}
 
 /** An error the caller can act on, with the status it maps to. Its title reaches the client, so it never carries a value that could be secret. */
 export class HttpProblem extends Error {

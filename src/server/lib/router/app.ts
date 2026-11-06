@@ -16,6 +16,7 @@ import { Hono } from 'hono';
 import { demoHandlers } from '../../domains/demo/handlers.js';
 import { readHandlers } from '../../domains/reads/handlers.js';
 import { taskHandlers } from '../../domains/tasks/handlers.js';
+import { INVALID_VALUES_TITLE, InvalidValues } from '../../../read-model/index.js';
 import { requireSession } from '../auth/middleware.js';
 import type { TokenVerifier } from '../auth/middleware.js';
 import { verifyAccessToken } from '../auth/verify.js';
@@ -81,6 +82,9 @@ export function buildApp(deps: AppDeps): ApiApp {
     const correlationId = c.get('correlationId') ?? resolveCorrelationId(null);
     if (error instanceof HttpProblem) {
       return problemResponse(error, correlationId);
+    }
+    if (error instanceof InvalidValues) {
+      return problemResponse(new HttpProblem(422, INVALID_VALUES_TITLE, error.problems), correlationId);
     }
     console.error(`API failure ${correlationId} on ${c.req.method} ${c.req.path}:`, error instanceof Error ? error.message : 'unknown error');
     return problemResponse(new HttpProblem(500, 'The server failed on this request.'), correlationId);

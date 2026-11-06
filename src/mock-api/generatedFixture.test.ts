@@ -4,7 +4,7 @@ import { endpoints } from '../contracts/index.js';
 import { createMockApi } from './api.js';
 import { loadDataset } from '../read-model/fixtures/index.js';
 import { memoryStore } from './storage.js';
-import { readFixtureFiles, readFixtureJson } from '../read-model/test-support/fixtureFiles.js';
+import { readFixtureFiles, readFixtureJson } from '../server/lib/seed/fixtureFiles.js';
 import { generateClaimsFixture } from '../read-model/test-support/generatedFixture.js';
 
 describe('the generated claims fixture', () => {

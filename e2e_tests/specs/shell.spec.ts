@@ -11,7 +11,7 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
-import { expectNoAxeViolations, expectNoHorizontalScroll } from './support';
+import { expectNoAxeViolations, expectNoHorizontalScroll, resetData } from './support';
 
 const PASSWORD = 'test1234';
 const DESTINATIONS = [
@@ -25,12 +25,6 @@ const DESTINATIONS = [
 
 /** Every screen has a filter bar; the Action Queue's is its own. */
 const FILTERS = (name: string): string => (name === 'Action Queue' ? 'Task filters' : 'Claim filters');
-
-async function resetData(page: Page, dataSet: string): Promise<void> {
-  await page.getByRole('button', { name: 'Reset', exact: true }).click();
-  await page.getByRole('dialog').getByRole('button', { name: 'Reset', exact: true }).click();
-  await expect(page.getByText(`The ${dataSet} fixture is back as loaded.`)).toBeVisible();
-}
 
 async function signIn(page: Page, localPart: string): Promise<void> {
   await page.goto('/signin');

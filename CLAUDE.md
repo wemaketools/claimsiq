@@ -2,7 +2,7 @@ To ask the owner for a settings change, use `converse permit` and make the chang
 
 # ClaimsIQ: instructions for agents
 
-ClaimsIQ ("Claims Intelligence") is the claims control tower of The Brittany insurance intelligence suite, built to read as one suite with TenderIQ and QuoteIQ. TypeScript everywhere, React 18 SPA on Vite, Supabase Auth for sign-in, Hono API on Vercel functions later.
+ClaimsIQ ("Claims Intelligence") is the claims control tower of The Brittany insurance intelligence suite, built to read as one suite with TenderIQ and QuoteIQ. TypeScript everywhere, React 18 SPA on Vite, Supabase Auth for sign-in, Hono API at `/api/v1` (a Vercel function once a hosted database exists).
 
 ## Where the truth lives
 

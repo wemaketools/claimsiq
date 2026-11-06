@@ -38,10 +38,10 @@ export function auditEntry(row: Row): TaskAuditEntry {
   });
 }
 
-/** A task row with its audit rows (oldest first) as the contracts' `TaskRecord`. */
-export function taskRecord(taskRow: Row, auditRows: readonly Row[]): TaskRecord {
+/** A task row with the audit rows of that task (oldest first) as the contracts' `TaskRecord`. */
+export function taskRecord(taskRow: Row, ownAuditRows: readonly Row[]): TaskRecord {
   const task = Task.parse({ ...taskRow, updated_at: instantOf(taskRow.updated_at as Date) });
-  return { ...task, audit: auditRows.filter((row) => row.task_id === task.task_id).map(auditEntry) };
+  return { ...task, audit: ownAuditRows.map(auditEntry) };
 }
 
 export async function loadAuditRows(scope: TenantScope, taskId?: string): Promise<Row[]> {
@@ -61,8 +61,14 @@ export async function loadReadModel(scope: TenantScope): Promise<ReadModel> {
   if (tenant === undefined || !isDataSetId(tenant.dataset_tag) || DATA_SETS[tenant.dataset_tag].tenant_id !== scope.tenantId) {
     throw new Error(`Tenant ${scope.tenantId} has no row in tenants.`);
   }
-  const audit = await loadAuditRows(scope);
-  const tasks = (rows.get('task') ?? []).map((row) => taskRecord(row, audit));
+  const auditByTask = new Map<string, Row[]>();
+  for (const row of await loadAuditRows(scope)) {
+    const key = String(row.task_id);
+    const own = auditByTask.get(key);
+    if (own === undefined) auditByTask.set(key, [row]);
+    else own.push(row);
+  }
+  const tasks = (rows.get('task') ?? []).map((row) => taskRecord(row, auditByTask.get(String(row.task_id)) ?? []));
 
   const configRow = await scope
     .selectFrom('rule_configs')

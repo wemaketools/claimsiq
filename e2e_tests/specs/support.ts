@@ -28,3 +28,10 @@ export async function expectNoHorizontalScroll(page: Page): Promise<void> {
   );
   expect(overflow).toBeLessThanOrEqual(0);
 }
+
+/** Reset from the top bar, confirmed in its dialog, and the toast that says the data set is back as loaded. */
+export async function resetData(page: Page, dataSet: string): Promise<void> {
+  await page.getByRole('button', { name: 'Reset', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Reset', exact: true }).click();
+  await expect(page.getByText(`The ${dataSet} fixture is back as loaded.`)).toBeVisible();
+}
