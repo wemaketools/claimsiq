@@ -9,7 +9,7 @@ import type { Page } from '@playwright/test';
 
 import { withClient } from '../../scripts/db/connection';
 import { isLocalUrl } from '../../scripts/db/localHost';
-import { databaseUrl } from '../env';
+import { databaseUrl } from '../localEnv';
 
 interface EventRow {
   readonly id: string;

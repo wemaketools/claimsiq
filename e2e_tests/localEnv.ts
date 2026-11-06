@@ -2,10 +2,17 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { parseEnv } from 'node:util';
 
+import { envValue, presentValue } from './env';
+
 const file = new URL('../.env.local', import.meta.url);
 
-/** The value of `name` in `.env.local`, or undefined when the file or the value is missing. */
-export function localEnvValue(name: string): string | undefined {
-  const value = existsSync(file) ? parseEnv(readFileSync(file, 'utf8'))[name]?.trim() : undefined;
-  return value === undefined || value === '' ? undefined : value;
+/**
+ * The local database the stack project runs on: `DATABASE_URL` from the environment, else from the repository's
+ * `.env.local`, which the API server reads (Playwright does not load it).
+ */
+export function databaseUrl(): string {
+  const fromFile = presentValue(existsSync(file) ? parseEnv(readFileSync(file, 'utf8'))['DATABASE_URL'] : undefined);
+  const value = envValue('DATABASE_URL') ?? fromFile;
+  if (value === undefined) throw new Error('DATABASE_URL is not set in the environment or in .env.local.');
+  return value;
 }
