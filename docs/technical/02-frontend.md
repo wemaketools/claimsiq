@@ -1,6 +1,6 @@
 # Frontend (SPA)
 
-Status: as built (scaffold, data layer, the claim screens: Overview, Stages & Aging, Claims, Exceptions & SLA, Claim Detail, policy invoices, and Supplier Insights and the Action Queue). The decisions behind it (prefix and palette, brand, navigation, persona switch, tenant) are in `docs/plan/design-decisions.md`.
+Status: as built (scaffold, data layer, the claim screens: Overview, Stages & Aging, Claims, Exceptions & SLA, Claim Detail, policy invoices, and Supplier Insights and the Action Queue, and the P1 screens: the Claim Detail what-if, Rules, Paid by month with the supplier wait percentiles, and the Digest). The decisions behind it (prefix and palette, brand, navigation, persona switch, tenant) are in `docs/plan/design-decisions.md`.
 
 ## Layout of `src/ui/src`
 

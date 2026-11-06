@@ -10,6 +10,8 @@
  * - `prototype`: a PRODUCTION build in prototype mode (`vite build`, then `vite preview` on PROTOTYPE_PORT, default
  *   5381), the static demo Kwaku deploys. It needs no stack and signs in by clicking a role.
  *
+ * Both projects run `acceptance.spec.ts` (CLM-AT-01 to 16); where they differ the spec branches on the project name.
+ *
  * Run from the repository root: `bun run test:e2e`, or `bun run test:e2e:prototype` for the second project alone. A
  * run starts only the servers of the projects it runs (`E2E_PROJECT`, set by `test:e2e:prototype`), so the prototype
  * run needs no stack and no dev server.
@@ -18,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig, devices } from '@playwright/test';
 
 import { envValue } from './env';
-import { running } from './projects';
+import { running, sharesDatabase } from './projects';
 import type { ServerSpec } from './projects';
 
 const uiDir = fileURLToPath(new URL('../src/ui', import.meta.url));
@@ -33,7 +35,8 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: isCI,
   retries: isCI ? 1 : 0,
-  ...(isCI ? { workers: 2 } : {}),
+  // One worker when the stack project runs: its specs share the local database, and Reset in one would reset the other's data.
+  ...(sharesDatabase ? { workers: 1 } : isCI ? { workers: 2 } : {}),
   reporter: isCI
     ? [['github'], ['html', { open: 'never', outputFolder: 'playwright-report' }]]
     : [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],

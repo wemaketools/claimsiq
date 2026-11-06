@@ -34,7 +34,7 @@ const apiEnv = { API_PORT: String(apiPort) };
 export const PROJECTS = [
   {
     name: 'stack',
-    testMatch: ['claims.spec.ts', 'shell.spec.ts'],
+    testMatch: ['claims.spec.ts', 'shell.spec.ts', 'acceptance.spec.ts'],
     origin: `http://127.0.0.1:${webPort}`,
     servers: [
       {
@@ -71,6 +71,8 @@ export const PROJECTS = [
 
 const selected = envValue('E2E_PROJECT');
 export const running = PROJECTS.filter((project) => selected === undefined || project.name === selected);
+/** The stack project's specs all change the one local database (TEST and DEMO, Reset), so they must not overlap. */
+export const sharesDatabase = running.some((project) => project.name === 'stack');
 if (running.length === 0) {
   throw new Error(`E2E_PROJECT must be one of ${PROJECTS.map((project) => project.name).join(', ')}, got "${selected}".`);
 }

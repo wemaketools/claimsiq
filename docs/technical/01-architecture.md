@@ -7,7 +7,7 @@ Status: as built (scaffold, data layer, rules engine and, from Stage B, the data
 | Path | Contents |
 |---|---|
 | `src/ui/` | The SPA, Bun workspace `@claimsiq/ui` (see [02-frontend.md](02-frontend.md)) |
-| `src/contracts/` | Pure TypeScript + zod (+ decimal.js for money), shared by the SPA, the mock API and the backend later: the 17 entities keyed (tenant_id, id), the typed endpoints, the data sets, the personas, the rule config schema (`ruleConfig.ts`), the money and time helpers |
+| `src/contracts/` | Pure TypeScript + zod (+ decimal.js for money), shared by the SPA, the mock API and the server: the 17 entities keyed (tenant_id, id), the typed endpoints, the data sets, the personas, the rule config schema (`ruleConfig.ts`), the money and time helpers |
 | `src/rules/` | The claims rules engine: pure functions over the contracts (`config.ts` the rule config schema's re-export and `parseRuleConfig`, `calendar.ts` business days, `claimFacts.ts` the facts of one claim, `summary.ts` portfolio totals, `suppliers.ts` per-supplier figures and wait percentiles, `percentile.ts` nearest-rank percentiles, `trend.ts` posted paid per month, `tasks.ts` the overdue rule, `transitions.ts` the stage map and the what-if event). Imports only zod, decimal.js and `src/contracts` (lint-enforced); see DD-22 to DD-27, DD-40 to DD-42, DD-60, DD-62 |
 | `src/read-model/` | The record sets and the reads both transports answer through (DD-55), pure like the rules: `fixtures/` (CSV reader, loader, validation and quarantine), `asOfViews.ts` (claims and invoices as an as-of date sees them), `reads.ts` (the answer of every read endpoint over a `ReadModel`, including `claims.facts`, `claims.paidTrend`, `claims.whatIf` and `suppliers.insights`, which run `src/rules`), `taskRules.ts` (create, assign and change status, audit entry included), `ruleConfigEdits.ts` (save and restore the rule config: who may, which version, the audit entry per changed value; DD-61), `problems.ts` (field problems and `InvalidValues`, the 422 both transports give), `test-support/` (`withEdit` and the generated claims fixture of DD-31, for tests). Imports only zod, decimal.js, `src/contracts` and `src/rules` (lint-enforced) |
 | `src/mock-api/` | The prototype's API, in the browser: `api.ts` (the endpoints as a `fetch`-shaped function; it builds a `ReadModel` from the fixtures and the changes kept in browser storage and answers through `src/read-model`), `changes.ts` (tasks and the saved rule config, with their audit, kept in browser storage). It takes no Node module outside its tests |
@@ -33,6 +33,24 @@ The SPA calls typed endpoints through `call()`; which transport answers is chose
 - **Every other build (Supabase mode):** the platform `fetch` sends it to `/api/v1` on the app's own origin (Vite proxies it to the API server in development; a Vercel function once a hosted database exists, DD-59), with the session's bearer token. The Hono app verifies the token, checks `X-Tenant-Id` against the user's memberships on every request, validates the query and body with the contract's zod schemas and runs the handler inside `withTenant`. Reads load the tenant's rows into the shared `ReadModel` and answer through `src/read-model`, which runs the rules engine; commands apply the shared task rules and write the row and its audit entry in one transaction. The answer is checked against the contract's response schema before it leaves.
 
 The two transports answer through the same `src/read-model`, so contracts, screens and figures are identical; `scripts/db/api-parity.test.ts` proves it on every read endpoint.
+
+## P1 features
+
+Four P1 requirements (CL §2, CLM-FR-19 and CLM-FR-20) are built on the two transports alike. None adds a store of its own: each is a read or a command over the shared `src/read-model` and the rules engine, so the in-browser mock API and the Hono API answer identically (`scripts/db/api-parity.test.ts`).
+
+| Feature | Screen | Endpoint | Where it is computed | Decision |
+|---|---|---|---|---|
+| Stage what-if | Claim Detail, "Stage what-if" card (not saved, not a state change) | `GET /api/v1/claims/:claimId/what-if?to_stage=…` (`claims.whatIf`) | `src/rules/transitions.ts` builds the hypothetical event; `claimFacts` runs on it beside the real facts | DD-60 |
+| Rule editor | Rules (`/rules`, the Head of Claims edits, other personas read) | `rules.config`, `rules.save`, `rules.restore` | `src/read-model/ruleConfigEdits.ts`: validates, versions (a stale save is 409) and writes one audit entry per changed value; stored per tenant and data set in `rule_configs` and `rule_config_audit_entries`, or in browser storage in a prototype build; Reset restores it | DD-51, DD-61 |
+| Paid by month | Overview "Paid by month" card | `claims.paidTrend` (`GET /api/v1/paid-trend`) | `src/rules/trend.ts`: posted payments only, per calendar month up to the as-of date, over the filtered claims | DD-62 |
+| Wait percentiles | Supplier Insights table and chart | `suppliers.insights` | `src/rules/percentile.ts` (nearest rank) with a sample minimum from the rule config | DD-62 |
+| Digest | Digest (`/digest`, prints on one A4 page) | none: the endpoints the screens call | `features/digest` picks the first rows of what the other screens build | DD-63 |
+
+## Running the two modes
+
+- **API mode** (the default): `bun run supabase:start`, a filled `.env.local`, `bun run db:reset`, then `bun run dev`. The SPA signs in with Supabase Auth, calls `/api/v1` and every change is kept in the database until Reset.
+- **Prototype mode**: `bun run dev:prototype` or `bun run build:prototype`; no stack, no environment, the in-browser mock API, changes kept in the browser until Reset.
+- **Acceptance**: `bun run test:e2e` runs CLM-AT-01 to 16 in both modes (`docs/acceptance.md`); `bun run test:e2e:prototype` runs the prototype mode alone.
 
 ## Database (Stage B)
 

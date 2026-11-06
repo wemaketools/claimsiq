@@ -1,28 +1,38 @@
 /**
- * The acceptance scenarios CLM-AT-01 to CLM-AT-16 of the claims requirements (section 11), in the hosted-demo build
- * (a production build in prototype mode, no Supabase stack). Two flows, every assertion block a `test.step` named after
- * its scenario:
+ * The acceptance scenarios CLM-AT-01 to CLM-AT-16 of the claims requirements (section 11), run in BOTH Playwright
+ * projects by this one spec: `prototype` (the hosted-demo build, the in-browser mock API, no Supabase) and `stack` (the
+ * Vite dev server over the Hono API and the local Supabase database). The screens, the steps and the figures are the
+ * same; every assertion block is a `test.step` named after its scenario, so a failure names the CLM-AT it breaks. Two flows:
  * - the TEST data set as shipped: AT-01 to 08 and AT-12 to 15, walked as a Head of Claims;
- * - the same data set with a few test-only rows added in the browser (testOnlyRows.ts; `fixtures/v1` is untouched):
- *   AT-09 (a missing stage time), AT-10 (events out of order), AT-11 (pending and rejected payments) and AT-16 (a
- *   reopened claim), which the shipped data has no row for.
+ * - the same data set with a few test-only rows (testOnlyRows.ts; `fixtures/v1` is untouched): AT-09 (a missing stage
+ *   time), AT-10 (events out of order), AT-11 (pending and rejected payments) and AT-16 (a reopened claim), which the
+ *   shipped data has no row for.
  *
- * Prerequisites: none beyond the browser. Playwright builds and serves the app (playwright.config.ts).
+ * The modes differ in one place: how the test-only rows reach the data (the bundle is rewritten in the prototype, the
+ * rows are inserted into the local database in the stack). Sign-in, Reset and the screens are the same clicks in both.
+ *
+ * Prerequisites: prototype none beyond the browser; stack as in shell.spec.ts (the local Supabase stack running and the
+ * database built). Playwright builds and serves the app (playwright.config.ts). Both flows start with Reset, so a run
+ * the stack project left half-done cannot change the figures, and the stack project runs on one worker.
  */
 import { readFileSync } from 'node:fs';
 
 import { expect, test } from '@playwright/test';
-import type { Page } from '@playwright/test';
+import type { Page, TestInfo } from '@playwright/test';
 
 import { resetData } from './support';
-import { addTestOnlyRows } from './testOnlyRows';
+import { addTestOnlyRowsToBundle, addTestOnlyRowsToDatabase, removeTestOnlyRowsFromDatabase } from './testOnlyRows';
 
+const inStack = (testInfo: TestInfo): boolean => testInfo.project.name === 'stack';
+
+/** A role click signs in (in the prototype build at once, in the stack through the server's demo sign-in), then the TEST data set, as loaded. */
 async function openTestDataSet(page: Page): Promise<void> {
   await page.setViewportSize({ width: 1366, height: 768 });
   await page.goto('/');
   await page.getByRole('button', { name: /^Head of Claims/ }).click();
   await expect(page.getByRole('heading', { name: 'Overview', level: 1 })).toBeVisible();
   await page.getByLabel('Data set').selectOption('TEST');
+  await resetData(page, 'TEST');
 }
 
 const card = (page: Page, name: string) => page.getByRole('region', { name, exact: true });
@@ -48,6 +58,11 @@ async function columnTotal(page: Page, column: number): Promise<bigint> {
 }
 
 test.describe('acceptance scenarios CLM-AT-01 to CLM-AT-16', () => {
+  // The rows of the second flow are not left in the database for the specs that follow (Reset would remove them too).
+  test.afterEach(async ({}, testInfo) => {
+    if (inStack(testInfo)) await removeTestOnlyRowsFromDatabase();
+  });
+
   test('the TEST data set meets the snapshot, stage, money, rule, filter, task, export and policy-join scenarios', async ({
     page,
   }) => {
@@ -264,30 +279,16 @@ test.describe('acceptance scenarios CLM-AT-01 to CLM-AT-16', () => {
 
   test('the TEST data set with test-only rows shows a missing stage time as unknown, orders events by time, keeps unposted payments out of paid and reopens a closed claim', async ({
     page,
-  }) => {
-    const applied = await addTestOnlyRows(page, [
-      {
-        after: 'TEST,EVT-CLM-106-2,CLM-106,2026-09-30,New,Assessment,Progressed,USR-CLM',
-        rows: [
-          // AT-16: the closed CLM-103 is reopened on 18 Oct.
-          'TEST,EVT-CLM-103-3,CLM-103,2026-10-18,Closed,Reopened,Customer disputed the settlement,USR-CLM',
-          // AT-09: an event for CLM-105 with no time.
-          'TEST,EVT-CLM-105-2,CLM-105,,New,Triage,Time not recorded,USR-CLM',
-          // AT-10: an earlier event written after the later ones.
-          'TEST,EVT-CLM-106-3,CLM-106,2026-09-27,New,Triage,Logged late,USR-CLM',
-        ],
-      },
-      {
-        after: 'TEST,CPAY-CLM-103,CLM-103,2026-10-13,4000,BWP,SYN-PAY-CLM-103,POSTED',
-        rows: [
-          // AT-11: payments in the period that are not posted.
-          'TEST,CPAY-CLM-104-P,CLM-104,2026-10-20,3000,BWP,SYN-PAY-CLM-104-PENDING,PENDING',
-          'TEST,CPAY-CLM-106-R,CLM-106,2026-10-19,2000,BWP,SYN-PAY-CLM-106-REJECTED,REJECTED',
-        ],
-      },
-    ]);
-    await openTestDataSet(page);
-    expect(applied).toHaveLength(2);
+  }, testInfo) => {
+    if (inStack(testInfo)) {
+      await openTestDataSet(page);
+      await addTestOnlyRowsToDatabase();
+      await page.reload();
+    } else {
+      const applied = await addTestOnlyRowsToBundle(page);
+      await openTestDataSet(page);
+      expect(applied).toHaveLength(2);
+    }
 
     await test.step('CLM-AT-09 missing timestamps: a claim with an event of no time shows SLA unknown, never within target', async () => {
       await goTo(page, 'Claims');

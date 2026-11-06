@@ -2,12 +2,13 @@
 
 **Claims Intelligence**: the claims control tower of The Brittany insurance intelligence suite. It shows a claims manager what is open, old, high-value or outside service levels, which suppliers hold claims up, and what to chase today. It reads as one suite with TenderIQ and QuoteIQ and shares their design system.
 
-## Status: Stage A complete, Stage B in progress
+## Status: Stage A complete, Stage B and the P1 features built
 
-Stage A builds the P0 requirements of `ai/specs` on the specs' synthetic TEST and DEMO data, and is complete: the stack, the design system, the app shell, real sign-in against a local Supabase stack (or a role click in the hosted prototype), the persona switch, CI, the typed in-browser mock API over the fixtures, the rules engine, and all six screens of the shell (Overview, Stages & Aging, Exceptions & SLA, Claims, Suppliers, Action Queue) plus Claim Detail and the policy invoices, each with its loading, empty and error states. Stage B adds the real backend: the local Supabase stack also holds the database (schema, tenant isolation and the fixture seed, see "The local database") and a Hono API serves every screen from it (see "The API"). Signed in against the local stack, the app reads and writes the database through the API and what you change (tasks, assignments, status, the audit trail) is kept there until Reset; the hosted prototype build is unchanged and still runs on the in-browser mock API, with changes kept in the browser.
+Stage A builds the P0 requirements of `ai/specs` on the specs' synthetic TEST and DEMO data, and is complete: the stack, the design system, the app shell, real sign-in against a local Supabase stack (or a role click in the hosted prototype), the persona switch, CI, the typed in-browser mock API over the fixtures, the rules engine, and all six screens of the shell (Overview, Stages & Aging, Exceptions & SLA, Claims, Suppliers, Action Queue) plus Claim Detail and the policy invoices, each with its loading, empty and error states. Stage B adds the real backend: the local Supabase stack also holds the database (schema, tenant isolation and the fixture seed, see "The local database") and a Hono API serves every screen from it (see "The API"). Signed in against the local stack, the app reads and writes the database through the API and what you change (tasks, assignments, status, the audit trail) is kept there until Reset; the hosted prototype build is unchanged and still runs on the in-browser mock API, with changes kept in the browser. The P1 features are in both modes (see "The P1 screens"), and the 16 acceptance tests of the spec pass in both (`bun run test:e2e`).
 
-- `docs/acceptance.md`: the spec's 16 acceptance tests (CLM-AT-01 to 16), where each is asserted and the result.
-- `docs/demo-script.md`: the 7 to 9 minute Head of Claims demo, step by step, for the hosted prototype.
+- `docs/acceptance.md`: the spec's 16 acceptance tests (CLM-AT-01 to 16), where each is asserted in the prototype and in the API mode, and the result.
+- `docs/demo-script.md`: the 7 to 9 minute Head of Claims demo, step by step, for the hosted prototype, and a 4 minute click-through of the P1 features.
+- `docs/technical/`: how it is built (architecture and the database, the frontend, testing and CI).
 - `CLAUDE.md`: the order of truth and the rules; `docs/plan/design-decisions.md`: the decisions.
 
 ## Prerequisites
@@ -80,6 +81,34 @@ curl -s localhost:5274/api/v1/claim-facts -H "Authorization: Bearer $TOKEN" -H '
 
 **Reset** in the app restores the selected data set in the database from the committed fixture (rows, rules, tasks and their audit trail). It works only when `APP_ENV` is `local` or `dev`; anywhere else the API refuses it with 403.
 
+### Environment variables
+
+`.env.local` (copied from `.env.local.example`; `.env.example` is the catalog for a deployed environment) is read by the API, the scripts and Vite. Only `src/server/lib/config` reads `process.env`, and only the two `VITE_` values reach the browser.
+
+| Variable | Used for |
+|---|---|
+| `APP_ENV` | `local` (default), `dev`, `preview`, `staging` or `production`. `local` allows the local-only scripts and the default demo password; Reset needs `local` or `dev` |
+| `DATABASE_URL` | The Postgres the API and the `db:*` scripts use (`DB_URL` of `supabase status`; the scripts refuse a non-local one) |
+| `API_PORT` | The API's port (default 5274) |
+| `SUPABASE_URL`, `SUPABASE_ANON_KEY` | Supabase Auth, for the API's token checks and the demo sign-in |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server only: `auth:personas` creates the demo accounts with it |
+| `DEMO_SEED_PASSWORD` | The password of the four demo accounts. Unset locally it is `test1234`; elsewhere the server has none, so the demo sign-in answers 503 and the page falls back to the form |
+| `LOG_LEVEL` | Server log level |
+| `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` | The browser's Supabase client (authentication only). A prototype build needs neither, and sets `VITE_AUTH_MODE=prototype` |
+
+### The P1 screens
+
+The P1 requirements (CL §2) work in both modes, on TEST and DEMO, and follow the shared filters and the as-of date.
+
+| Screen | What it does |
+|---|---|
+| **Claim Detail, Stage what-if** | On any claim, choose a stage the claim may move to and read the stage clock, SLA and severity the rules engine would give it, beside the real view. Nothing is saved, and Reset or a reload drops it. A closed claim offers only Reopened |
+| **Rules** (`/rules`) | The editor of the rule configuration for the selected data set: the target days of each stage, the supplier wait target and sample minimum, the money thresholds (material reserve change, high-value line) and the severity and age-bucket values. The Head of Claims edits it; other personas read it. Save and Restore defaults are confirmed, each changed value is audited with who and when, a stale save is refused, and every figure follows the new values. **Reset** restores the spec's configuration |
+| **Overview, Paid by month** and **Suppliers, Waits against the baseline** | Posted paid per calendar month up to the as-of date (it adds up to Paid to date), and the median and 90th percentile open-request wait of each supplier against the target and against all suppliers together. A supplier with fewer requests than the sample minimum shows its count and no percentile |
+| **Digest** (`/digest`) | The position on one printable page: headline figures, top exceptions, material reserve movements, supplier delays and open actions, with the data set, the as-of date and the filters in its header. **Print or save as PDF** gives one A4 page, light whatever the screen theme. It adds no figure of its own |
+
+A click-through with the data set and claims to use is at the end of `docs/demo-script.md`.
+
 ### Demo accounts
 
 There is one account per persona. Locally they all have the password **`test1234`**, unless `DEMO_SEED_PASSWORD` is set in `.env.local`; `bun run auth:personas` gives the accounts that password. On the sign-in page, a click on a demo role signs in through the server (`POST /api/v1/auth/demo-sign-in`, which takes only the e-mail and uses the password from the server's own environment), so the page holds no password. If the server has none (any hosted environment without `DEMO_SEED_PASSWORD`) or refuses, the e-mail is filled into the form instead. The accounts:
@@ -125,4 +154,4 @@ The deployed site is static files only. It calls no server, and the data it show
 
 ## Checks
 
-`bun run verify` runs the typecheck, lint, unit tests, SPA tests and the production build. `bun run test:e2e` runs the Playwright suite (the local-stack project needs the stack and the built database, and starts its own API and Vite; the prototype project, `bun run test:e2e:prototype`, builds and serves a prototype production build and needs neither). The prototype project holds the acceptance spec, `e2e_tests/specs/acceptance.spec.ts`, with a step for each of CLM-AT-01 to 16 (`docs/acceptance.md`). Install the browser once with `bunx playwright install chromium` from `e2e_tests`. `bun run ci:security` scans for secrets and for server code in the production bundle, and for supabase-js in a prototype build. All commands are listed in `CLAUDE.md`.
+`bun run verify` runs the typecheck, lint, unit tests, SPA tests and the production build. `bun run test:e2e` runs the Playwright suite (the local-stack project needs the stack and the built database, and starts its own API and Vite; the prototype project, `bun run test:e2e:prototype`, builds and serves a prototype production build and needs neither). Both projects run the acceptance spec, `e2e_tests/specs/acceptance.spec.ts`, with a step for each of CLM-AT-01 to 16 (`docs/acceptance.md`), so the in-browser mock and the real API are held to the same scenarios; the stack project runs on one worker because its specs share the local database. Install the browser once with `bunx playwright install chromium` from `e2e_tests`. `bun run ci:security` scans for secrets and for server code in the production bundle, and for supabase-js in a prototype build. All commands are listed in `CLAUDE.md`.
