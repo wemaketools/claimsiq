@@ -67,7 +67,7 @@ Money is BWP ("P9,000.00"). The times in a task's history are the real clock tim
    - **CLM-104**: Approved, paid P0.00, reserve P9,000.00, incurred P9,000.00, SLA Within target.
    - **CLM-103**: Closed, paid P4,000.00, reserve P0.00, incurred P4,000.00, no SLA.
 2. Click **CLM-104**: the panel "Approved is not paid" says "No posted payment exists yet. The P9,000.00 still held as an outstanding reserve has not been paid."
-3. Click back, then **CLM-103**: closed 15 Oct 2026, "The claim is closed, so no service targets or review indicators apply." Under **Payments**: SYN-PAY-CLM-103, 13 Oct 2026, P4,000.00, Posted.
+3. Click back, then **CLM-103**: closed 15 Oct 2026, "The claim is closed, so no service targets or review indicators apply." Under **Payments**: SYN-PAY-CLM-103, 13 Oct 2026, P4,000.00, Posted. **Reserve history** shows the release on 15 Oct 2026, P4,000.00 to P0.00, -P4,000.00, flagged "Released on closure" (reason "Paid and closed") with no review flag: the reserve was paid out and the claim closed.
 
 ## 7. Act: assign a supplier chase and change status (about 1.5 minutes)
 

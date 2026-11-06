@@ -122,6 +122,21 @@ describe('Claim Detail', () => {
     expect(card('Paid, reserve and incurred')).toHaveTextContent('Paid to dateP4,000.00');
     expect(card('Paid, reserve and incurred')).toHaveTextContent('Outstanding reserveP0.00');
     expect(card('Why this claim is flagged')).toHaveTextContent('The claim is closed');
+    // The release of the reserve on closure is listed, but it is not a review indicator on a closed claim.
+    await waitFor(() =>
+      expect(tableRows('Reserve history of the claim')).toEqual([
+        ['10 Oct 2026', 'P0.00', 'P4,000.00', '—', 'Opening reserve', 'Initial open reserve'],
+        [
+          '15 Oct 2026',
+          'P4,000.00',
+          'P0.00',
+          '-P4,000.00100%',
+          'Released on closure',
+          'Paid and closed',
+        ],
+      ]),
+    );
+    expect(card('Reserve history')).not.toHaveTextContent('material');
     expect(screen.queryByText('Approved is not paid')).not.toBeInTheDocument();
 
     // A claim not reported yet at the as-of date, or not in the data set, is said so and leads back to the list.

@@ -114,7 +114,7 @@ function change(movement: ReserveMovementFact): string {
   const amount = formatMoney(movement.change_amount);
   if (movement.kind === 'UNCHANGED') return amount;
   return t(
-    movement.kind === 'DECREASE'
+    movement.kind === 'DECREASE' || movement.kind === 'CLOSING_RELEASE'
       ? 'claim-detail.reserve.decrease'
       : 'claim-detail.reserve.increase',
     {
@@ -166,6 +166,8 @@ export function ReserveCard({ movements }: { readonly movements: readonly Reserv
       cell: (row) =>
         row.kind === 'INITIAL' ? (
           t('claim-detail.reserve.initial')
+        ) : row.kind === 'CLOSING_RELEASE' ? (
+          t('claim-detail.reserve.closingRelease')
         ) : row.material ? (
           <>
             <Chip tone="warning" size="sm" icon="flag">

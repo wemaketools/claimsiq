@@ -1,7 +1,7 @@
 /** The facts about one claim as of a date. Pure: the same claim record, date and config always give the same facts. */
 import { Decimal } from 'decimal.js';
 
-import { addMoney, chronological, compareMoney, onOrBeforeAsOf, sumMoney } from '../contracts/index.js';
+import { addMoney, chronological, compareMoney, dateOf, onOrBeforeAsOf, sumMoney } from '../contracts/index.js';
 import type {
   ClaimFacts,
   ClaimRecord,
@@ -43,17 +43,35 @@ function reconcile(comparable: boolean, known: boolean, same: boolean): Reconcil
   return same ? 'MATCHES' : 'DIFFERS';
 }
 
-function reserveMovements(events: readonly ReserveEvent[], context: RuleContext): ReserveMovementFact[] {
+/** `closureDates` are the dates the claim was closed; the release of the reserve to zero on or after one is not a review cue. */
+function reserveMovements(
+  events: readonly ReserveEvent[],
+  closureDates: readonly string[],
+  context: RuleContext,
+): ReserveMovementFact[] {
   const { material_reserve_delta_absolute_BWP: absolute, material_reserve_delta_percent: percent } = context.config.claims;
   return events.map((event, index) => {
     const before = new Decimal(event.old_amount);
     const change = new Decimal(event.new_amount).minus(before);
     const size = change.abs();
     const initial = index === 0 && before.isZero();
-    const kind = initial ? 'INITIAL' : change.isZero() ? 'UNCHANGED' : change.isPositive() ? 'INCREASE' : 'DECREASE';
+    const closingRelease =
+      !initial &&
+      change.isNegative() &&
+      new Decimal(event.new_amount).isZero() &&
+      closureDates.some((closed) => closed <= dateOf(event.event_at));
+    const kind = initial
+      ? 'INITIAL'
+      : closingRelease
+        ? 'CLOSING_RELEASE'
+        : change.isZero()
+          ? 'UNCHANGED'
+          : change.isPositive()
+            ? 'INCREASE'
+            : 'DECREASE';
     const byAmount = size.gte(absolute);
     const byPercent = before.gt(0) && size.times(100).gte(before.times(percent));
-    const material = !initial && !size.isZero() && (byAmount || byPercent);
+    const material = !initial && !closingRelease && !size.isZero() && (byAmount || byPercent);
     return {
       reserve_event_id: event.reserve_event_id,
       event_at: event.event_at,
@@ -242,7 +260,11 @@ export function computeClaimFacts(claim: ClaimRecord, context: RuleContext): Cla
         weekdays,
       )
     : [];
-  const movements = reserveMovements(reserveEvents, context);
+  const closureDates = [
+    ...dated.filter((event) => event.to_stage === 'Closed').map((event) => dateOf(event.event_at ?? '')),
+    ...(claim.closed_at === null ? [] : [dateOf(claim.closed_at)]),
+  ];
+  const movements = reserveMovements(reserveEvents, closureDates, context);
 
   const partial = {
     sla,

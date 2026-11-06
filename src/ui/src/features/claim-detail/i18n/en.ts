@@ -93,6 +93,7 @@ const en = {
       reason: 'Reason given',
     },
     initial: 'Opening reserve',
+    closingRelease: 'Released on closure',
     material: 'Review: material change',
     notMaterial: 'Not material',
     increase: '+{amount}',

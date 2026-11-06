@@ -25,6 +25,8 @@ async function openTestDataSet(page: Page): Promise<void> {
 }
 
 const card = (page: Page, name: string) => page.getByRole('region', { name, exact: true });
+/** The figure of a card alone, so a check on 5 cannot pass on 25. */
+const cardValue = (page: Page, name: string) => card(page, name).locator('.ciq-kpi-value');
 const nav = (page: Page) => page.getByRole('navigation', { name: 'Main navigation' });
 const goTo = (page: Page, screen: string) => nav(page).getByRole('link', { name: screen }).click();
 const claimsTable = (page: Page) => page.getByRole('table', { name: 'Claims' });
@@ -51,8 +53,8 @@ test.describe('acceptance scenarios CLM-AT-01 to CLM-AT-16', () => {
     await openTestDataSet(page);
 
     await test.step('CLM-AT-01 snapshot: at 21 Oct there are 5 open and 1 closed claims', async () => {
-      await expect(card(page, 'Open claims')).toContainText('5');
-      await expect(card(page, 'Closed claims')).toContainText('1');
+      await expect(cardValue(page, 'Open claims')).toHaveText('5');
+      await expect(cardValue(page, 'Closed claims')).toHaveText('1');
       await card(page, 'Open claims').getByRole('link').click();
       await expect(claimIds(page)).toHaveText(['CLM-101', 'CLM-102', 'CLM-104', 'CLM-105', 'CLM-106']);
       await goTo(page, 'Overview');
@@ -62,9 +64,9 @@ test.describe('acceptance scenarios CLM-AT-01 to CLM-AT-16', () => {
 
     await test.step('CLM-AT-02 financial: P9,000 paid + P68,000 open reserve = P77,000 incurred, no duplicate reserve versions', async () => {
       await goTo(page, 'Overview');
-      await expect(card(page, 'Paid to date')).toContainText('P9,000.00');
-      await expect(card(page, 'Outstanding reserve')).toContainText('P68,000.00');
-      await expect(card(page, 'Incurred')).toContainText('P77,000.00');
+      await expect(cardValue(page, 'Paid to date')).toHaveText('P9,000.00');
+      await expect(cardValue(page, 'Outstanding reserve')).toHaveText('P68,000.00');
+      await expect(cardValue(page, 'Incurred')).toHaveText('P77,000.00');
       await goTo(page, 'Claims');
       await expect(claimIds(page)).toHaveCount(6);
       // The list adds up to the cards, and CLM-101 holds its latest reserve (P11,000), not P8,000 + P11,000.
@@ -81,10 +83,10 @@ test.describe('acceptance scenarios CLM-AT-01 to CLM-AT-16', () => {
       for (const [stage, count] of [['New', '1'], ['Triage', '1'], ['Assessment', '2'], ['Approved', '1']] as const) {
         await expect(stages.getByRole('row', { name: `Open claims: ${stage}` }).getByRole('cell').nth(1)).toHaveText(count);
       }
-      await expect(page.getByText('All open claims: 5').first()).toBeVisible();
+      await expect(page.getByText(/^All open claims: 5(?!\d)/).first()).toBeVisible();
       await expect(stages).not.toContainText('Closed');
       await goTo(page, 'Overview');
-      await expect(card(page, 'Closed claims')).toContainText('1');
+      await expect(cardValue(page, 'Closed claims')).toHaveText('1');
     });
 
     await test.step('CLM-AT-04 approved: CLM-104 approved P9,000 outstanding is never counted as paid', async () => {
@@ -102,11 +104,11 @@ test.describe('acceptance scenarios CLM-AT-01 to CLM-AT-16', () => {
 
     await test.step('CLM-AT-05 closure: CLM-103 is in no open aging figure and no active SLA breach', async () => {
       await goTo(page, 'Overview');
-      await expect(card(page, 'SLA breaches')).toContainText('3');
+      await expect(cardValue(page, 'SLA breaches')).toHaveText('3');
       await card(page, 'SLA breaches').getByRole('link').click();
       await expect(claimIds(page)).toHaveText(['CLM-101', 'CLM-102', 'CLM-106']);
       await goTo(page, 'Stages & Aging');
-      await expect(page.getByText('All open claims: 5').first()).toBeVisible();
+      await expect(page.getByText(/^All open claims: 5(?!\d)/).first()).toBeVisible();
       const ages = page.getByRole('table', { name: 'Open claims and their value by age' });
       await expect(ages.getByRole('row', { name: 'Open claims: 0-7 days' }).getByRole('cell').nth(1)).toHaveText('2');
       await goTo(page, 'Exceptions & SLA');
@@ -118,6 +120,9 @@ test.describe('acceptance scenarios CLM-AT-01 to CLM-AT-16', () => {
       ]);
       await page.goto('/claims/CLM-103');
       await expect(page.getByText('The claim is closed, so no service targets or review indicators apply.')).toBeVisible();
+      const released = page.getByRole('table', { name: 'Reserve history of the claim' });
+      await expect(released).toContainText('Released on closure');
+      await expect(released).not.toContainText('Review: material change');
     });
 
     await test.step('CLM-AT-06 reserve alert: CLM-101 P8,000 to P11,000 is a review cue, not a proven leakage event', async () => {
@@ -131,7 +136,7 @@ test.describe('acceptance scenarios CLM-AT-01 to CLM-AT-16', () => {
 
     await test.step('CLM-AT-07 high value: CLM-106 P30,000 incurred is over the P25,000 line and links to its detail', async () => {
       await goTo(page, 'Overview');
-      await expect(card(page, 'High-value claims')).toContainText('1');
+      await expect(cardValue(page, 'High-value claims')).toHaveText('1');
       await card(page, 'High-value claims').getByRole('link').click();
       await expect(claimIds(page)).toHaveText(['CLM-106']);
       await expect(cell(page, 'CLM-106', CLAIM_COLUMN.incurred)).toHaveText('P30,000.00');
@@ -160,24 +165,29 @@ test.describe('acceptance scenarios CLM-AT-01 to CLM-AT-16', () => {
     await test.step('CLM-AT-12 filters: broker, product and handler update Overview, Stages & Aging, the list and the sums together', async () => {
       await goTo(page, 'Overview');
       await page.getByLabel('Broker').selectOption({ label: 'Kopano Brokers (fictional)' });
-      await expect(card(page, 'Open claims')).toContainText('2');
-      await expect(card(page, 'Closed claims')).toContainText('0');
-      await expect(card(page, 'Outstanding reserve')).toContainText('P20,000.00');
-      await expect(card(page, 'Incurred')).toContainText('P20,000.00');
+      await expect(cardValue(page, 'Open claims')).toHaveText('2');
+      await expect(cardValue(page, 'Closed claims')).toHaveText('0');
+      await expect(cardValue(page, 'Outstanding reserve')).toHaveText('P20,000.00');
+      await expect(cardValue(page, 'Incurred')).toHaveText('P20,000.00');
       await goTo(page, 'Stages & Aging');
-      await expect(page.getByText('All open claims: 2').first()).toBeVisible();
+      await expect(page.getByText(/^All open claims: 2(?!\d)/).first()).toBeVisible();
       await goTo(page, 'Claims');
       await expect(claimIds(page)).toHaveText(['CLM-101', 'CLM-104']);
       expect(await columnTotal(page, CLAIM_COLUMN.incurred)).toBe(2000000n);
       await page.getByLabel('Product').selectOption({ label: 'Comprehensive Motor' });
       await expect(claimIds(page)).toHaveText(['CLM-101']);
       await goTo(page, 'Overview');
-      await expect(card(page, 'Open claims')).toContainText('1');
-      await expect(card(page, 'Incurred')).toContainText('P11,000.00');
+      await expect(cardValue(page, 'Open claims')).toHaveText('1');
+      await expect(cardValue(page, 'Incurred')).toHaveText('P11,000.00');
       await page.getByRole('button', { name: 'Clear filters' }).click();
       await page.getByLabel('Handler').selectOption({ label: 'Boitumelo Demo' });
-      await expect(card(page, 'Open claims')).toContainText('5');
-      await expect(card(page, 'Incurred')).toContainText('P77,000.00');
+      await expect(cardValue(page, 'Open claims')).toHaveText('5');
+      await expect(cardValue(page, 'Incurred')).toHaveText('P77,000.00');
+      await goTo(page, 'Stages & Aging');
+      await expect(page.getByText(/^All open claims: 5(?!\d)/).first()).toBeVisible();
+      await goTo(page, 'Claims');
+      await expect(claimIds(page)).toHaveCount(6);
+      expect(await columnTotal(page, CLAIM_COLUMN.incurred)).toBe(7700000n);
       await page.getByRole('button', { name: 'Clear filters' }).click();
     });
 
@@ -309,8 +319,8 @@ test.describe('acceptance scenarios CLM-AT-01 to CLM-AT-16', () => {
 
     await test.step('CLM-AT-11 payments: pending and rejected payments add nothing to paid in the period or paid to date', async () => {
       await goTo(page, 'Overview');
-      await expect(card(page, 'Paid to date')).toContainText('P9,000.00');
-      await expect(card(page, 'Paid in period')).toContainText('P9,000.00');
+      await expect(cardValue(page, 'Paid to date')).toHaveText('P9,000.00');
+      await expect(cardValue(page, 'Paid in period')).toHaveText('P9,000.00');
       await page.goto('/claims/CLM-104');
       await expect(page.getByText('P3,000.00').first()).toBeVisible();
       const unposted = page.getByRole('table', { name: 'Payments that are not posted' });
@@ -324,8 +334,8 @@ test.describe('acceptance scenarios CLM-AT-01 to CLM-AT-16', () => {
 
     await test.step('CLM-AT-16 reopen: reopening CLM-103 adds to its history and moves it back to open', async () => {
       await goTo(page, 'Overview');
-      await expect(card(page, 'Open claims')).toContainText('6');
-      await expect(card(page, 'Closed claims')).toContainText('0');
+      await expect(cardValue(page, 'Open claims')).toHaveText('6');
+      await expect(cardValue(page, 'Closed claims')).toHaveText('0');
       await page.goto('/claims/CLM-103');
       const history = page.getByRole('list', { name: 'Stage history of CLM-103' }).getByRole('listitem');
       await expect(history).toHaveCount(3);

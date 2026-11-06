@@ -55,8 +55,11 @@ export const ReserveMovementFact = z.object({
   event_at: Moment,
   old_amount: Money,
   new_amount: Money,
-  /** `INITIAL` is the first reserve set on a claim; it is not a movement and is never material. */
-  kind: z.enum(['INITIAL', 'INCREASE', 'DECREASE', 'UNCHANGED']),
+  /**
+   * `INITIAL` is the first reserve set on a claim; `CLOSING_RELEASE` is the reserve taken to zero on or after the date
+   * the claim closed. Neither is a movement to review, so neither is ever material.
+   */
+  kind: z.enum(['INITIAL', 'CLOSING_RELEASE', 'INCREASE', 'DECREASE', 'UNCHANGED']),
   change_amount: Money,
   /** Of the prior amount, one decimal; null when the prior amount is zero. */
   change_percent: z.number().nullable(),

@@ -81,6 +81,12 @@ describe('the claims rules engine on the TEST fixture', () => {
 
     // CLM-103 is closed: no age, no SLA, no severity. CLM-105 is recent and not past its New target. CLM-104 is approved, not paid.
     expect(byClaim['CLM-103']).toMatchObject({ age_bucket: null, sla: null, severity: null, closed_turnaround_days: 5 });
+    // Its P4,000 to P0 reserve on the day it closed is a closing release, listed but never a review cue.
+    expect(byClaim['CLM-103']?.reserve_movements.map((m) => [m.kind, m.material, m.material_by])).toEqual([
+      ['INITIAL', false, null],
+      ['CLOSING_RELEASE', false, null],
+    ]);
+    expect(byClaim['CLM-103']?.material_reserve_change).toBe(false);
     expect(byClaim['CLM-105']).toMatchObject({ age_days: 1, age_bucket: '0-7', severity: 'Low' });
     expect(byClaim['CLM-105']?.sla).toMatchObject({ status: 'approaching', business_days_left: 1 });
     expect(byClaim['CLM-104']).toMatchObject({ paid: '0.00', severity: null, severity_reasons: [] });
@@ -193,6 +199,9 @@ describe('the claims rules engine on the TEST fixture', () => {
     const reopened = computeClaimFacts({ ...clm103, events: [...clm103.events, event(clm103, 'EVT-CLM-103-3', '2026-10-18', 'Reopened')] }, context);
     expect(reopened).toMatchObject({ is_open: true, current_stage: 'Reopened', age_bucket: '8-30' });
     expect(reopened.sla).toMatchObject({ status: 'unknown', unknown_reason: 'NO_TARGET_FOR_STAGE' });
+    // The same release on a claim that never closed is a reserve move to review like any other.
+    const neverClosed = computeClaimFacts({ ...clm103, events: clm103.events.filter((e) => e.to_stage !== 'Closed'), closed_at: null, status: 'OPEN' }, context);
+    expect(neverClosed.reserve_movements.map((m) => [m.kind, m.material])).toEqual([['INITIAL', false], ['DECREASE', true]]);
 
     const unverified = computeClaimFacts({ ...clm101, supplier_requests: clm101.supplier_requests.map((r) => ({ ...r, requested_at: null })) }, context);
     expect(unverified).toMatchObject({ supplier_delayed: false, supplier_delay_unverified: true });
