@@ -16,7 +16,7 @@ import type {
   SupplierWaitFact,
 } from '../contracts/index.js';
 import { businessDaysBetween, calendarDaysBetween, weekdaySet } from './calendar.js';
-import { isClosedAt } from './closure.js';
+import { isClosedAt, isOpenAt } from './closure.js';
 import type { RuleConfig } from './config.js';
 import { postedPayments } from './payments.js';
 import { inPeriod, periodWindow } from './period.js';
@@ -227,7 +227,7 @@ export function computeClaimFacts(claim: ClaimRecord, context: RuleContext): Cla
   const latest = dated[dated.length - 1] ?? null;
   const currentStage = latest?.to_stage ?? null;
   const stageStartedAt = latest?.event_at ?? null;
-  const isOpen = currentStage === null ? claim.status !== 'CLOSED' : currentStage !== 'Closed';
+  const isOpen = isOpenAt(claim, asOf);
 
   const posted = postedPayments(claim, asOf);
   const paid = sumMoney(posted.map((payment) => payment.paid_amount));
