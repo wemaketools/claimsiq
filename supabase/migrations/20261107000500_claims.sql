@@ -1,10 +1,6 @@
 -- Claims and what happens to them: stage events, payments, reserve changes and supplier requests. A time the
 -- source did not give is NULL and means UNKNOWN to the rules, never good or bad.
 
--- The claim stages (src/contracts/entities.ts); the seed test compares this list with the contracts.
-create domain claim_stage as text
-  check (value in ('New', 'Triage', 'Assessment', 'Negotiation', 'Approved', 'Settlement', 'Closed', 'Reopened'));
-
 create table claims (
   tenant_id                   text not null references tenants (tenant_id) on delete cascade,
   claim_id                    text not null,

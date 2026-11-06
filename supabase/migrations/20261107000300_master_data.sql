@@ -1,9 +1,6 @@
 -- Master data of a tenant: users, clients, brokers, products, suppliers and policies. Every reference carries the
 -- tenant, so a row can only point at a parent of its own tenant. Dates and times that the contracts call a moment
--- (`YYYY-MM-DD` or a time with the +02:00 Africa/Gaborone offset) are kept exactly as the contracts write them.
-
-create domain moment as text
-  check (value ~ '^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?\+02:00)?$');
+-- are kept exactly as the contracts write them (the `moment` domain).
 
 create table users (
   tenant_id    text not null references tenants (tenant_id) on delete cascade,

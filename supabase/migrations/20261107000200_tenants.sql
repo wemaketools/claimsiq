@@ -1,10 +1,6 @@
 -- Tenants, who may enter them, and the rule configuration each one runs on. TEST and DEMO are two tenants (data
 -- sets) of one database and never mix: every other table is keyed (tenant_id, <entity>_id).
 
--- The four demo personas (src/contracts/personas.ts); the seed test compares this list with the contracts.
-create domain persona as text
-  check (value in ('head-of-claims', 'claims-handler', 'supplier-coordinator', 'finance'));
-
 create table tenants (
   tenant_id    text primary key,
   display_name text not null check (btrim(display_name) <> ''),
