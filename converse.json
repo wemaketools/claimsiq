@@ -1,0 +1,6 @@
+{
+	"agent": "claimsIQ",
+	"port": 5185,
+	"autoStart": true,
+	"dir": "ai/converse"
+}
