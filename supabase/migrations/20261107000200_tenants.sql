@@ -1,6 +1,10 @@
 -- Tenants, who may enter them, and the rule configuration each one runs on. TEST and DEMO are two tenants (data
 -- sets) of one database and never mix: every other table is keyed (tenant_id, <entity>_id).
 
+-- The four demo personas (src/contracts/personas.ts); the seed test compares this list with the contracts.
+create domain persona as text
+  check (value in ('head-of-claims', 'claims-handler', 'supplier-coordinator', 'finance'));
+
 create table tenants (
   tenant_id    text primary key,
   display_name text not null check (btrim(display_name) <> ''),
@@ -15,7 +19,7 @@ select enable_tenant_isolation('tenants', 'select');
 create table tenant_memberships (
   tenant_id    text not null references tenants (tenant_id) on delete cascade,
   auth_user_id uuid not null references auth.users (id) on delete cascade,
-  persona      text not null check (persona in ('head-of-claims', 'claims-handler', 'supplier-coordinator', 'finance')),
+  persona      persona not null,
   primary key (tenant_id, auth_user_id)
 );
 create index tenant_memberships_user_idx on tenant_memberships (auth_user_id);
@@ -29,7 +33,7 @@ create table rule_configs (
   config     jsonb not null check (jsonb_typeof(config) = 'object'),
   version    integer not null default 1 check (version >= 1),
   updated_at timestamptz not null default now(),
-  updated_by text check (updated_by in ('head-of-claims', 'claims-handler', 'supplier-coordinator', 'finance')),
+  updated_by persona,
   primary key (tenant_id, data_set),
   foreign key (tenant_id, data_set) references tenants (tenant_id, dataset_tag) on delete cascade
 );

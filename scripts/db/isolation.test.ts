@@ -56,6 +56,9 @@ describe.skipIf(serverUrl === null)('tenant isolation', () => {
     headOfClaims = accounts.find((account) => account.persona === 'head-of-claims')?.authUserId ?? '';
     await seedFromFixtures(scratch.db, 'TEST', accounts);
     await seedFromFixtures(scratch.db, 'DEMO', accounts);
+    // The fixtures hold no tasks: give DEMO one, with its audit entry, so the checks below have rows to keep out.
+    await scratch.db.insertInto('tasks').values({ tenant_id: 'DEMO', task_id: 'TASK-0001', module: 'CLAIMS', subject_type: 'CLAIM', subject_id: 'DCLM-002', priority: 'LOW', status: 'OPEN', updated_at: '2026-10-21T08:00:00+02:00' }).execute();
+    await scratch.db.insertInto('task_audit_entries').values({ tenant_id: 'DEMO', task_id: 'TASK-0001', at: '2026-10-21T08:00:00+02:00', actor: 'finance', action: 'CREATED' }).execute();
   });
   afterAll(async () => {
     await scratch.drop();
@@ -63,6 +66,8 @@ describe.skipIf(serverUrl === null)('tenant isolation', () => {
 
   it('keeps a TEST session away from every DEMO row, to read or to write, and a session with no tenant away from all rows', async () => {
     await scratch.withClient(async (client) => {
+      const demoTaskRows = await client.query<{ n: string }>("select (select count(*) from tasks where tenant_id = 'DEMO') + (select count(*) from task_audit_entries where tenant_id = 'DEMO') as n");
+      expect(Number(demoTaskRows.rows[0]?.n)).toBe(2);
       for (const table of TENANT_TABLES) {
         const owner = await client.query<{ tenant_id: string; n: string }>(`select tenant_id, count(*)::text as n from ${table} group by tenant_id`);
         const test = Number(owner.rows.find((row) => row.tenant_id === 'TEST')?.n ?? 0);
@@ -123,12 +128,15 @@ describe.skipIf(serverUrl === null)('tenant isolation', () => {
     await scratch.withClient(async (client) => {
       expect(await failureCode(client, 'TEST', "update task_audit_entries set note = 'edited'")).toBe('42501');
       expect(await failureCode(client, 'TEST', 'delete from task_audit_entries')).toBe('42501');
+      expect(await failureCode(client, 'TEST', 'delete from tasks')).toBe('42501');
+      const trail = await client.query<{ n: string }>("select count(*)::text as n from task_audit_entries where tenant_id = 'TEST'");
+      expect(trail.rows[0]?.n).toBe('1');
       expect(await failureCode(client, 'TEST', "select next_task_id('DEMO')")).toBe('42501');
     });
 
     const api = getConfig().supabase;
     const response = await fetch(`${api.url}/rest/v1/claims?select=claim_id`, { headers: { apikey: api.anonKey, authorization: `Bearer ${api.anonKey}` } });
-    const body = (await response.json()) as unknown;
-    expect(response.ok && Array.isArray(body) && body.length > 0).toBe(false);
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({ code: '42501', message: 'permission denied for table claims' });
   });
 });

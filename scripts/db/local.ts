@@ -1,17 +1,18 @@
-/** The guard of every destructive database script: only the local Docker stack may be reset. */
+/** The one definition of "this machine" for every script that refuses to touch anything else. */
 import type { AppConfig } from '../../src/server/lib/config/index.js';
 
 const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]', '::1']);
 
-export function isLocalDatabase(config: Pick<AppConfig, 'appEnv' | 'database'>): boolean {
-  if (config.appEnv !== 'local' || config.database.url === null) {
-    return false;
-  }
+export function isLocalUrl(url: string): boolean {
   try {
-    return LOCAL_HOSTS.has(new URL(config.database.url).hostname);
+    return LOCAL_HOSTS.has(new URL(url).hostname);
   } catch {
     return false;
   }
+}
+
+export function isLocalDatabase(config: Pick<AppConfig, 'appEnv' | 'database'>): boolean {
+  return config.appEnv === 'local' && config.database.url !== null && isLocalUrl(config.database.url);
 }
 
 /** The database URL, or an error that says what to do; throws unless the target is the local stack. */

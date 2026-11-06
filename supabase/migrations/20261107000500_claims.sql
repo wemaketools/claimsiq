@@ -1,13 +1,17 @@
 -- Claims and what happens to them: stage events, payments, reserve changes and supplier requests. A time the
 -- source did not give is NULL and means UNKNOWN to the rules, never good or bad.
 
+-- The claim stages (src/contracts/entities.ts); the seed test compares this list with the contracts.
+create domain claim_stage as text
+  check (value in ('New', 'Triage', 'Assessment', 'Negotiation', 'Approved', 'Settlement', 'Closed', 'Reopened'));
+
 create table claims (
   tenant_id                   text not null references tenants (tenant_id) on delete cascade,
   claim_id                    text not null,
   policy_id                   text not null,
   loss_at                     moment,
   reported_at                 moment,
-  stage                       text not null check (stage in ('New', 'Triage', 'Assessment', 'Negotiation', 'Approved', 'Settlement', 'Closed', 'Reopened')),
+  stage                       claim_stage not null,
   status                      text not null check (status in ('OPEN', 'CLOSED')),
   handler_id                  text not null,
   supplier_id                 text,
@@ -28,8 +32,8 @@ create table claim_events (
   event_id   text not null,
   claim_id   text not null,
   event_at   moment,
-  from_stage text check (from_stage in ('New', 'Triage', 'Assessment', 'Negotiation', 'Approved', 'Settlement', 'Closed', 'Reopened')),
-  to_stage   text not null check (to_stage in ('New', 'Triage', 'Assessment', 'Negotiation', 'Approved', 'Settlement', 'Closed', 'Reopened')),
+  from_stage claim_stage,
+  to_stage   claim_stage not null,
   reason     text not null check (btrim(reason) <> ''),
   actor_id   text not null,
   primary key (tenant_id, event_id),

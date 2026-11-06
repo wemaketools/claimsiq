@@ -22,17 +22,10 @@ import type { DemoAccount } from '../../src/ui/src/auth/demoAccountList.js';
 import { ConfigurationError, getConfig } from '../../src/server/lib/config/index.js';
 import type { AppConfig } from '../../src/server/lib/config/index.js';
 import { getAdminClient } from '../../src/server/lib/supabase/index.js';
-
-const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]', '::1']);
+import { isLocalUrl } from '../db/local.js';
 
 export function isLocalTarget(config: Pick<AppConfig, 'appEnv' | 'supabase'>): boolean {
-  let host: string;
-  try {
-    host = new URL(config.supabase.url).hostname;
-  } catch {
-    return false;
-  }
-  return config.appEnv === 'local' && LOCAL_HOSTS.has(host);
+  return config.appEnv === 'local' && isLocalUrl(config.supabase.url);
 }
 
 async function existingUsers(admin: SupabaseClient): Promise<Map<string, User>> {

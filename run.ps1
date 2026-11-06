@@ -10,7 +10,9 @@
        and its Mailpit catches password-reset emails;
     4. writes or refreshes the Supabase values in the root .env.local from `supabase status`, keeping every
        other line of the file;
-    5. creates or updates the demo accounts in local Supabase Auth (`bun run auth:personas`, password test1234);
+    5. applies the database migrations (`bun run db:migrate`), creates or updates the demo accounts in local
+       Supabase Auth (`bun run auth:personas`, password test1234) and loads the TEST and DEMO fixtures into the
+       database (`bun run db:seed`, which replaces both data sets and links the accounts to them);
     6. runs the app (`bun run dev`): the SPA on http://localhost:5273. Press Ctrl+C to stop it; the Supabase
        stack keeps running.
 
@@ -155,8 +157,14 @@ Invoke-Bun @('run', 'supabase:start')
 Write-Step 'Syncing .env.local with the running stack'
 Sync-EnvLocal
 
+Write-Step 'Applying the database migrations'
+Invoke-Bun @('run', 'db:migrate')
+
 Write-Step 'Creating or updating the demo accounts (password test1234)'
 Invoke-Bun @('run', 'auth:personas')
+
+Write-Step 'Seeding TEST and DEMO into the database'
+Invoke-Bun @('run', 'db:seed')
 
 Write-Step 'Running the app: http://localhost:5273 (Ctrl+C to stop)'
 Write-Host '    Password-reset emails: Mailpit at http://127.0.0.1:54424' -ForegroundColor DarkGray

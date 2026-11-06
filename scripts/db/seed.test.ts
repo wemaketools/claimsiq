@@ -7,7 +7,9 @@ import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { DEMO_ACCOUNTS } from '../../src/ui/src/auth/demoAccountList.js';
-import { ENTITY_NAMES } from '../../src/contracts/index.js';
+import { z } from 'zod';
+
+import { ENTITIES, ENTITY_NAMES, PERSONA_IDS, TaskAuditEntry } from '../../src/contracts/index.js';
 import { readFixtureFiles, readFixtureJson, withEdit } from '../../src/mock-api/test-support/fixtureFiles.js';
 import { renderSchema, SCHEMA_FILE } from './generate-types.js';
 import { createScratchDatabase, reachableDatabaseUrl } from './scratchDatabase.js';
@@ -48,6 +50,37 @@ describe.skipIf(serverUrl === null)('the Stage B database', () => {
       expect(row, row.relname).toMatchObject({ relrowsecurity: true, policies: '1', anon_reads: false, authenticated_reads: false });
     }
     expect(await scratch.withClient((client) => renderSchema(client))).toBe(readFileSync(SCHEMA_FILE, 'utf8'));
+  });
+
+  it('allows in every enum column exactly the values the contracts name', async () => {
+    const columns: [table: string, column: string, values: readonly string[]][] = [
+      ['tenant_memberships', 'persona', PERSONA_IDS],
+      ['rule_configs', 'updated_by', PERSONA_IDS],
+      ['task_audit_entries', 'actor', PERSONA_IDS],
+      ['task_audit_entries', 'action', TaskAuditEntry.shape.action.options],
+    ];
+    for (const name of ENTITY_NAMES) {
+      for (const [column, field] of Object.entries(ENTITIES[name].schema.shape)) {
+        const type = field instanceof z.ZodNullable ? field.unwrap() : field;
+        if (type instanceof z.ZodEnum) {
+          columns.push([ENTITY_TABLES[name], column, type.options.map(String)]);
+        }
+      }
+    }
+    expect(columns.length).toBeGreaterThan(12);
+
+    await scratch.withClient(async (client) => {
+      for (const [table, column, values] of columns) {
+        const { rows } = await client.query<{ def: string }>(
+          `select pg_get_constraintdef(c.oid) as def from pg_constraint c, pg_attribute a
+            where a.attrelid = $1::regclass and a.attname = $2 and c.contype = 'c'
+              and ((c.conrelid = a.attrelid and c.conkey = array[a.attnum]) or c.contypid = a.atttypid)`,
+          [table, column],
+        );
+        const allowed = rows.flatMap((row) => [...row.def.matchAll(/'([^']+)'::text/g)].map((match) => match[1]));
+        expect([...allowed].sort(), `${table}.${column}`).toEqual([...values].sort());
+      }
+    });
   });
 
   it('seeds TEST and DEMO as separate tenants with the fixtures counts and figures, reports a quarantined row without inserting it, and replaces the data set on a second run', async () => {

@@ -45,8 +45,13 @@ export interface ScratchDatabase {
 export async function createScratchDatabase(serverUrl: string): Promise<ScratchDatabase> {
   const name = `claimsiq_scratch_${randomBytes(6).toString('hex')}`;
   const admin = new pg.Client({ connectionString: serverUrl });
-  await admin.connect();
-  await admin.query(`create database ${name}`);
+  try {
+    await admin.connect();
+    await admin.query(`create database ${name}`);
+  } catch (error) {
+    await admin.end().catch(() => undefined);
+    throw error;
+  }
 
   const url = new URL(serverUrl);
   url.pathname = `/${name}`;

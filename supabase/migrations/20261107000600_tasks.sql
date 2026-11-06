@@ -19,21 +19,22 @@ create table tasks (
   unique (tenant_id, idempotency_key)
 );
 create index tasks_subject_idx on tasks (tenant_id, subject_type, subject_id);
-select enable_tenant_isolation('tasks');
+select enable_tenant_isolation('tasks', 'select, insert, update');
 
--- Append only: the application role can add entries and read them, never change or remove one.
+-- Append only: the application role can add entries and read them, never change or remove one. Removing a task
+-- would remove its entries, so the application role may not delete tasks either, and the key does not cascade.
 create table task_audit_entries (
   tenant_id  text not null references tenants (tenant_id) on delete cascade,
   audit_id   integer generated always as identity,
   task_id    text not null,
   at         timestamptz not null,
-  actor      text not null check (actor in ('head-of-claims', 'claims-handler', 'supplier-coordinator', 'finance')),
+  actor      persona not null,
   action     text not null check (action in ('CREATED', 'ASSIGNED', 'STATUS_CHANGED')),
   from_value text,
   to_value   text,
   note       text,
   primary key (tenant_id, audit_id),
-  foreign key (tenant_id, task_id) references tasks (tenant_id, task_id) on delete cascade
+  foreign key (tenant_id, task_id) references tasks (tenant_id, task_id)
 );
 create index task_audit_entries_task_idx on task_audit_entries (tenant_id, task_id, at);
 select enable_tenant_isolation('task_audit_entries', 'select, insert');

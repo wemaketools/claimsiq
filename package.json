@@ -2,7 +2,7 @@
   "name": "claimsiq",
   "version": "0.1.0",
   "private": true,
-  "description": "ClaimsIQ (Claims Intelligence): claims control tower for insurers. Stage A: SPA with typed contracts, a rules engine and a mock API over versioned fixtures.",
+  "description": "ClaimsIQ (Claims Intelligence): claims control tower for insurers. Stage A: SPA with typed contracts, a rules engine and a mock API over versioned fixtures. Stage B: Postgres schema with per-tenant row level security, seeded from the same fixtures.",
   "type": "module",
   "workspaces": [
     "src/ui",
@@ -32,7 +32,7 @@
     "test:ui": "bun run --filter @claimsiq/ui test",
     "ci:security": "bun scripts/ci/scan-secrets.ts && bun scripts/ci/scan-bundle.ts && bun scripts/ci/scan-bundle.ts --prototype",
     "ci:test:ui": "bun run --filter @claimsiq/ui test --reporter=default --reporter=json --outputFile.json=../../.test-results/vitest-ui.json && bun scripts/ci/assert-test-run.ts --report .test-results/vitest-ui.json --min-tests 59",
-    "ci:test:unit": "vitest run --project unit --reporter=default --reporter=json --outputFile.json=.test-results/vitest-unit.json && bun scripts/ci/assert-test-run.ts --report .test-results/vitest-unit.json --min-tests 30",
+    "ci:test:unit": "vitest run --project unit --reporter=default --reporter=json --outputFile.json=.test-results/vitest-unit.json && bun scripts/ci/assert-test-run.ts --report .test-results/vitest-unit.json --min-tests 31",
     "test:e2e": "bun run --filter @claimsiq/e2e test",
     "test:e2e:prototype": "E2E_PROJECT=prototype bun run --filter @claimsiq/e2e test",
     "verify": "bun run typecheck && bun run typecheck:ui && bun run lint && bun run lint:ui && bun run test && bun run test:ui && bun run build:ui"
