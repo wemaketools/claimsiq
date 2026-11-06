@@ -13,6 +13,7 @@ import {
   FILTERS,
   expectNoAxeViolations,
   expectNoHorizontalScroll,
+  expectOneLightA4Page,
   resetData,
 } from './support';
 
@@ -100,6 +101,18 @@ test.describe('prototype build', () => {
     await page.goto('/exceptions');
     await expect(page.getByRole('heading', { name: 'Exceptions & SLA', level: 1 })).toBeVisible();
     await expectNoAxeViolations(page);
+
+    // Digest in the dark theme: both data sets print light on one A4 page, DEMO with its many more claims too.
+    await nav.getByRole('link', { name: 'Digest' }).click();
+    const sheet = page.getByRole('article', { name: 'Claims digest' });
+    for (const dataSet of ['DEMO', 'TEST']) {
+      await page.getByLabel('Data set').selectOption(dataSet);
+      await expect(sheet).toContainText(`Data set${dataSet}`);
+      await expect(sheet.getByRole('region', { name: 'Open claims', exact: true })).toContainText(/\d/);
+      await expect(sheet.getByRole('table', { name: 'Open actions' })).not.toHaveAttribute('aria-busy', 'true');
+      await expectNoAxeViolations(page);
+      await expectOneLightA4Page(page);
+    }
 
     // Rules: Finance saves a higher high-value line and CLM-106 stops being high value on Overview (the change is kept
     // across a reload), Claims Handler only reads the rules, and Restore defaults and Reset bring the spec's numbers back.

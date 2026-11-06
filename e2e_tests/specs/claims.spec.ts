@@ -15,7 +15,7 @@ import { readFileSync } from 'node:fs';
 
 import { expect, test } from '@playwright/test';
 
-import { expectNoAxeViolations, expectNoHorizontalScroll, resetData } from './support';
+import { expectNoAxeViolations, expectNoHorizontalScroll, expectOneLightA4Page, resetData } from './support';
 
 test.describe('claim screens', () => {
   test('Overview, its click-through, filters, CSV and Stages & Aging work with the keyboard at 1366px and pass axe in both themes', async ({
@@ -132,6 +132,21 @@ test.describe('claim screens', () => {
     await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Overview' }).click();
     await expect(card('Open claims')).toContainText('2');
     await expectNoAxeViolations(page);
+
+    // Digest follows the filter and says so; cleared, TEST prints light on one A4 page although the screen is dark.
+    await nav.getByRole('link', { name: 'Digest' }).click();
+    const sheet = page.getByRole('article', { name: 'Claims digest' });
+    await expect(sheet).toContainText('FiltersBroker: Kopano Brokers (fictional)');
+    await expect(sheet.getByRole('region', { name: 'Open claims', exact: true })).toContainText('2');
+    await expect(sheet.getByRole('table', { name: 'Top exceptions' })).toContainText('CLM-101');
+    await expectNoHorizontalScroll(page);
+    await expectNoAxeViolations(page);
+    await page.getByRole('button', { name: 'Clear filters' }).click();
+    await expect(sheet).toContainText('FiltersNone, all claims');
+    await expect(sheet.getByRole('region', { name: 'Open claims', exact: true })).toContainText('5');
+    await expect(sheet.getByRole('table', { name: 'Open actions' })).not.toHaveAttribute('aria-busy', 'true');
+    await expectOneLightA4Page(page);
+    await page.getByLabel('Broker').selectOption({ label: 'Kopano Brokers (fictional)' });
 
     // Exceptions & SLA keeps the filter; a flagged claim opens with its reserve flag, and its policy opens its invoice.
     await nav.getByRole('link', { name: 'Exceptions & SLA' }).click();

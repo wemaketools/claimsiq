@@ -7,7 +7,7 @@ import { t } from '../../lib/i18n';
 import { baselineRow } from './rows';
 import type { PercentileRow, SupplierRow } from './rows';
 
-function Placement({
+export function Placement({
   value,
   position,
 }: {

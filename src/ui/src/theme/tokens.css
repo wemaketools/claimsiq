@@ -10,7 +10,8 @@
  *   items; accent-contrast is almost invisible on the dark-theme sidebar.
  * - Half-step spacing tokens (space-0-5, space-1-5, space-2-5) replace literal 2px, 6px and 10px gaps.
  *
- * Theme selection: the data-theme attribute on <html> (light | dark), remembered in the browser.
+ * Theme selection: the data-theme attribute on <html> (light | dark), remembered in the browser. Printing always uses the
+ * light tokens.
  */
 
 :root,
@@ -75,55 +76,58 @@ html[data-theme='light'] {
   --ciq-on-solid: #ffffff;
 }
 
-html[data-theme='dark'] {
-  color-scheme: dark;
+/* Printing is always light, so the dark block does not apply to print media and the light tokens above do. */
+@media not print {
+  html[data-theme='dark'] {
+    color-scheme: dark;
 
-  --ciq-surface-sidebar: #0b1e2e;
-  --ciq-surface-app: #0e1621;
-  --ciq-surface-card: #16232f;
-  --ciq-surface-raised: #1c2b39;
-  --ciq-surface-hover: #1b2a37;
-  --ciq-surface-inset: #101c27;
-  --ciq-border-subtle: #263644;
-  --ciq-border-strong: #35485a;
-  --ciq-text-primary: #eaf0f5;
-  --ciq-text-secondary: #9db0bf;
-  --ciq-text-on-sidebar: #d7e3ec;
-  --ciq-sidebar-text-strong: #ffffff;
-  --ciq-sidebar-hover: rgba(255, 255, 255, 0.07);
-  --ciq-sidebar-separator: rgba(255, 255, 255, 0.1);
+    --ciq-surface-sidebar: #0b1e2e;
+    --ciq-surface-app: #0e1621;
+    --ciq-surface-card: #16232f;
+    --ciq-surface-raised: #1c2b39;
+    --ciq-surface-hover: #1b2a37;
+    --ciq-surface-inset: #101c27;
+    --ciq-border-subtle: #263644;
+    --ciq-border-strong: #35485a;
+    --ciq-text-primary: #eaf0f5;
+    --ciq-text-secondary: #9db0bf;
+    --ciq-text-on-sidebar: #d7e3ec;
+    --ciq-sidebar-text-strong: #ffffff;
+    --ciq-sidebar-hover: rgba(255, 255, 255, 0.07);
+    --ciq-sidebar-separator: rgba(255, 255, 255, 0.1);
 
-  --ciq-accent: #2fb6c2;
-  --ciq-accent-strong: #49c5d0;
-  --ciq-accent-contrast: #08202a;
-  --ciq-accent-soft: #123b41;
-  --ciq-accent-fill: #2fb6c2;
-  --ciq-accent-fill-hover: #49c5d0;
-  --ciq-accent-text: #49c5d0;
+    --ciq-accent: #2fb6c2;
+    --ciq-accent-strong: #49c5d0;
+    --ciq-accent-contrast: #08202a;
+    --ciq-accent-soft: #123b41;
+    --ciq-accent-fill: #2fb6c2;
+    --ciq-accent-fill-hover: #49c5d0;
+    --ciq-accent-text: #49c5d0;
 
-  --ciq-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
-  --ciq-shadow-raised: 0 12px 40px rgba(0, 0, 0, 0.55);
-  --ciq-scrim: rgba(2, 8, 12, 0.6);
-  --ciq-focus-ring: 0 0 0 2px var(--ciq-surface-card), 0 0 0 4px var(--ciq-accent);
-  --ciq-select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239db0bf' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    --ciq-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
+    --ciq-shadow-raised: 0 12px 40px rgba(0, 0, 0, 0.55);
+    --ciq-scrim: rgba(2, 8, 12, 0.6);
+    --ciq-focus-ring: 0 0 0 2px var(--ciq-surface-card), 0 0 0 4px var(--ciq-accent);
+    --ciq-select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239db0bf' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
 
-  --ciq-success: #3fbf86;
-  --ciq-success-soft: #163429;
-  --ciq-warning: #e3a93c;
-  --ciq-warning-soft: #3a2e14;
-  --ciq-danger: #e56b5d;
-  --ciq-danger-soft: #3a1f1a;
-  --ciq-info: #5aa0dd;
-  --ciq-info-soft: #17293a;
-  --ciq-neutral: #8497a5;
-  --ciq-neutral-soft: #24313c;
-  --ciq-success-text: #3fbf86;
-  --ciq-warning-text: #e3a93c;
-  --ciq-danger-text: #e56b5d;
-  --ciq-info-text: #5aa0dd;
-  --ciq-neutral-text: #93a6b4;
+    --ciq-success: #3fbf86;
+    --ciq-success-soft: #163429;
+    --ciq-warning: #e3a93c;
+    --ciq-warning-soft: #3a2e14;
+    --ciq-danger: #e56b5d;
+    --ciq-danger-soft: #3a1f1a;
+    --ciq-info: #5aa0dd;
+    --ciq-info-soft: #17293a;
+    --ciq-neutral: #8497a5;
+    --ciq-neutral-soft: #24313c;
+    --ciq-success-text: #3fbf86;
+    --ciq-warning-text: #e3a93c;
+    --ciq-danger-text: #e56b5d;
+    --ciq-info-text: #5aa0dd;
+    --ciq-neutral-text: #93a6b4;
 
-  --ciq-on-solid: #08202a;
+    --ciq-on-solid: #08202a;
+  }
 }
 
 :root {

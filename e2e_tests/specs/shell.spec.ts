@@ -1,6 +1,6 @@
 /**
  * Shell journeys: real sign-in against local Supabase Auth (a click on a demo role signs in through the server's demo
- * sign-in endpoint; an e-mail off the list is refused), the seven destinations (the claim screens show the shared
+ * sign-in endpoint; an e-mail off the list is refused), the eight destinations (the claim screens show the shared
  * filter bar, the Action Queue its task filters, Rules none), a supplier's figures, a task created, assigned and moved on in the Action
  * Queue and kept across a reload (in the database, through the real API), the persona switch and the theme toggle (both survive a reload), sign-out,
  * and axe accessibility checks.
@@ -17,6 +17,7 @@ import {
   FILTERS,
   expectNoAxeViolations,
   expectNoHorizontalScroll,
+  expectOneLightA4Page,
   resetData,
 } from './support';
 
@@ -54,7 +55,7 @@ test.describe('shell', () => {
     await expect(page).toHaveURL(/\/signin$/);
   });
 
-  test('a demo account signs in to Overview, walks the seven destinations, keeps persona and theme across a reload, and signs out', async ({
+  test('a demo account signs in to Overview, walks the eight destinations, keeps persona and theme across a reload, and signs out', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1366, height: 768 });
@@ -147,6 +148,17 @@ test.describe('shell', () => {
     );
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     await expectNoAxeViolations(page);
+
+    // Digest: no persona is kept from it, the DEMO figures come from the API, and in the dark theme it prints light on one A4 page.
+    await nav.getByRole('link', { name: 'Digest' }).click();
+    const sheet = page.getByRole('article', { name: 'Claims digest' });
+    await expect(sheet).toContainText('Data setDEMO');
+    await expect(sheet.getByRole('region', { name: 'Open claims', exact: true })).toContainText(/\d/);
+    await expect(sheet.getByRole('table', { name: 'Open actions' })).toBeVisible();
+    await expect(sheet.getByRole('table', { name: 'Open actions' })).not.toHaveAttribute('aria-busy', 'true');
+    await expectNoHorizontalScroll(page);
+    await expectNoAxeViolations(page);
+    await expectOneLightA4Page(page);
 
     await nav.getByRole('link', { name: 'Action Queue' }).click();
     const queueRows = page.getByRole('table', { name: 'Action Queue' }).getByRole('row').filter({ hasText: 'DCLM-016' });
