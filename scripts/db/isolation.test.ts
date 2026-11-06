@@ -1,5 +1,6 @@
 /**
- * Tenant isolation against a scratch database seeded with TEST and DEMO (skipped without the local stack).
+ * Tenant isolation against a scratch database seeded with TEST and DEMO (skipped without the local stack). One step
+ * at the end of the second test reads the stack's own database instead, through Supabase's REST API.
  */
 import { randomUUID } from 'node:crypto';
 
@@ -104,7 +105,7 @@ describe.skipIf(serverUrl === null)('tenant isolation', () => {
     expect([...viaHelper.scoped, ...viaHelper.rlsOnly].every((row) => row.tenant_id === 'TEST')).toBe(true);
   });
 
-  it('lets a user enter only the tenants they are a member of, and lets the application add tasks and audit entries to its own tenant but never change or remove an audit entry or delete a task, and never use another tenant\'s task counter', async () => {
+  it('lets a user enter only the tenants they are a member of, and lets the application add tasks and audit entries to its own tenant but never change or remove an audit entry or delete a task, and never use another tenant\'s task counter, and the stack\'s REST API refuses the anonymous key', async () => {
     expect(await resolveTenantAccess(scratch.db, headOfClaims, 'TEST')).toMatchObject({ ok: true, tenantId: 'TEST', persona: 'head-of-claims' });
     const strangers = [
       resolveTenantAccess(scratch.db, randomUUID(), 'TEST'),
@@ -133,10 +134,8 @@ describe.skipIf(serverUrl === null)('tenant isolation', () => {
       expect(trail.rows[0]?.n).toBe('1');
       expect(await failureCode(client, 'TEST', "select next_task_id('DEMO')")).toBe('42501');
     });
-  });
 
-  // PostgREST serves the stack's own database, not the scratch one: this checks what `db:migrate` / `db:reset` left there.
-  it("answers the anonymous key 401, permission denied, on the stack's own migrated database", async () => {
+    // PostgREST serves the stack's own database, not the scratch one: this checks what `db:migrate` / `db:reset` left there.
     const api = getConfig().supabase;
     const response = await fetch(`${api.url}/rest/v1/claims?select=claim_id`, { headers: { apikey: api.anonKey, authorization: `Bearer ${api.anonKey}` } });
     expect(response.status).toBe(401);
