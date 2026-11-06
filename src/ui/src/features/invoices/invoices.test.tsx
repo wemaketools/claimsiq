@@ -16,11 +16,11 @@ describe('Policy invoices (the stand-in for Premium Collections)', () => {
     const transport = transportOver({
       TEST: {
         ...files,
-        // A second invoice on CLM-106's policy, with no due date and part of a receipt applied; POL-005 loses its invoice.
+        // A second invoice on CLM-106's policy, with a status the catalog does not name, no due date and part of a receipt applied; POL-005 loses its invoice.
         'premium_invoices.csv': `${(files['premium_invoices.csv'] ?? '')
           .split('\n')
           .filter((line) => !line.includes('INV-005'))
-          .join('\n')}TEST,INV-007,POL-006,2026-09-01,,3000,BWP,ISSUED\n`,
+          .join('\n')}TEST,INV-007,POL-006,2026-09-01,,3000,BWP,PART_PAID\n`,
         'payment_allocations.csv': `${files['payment_allocations.csv'] ?? ''}TEST,ALLOC-X1,RCP-UNAPP,INV-007,500,2026-10-12\n`,
       },
     });
@@ -55,7 +55,7 @@ describe('Policy invoices (the stand-in for Premium Collections)', () => {
         'P3,000.00',
         'P500.00',
         'P2,500.00',
-        'Issued',
+        'Part paid',
         'RCP-UNAPP',
       ],
     ]);

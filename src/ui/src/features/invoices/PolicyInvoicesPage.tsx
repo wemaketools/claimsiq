@@ -45,10 +45,18 @@ function invoiceRow(invoice: InvoiceRecord): InvoiceRow {
   };
 }
 
-/** A status the catalog names, else the status as recorded: an unfamiliar one is shown as it is, not guessed at. */
-function statusText(group: 'status' | 'policyStatus', recorded: string): string {
-  const key = `invoices.${group}.${recorded}`;
-  return hasTranslation(key) ? t(key) : recorded;
+/** A recorded code such as `PART_PAID` as words, for a status the catalog does not name yet. */
+const readable = (code: string): string =>
+  code.charAt(0).toUpperCase() + code.slice(1).toLowerCase().replaceAll('_', ' ');
+
+function invoiceStatus(recorded: string): string {
+  const key = `invoices.status.${recorded}`;
+  return hasTranslation(key) ? t(key) : readable(recorded);
+}
+
+function policyStatus(recorded: string): string {
+  const key = `invoices.policyStatus.${recorded}`;
+  return hasTranslation(key) ? t(key) : readable(recorded);
 }
 
 const COLUMNS: DataTableColumn<InvoiceRow>[] = [
@@ -86,7 +94,7 @@ const COLUMNS: DataTableColumn<InvoiceRow>[] = [
     header: t('invoices.column.status'),
     cell: (row) => (
       <Chip tone="neutral-outlined" size="sm">
-        {statusText('status', row.status)}
+        {invoiceStatus(row.status)}
       </Chip>
     ),
   },
@@ -185,7 +193,7 @@ export default function PolicyInvoicesPage() {
               {
                 key: 'status',
                 label: t('invoices.policy.status'),
-                value: statusText('policyStatus', policy.status),
+                value: policyStatus(policy.status),
               },
             ]}
           />

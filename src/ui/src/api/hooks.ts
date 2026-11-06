@@ -80,7 +80,10 @@ export type QueryStatus = 'loading' | 'success' | 'error';
 
 export interface QueryResult<T> {
   readonly status: QueryStatus;
-  /** The data of the latest successful request (of the same endpoint and user) or `undefined`. */
+  /**
+   * The answer to this same request, or `undefined` until it has answered; with `keepPrevious`, while a different
+   * request of the same endpoint runs, the previous request's answer.
+   */
   readonly data: T | undefined;
   readonly error: ApiError | null;
   /** A request is in flight (also true during a refresh that keeps showing `data`). */

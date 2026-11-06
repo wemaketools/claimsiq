@@ -54,11 +54,14 @@ describe('translation', () => {
       { query: '?raw', import: 'default', eager: true },
     );
     const text = Object.values(sources).join('\n');
-    // A key is read when it appears as a literal, or as the start of a template such as `ns.group.${name}`.
+    // A key is read when it appears as a literal, or sits under a template such as `ns.group.${name}`; the template
+    // must end its prefix at a segment inside a group (never a bare namespace), so it cannot vouch for a whole feature.
     const literals = new Set(
       [...text.matchAll(/['"]([a-z][\w-]*(?:\.[\w-]+)+)['"]/g)].map((m) => m[1]),
     );
-    const prefixes = [...text.matchAll(/`([a-z][\w-]*\.[\w.-]*)\$\{/g)].map((m) => m[1] ?? '');
+    const prefixes = [...text.matchAll(/`([a-z][\w-]*\.[\w-]+\.[\w.-]*)\$\{/g)]
+      .map((m) => m[1] ?? '')
+      .filter((start) => start.endsWith('.'));
     const unread: string[] = [];
     const walk = (prefix: string, catalog: Catalog): void => {
       for (const [name, value] of Object.entries(catalog)) {
