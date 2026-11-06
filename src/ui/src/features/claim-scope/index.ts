@@ -3,6 +3,7 @@ export * from './Chips';
 export { ClaimFilterBar } from './ClaimFilterBar';
 export { ExportCsvButton } from './ExportCsvButton';
 export * from './criteria';
+export * from './filteredQuery';
 export * from './labels';
 export * from './lookups';
 export * from './moment';

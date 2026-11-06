@@ -5,9 +5,9 @@
 import { DEFAULT_PERIOD, PERIOD_OPTIONS, endpoints } from '../../../../contracts/index';
 import type { PeriodOption } from '../../../../contracts/index';
 import type { z } from 'zod';
-import { useApiQuery } from '../../api/hooks';
 import type { QueryResult } from '../../api/hooks';
 import { useScreenFilters } from '../../app/hooks';
+import { useClaimFilteredQuery } from './filteredQuery';
 import { useClaimLookups } from './lookups';
 import type { LookupsResult } from './lookups';
 
@@ -16,9 +16,6 @@ export const CLAIM_SCOPE_SCREEN = 'claim-scope';
 export const CLAIM_FILTER_KEYS = ['policy_id', 'broker_id', 'product_id', 'handler_id'] as const;
 export type ClaimFilterKey = (typeof CLAIM_FILTER_KEYS)[number];
 export type ClaimFilters = Record<ClaimFilterKey, string | null>;
-
-/** The query of every read that takes the shared filters: the filters as they are, since the API client leaves out the null ones. */
-export const claimFilterQuery = (filters: ClaimFilters): ClaimFilters => filters;
 
 /** The stored shape: the four narrowing filters, and the period the Overview's period cards cover. */
 type StoredScope = ClaimFilters & { period: string | null };
@@ -52,11 +49,7 @@ export function useClaimScope(): ClaimScope {
     CLAIM_FILTER_KEYS.map((key) => [key, typeof stored[key] === 'string' ? stored[key] : null]),
   ) as ClaimFilters;
   const period = PERIOD_OPTIONS.find((option) => option === stored.period) ?? DEFAULT_PERIOD;
-  const facts = useApiQuery(
-    endpoints.claimsFacts,
-    { query: { ...claimFilterQuery(filters), period } },
-    { keepPrevious: true },
-  );
+  const facts = useClaimFilteredQuery(endpoints.claimsFacts, filters, { period });
   const lookups = useClaimLookups();
   return {
     filters,

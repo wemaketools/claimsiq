@@ -10,7 +10,7 @@ import { t } from '../../lib/i18n';
 import {
   ClaimFilterBar,
   ExportCsvButton,
-  claimFilterQuery,
+  useClaimFilteredQuery,
   claimsLink,
   useClaimScope,
 } from '../claim-scope';
@@ -155,11 +155,7 @@ function columns(minimum: number): DataTableColumn<SupplierRow>[] {
 
 export default function SuppliersPage() {
   const scope = useClaimScope();
-  const insights = useApiQuery(
-    endpoints.suppliersInsights,
-    { query: claimFilterQuery(scope.filters) },
-    { keepPrevious: true },
-  );
+  const insights = useClaimFilteredQuery(endpoints.suppliersInsights, scope.filters);
   const suppliers = useApiQuery(endpoints.suppliersList, {});
 
   const answer = insights.data;

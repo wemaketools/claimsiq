@@ -1,10 +1,9 @@
 /** Posted paid per month: the query behind the Overview chart, its points and its rows in the CSV. */
 import { endpoints, formatMoney } from '../../../../contracts/index';
 import type { PaidTrend } from '../../../../contracts/index';
-import { useApiQuery } from '../../api/hooks';
 import type { TrendPoint } from '../../components/charts';
 import { t } from '../../lib/i18n';
-import { claimFilterQuery } from '../claim-scope/useClaimScope';
+import { useClaimFilteredQuery } from '../claim-scope/filteredQuery';
 import type { ClaimFilters } from '../claim-scope/useClaimScope';
 
 /** `2026-10` as `Oct 2026`. */
@@ -14,11 +13,7 @@ export const monthLabel = (month: string): string => {
 };
 
 export const usePaidTrend = (filters: ClaimFilters) =>
-  useApiQuery(
-    endpoints.claimsPaidTrend,
-    { query: claimFilterQuery(filters) },
-    { keepPrevious: true },
-  );
+  useClaimFilteredQuery(endpoints.claimsPaidTrend, filters);
 
 export const trendPoints = (trend: PaidTrend): TrendPoint[] =>
   trend.buckets.map((bucket) => ({
