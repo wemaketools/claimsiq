@@ -8,7 +8,7 @@
  */
 import { z } from 'zod';
 
-import { ClaimFacts, ClaimsSummary } from './facts.js';
+import { ClaimBreakdowns, ClaimFacts, ClaimsSummary, PeriodOption } from './facts.js';
 import { PersonaId } from './personas.js';
 import { DateOnly, Id, Instant, Moment, Text } from './primitives.js';
 import {
@@ -129,6 +129,17 @@ export const CreateTaskBody = z.object({
 });
 export type CreateTaskBody = z.input<typeof CreateTaskBody>;
 
+/** Narrows the claims `claims.facts` covers (the summary is computed over the narrowed set, never over all claims) and names the period window. */
+export const ClaimFactsQuery = z.object({
+  policy_id: Id.optional(),
+  broker_id: Id.optional(),
+  product_id: Id.optional(),
+  handler_id: Id.optional(),
+  /** The window of the period figures; the last 30 days when absent. */
+  period: PeriodOption.optional(),
+});
+export type ClaimFactsQuery = z.infer<typeof ClaimFactsQuery>;
+
 export const AssignTaskBody = z.object({ assigned_to: Id });
 export type AssignTaskBody = z.infer<typeof AssignTaskBody>;
 
@@ -151,12 +162,18 @@ export const endpoints = {
     path: `${API}/claims/:claimId`,
     response: z.object({ ...readContext, item: ClaimRecord }),
   }),
-  /** The rules engine's facts for every claim visible at the as-of date, and the totals over them. */
+  /** The rules engine's facts for the claims visible at the as-of date (and matching the query), and the totals over them. */
   claimsFacts: endpoint({
     id: 'claims.facts',
     method: 'GET',
     path: `${API}/claim-facts`,
-    response: z.object({ ...readContext, items: z.array(ClaimFacts), summary: ClaimsSummary }),
+    query: ClaimFactsQuery,
+    response: z.object({
+      ...readContext,
+      items: z.array(ClaimFacts),
+      summary: ClaimsSummary,
+      breakdowns: ClaimBreakdowns,
+    }),
   }),
   policiesList: endpoint({ id: 'policies.list', method: 'GET', path: `${API}/policies`, response: collection(Policy) }),
   clientsList: endpoint({ id: 'clients.list', method: 'GET', path: `${API}/clients`, response: collection(Client) }),

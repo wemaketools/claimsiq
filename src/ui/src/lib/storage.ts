@@ -1,12 +1,23 @@
 /**
- * localStorage for conveniences only: the persona view, the theme, the data set and the as-of date. Nothing here is
+ * localStorage for conveniences only: the persona view, the theme, the data set, the as-of date and the screen filters. Nothing here is
  * trusted or required (the changes made on top of a fixture are the mock API's, in its own keys).
  * Every access is guarded, because storage can be unavailable (private mode, blocked site data).
  */
+import { z } from 'zod';
+
 import { DEFAULT_AS_OF, isDataSetId, isRealDate } from '../../../contracts/index';
 import type { DataSetId } from '../../../contracts/index';
 import { isPersonaId } from '../app/personas';
 import type { PersonaId } from '../app/personas';
+import type { FilterValue } from '../app/slices/filters';
+
+const StoredFilters = z.record(
+  z.string(),
+  z.record(
+    z.string(),
+    z.union([z.string(), z.number(), z.boolean(), z.array(z.string()), z.null()]),
+  ),
+);
 
 const PREFIX = 'ciq.';
 
@@ -70,4 +81,22 @@ export function readStoredAsOf(): string | null {
 
 export function storeAsOf(asOf: string): void {
   write('asOf', asOf === DEFAULT_AS_OF ? null : asOf);
+}
+
+/** The filters of every screen as the user last left them, or `{}`; anything that is not a map of filter values is ignored. */
+export function readStoredFilters(): Record<string, Record<string, FilterValue>> {
+  const raw = read('filters');
+  if (raw === null) {
+    return {};
+  }
+  try {
+    const parsed = StoredFilters.safeParse(JSON.parse(raw));
+    return parsed.success ? parsed.data : {};
+  } catch {
+    return {};
+  }
+}
+
+export function storeFilters(byScreen: Record<string, Record<string, FilterValue>>): void {
+  write('filters', Object.keys(byScreen).length === 0 ? null : JSON.stringify(byScreen));
 }

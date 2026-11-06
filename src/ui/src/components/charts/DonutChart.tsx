@@ -56,6 +56,8 @@ export function DonutChart({ segments, label, caption, centerValue, size = 220 }
               stroke="var(--ciq-surface-card)"
               strokeWidth={2}
               isAnimationActive={false}
+              // Recharts makes the pie focusable; inside the aria-hidden figure that fails axe (aria-hidden-focus).
+              rootTabIndex={-1}
             >
               {segments.map((segment, index) => (
                 <Cell key={segment.id} fill={chartColor(segment.tone, index)} />

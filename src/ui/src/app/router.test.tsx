@@ -2,6 +2,7 @@ import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
+import { createMockTransport } from '../api/mockTransport';
 import { signedInSession } from '../test/fixtures';
 import { renderRouteTree } from '../test/render';
 import { restoreAfterEach } from '../test/restoreAfterEach';
@@ -12,10 +13,10 @@ import { signedOut } from './slices/session';
 import { createAppStore } from './store';
 
 const PAGES = [
-  ['Overview', 'No claims to summarize'],
-  ['Stages & Aging', 'No claims by stage'],
+  ['Overview', 'Paid to date'],
+  ['Stages & Aging', 'Age detail'],
   ['Exceptions & SLA', 'No exceptions to review'],
-  ['Claims', 'No claims to list'],
+  ['Claims', 'CLM-101'],
   ['Suppliers', 'No suppliers to show'],
   ['Action Queue', 'No actions in the queue'],
 ] as const;
@@ -24,7 +25,8 @@ describe('the application routes', () => {
   it('lands a signed-in user on Overview and walks the six pages through the sidebar, then an unknown address', async () => {
     expect(() => buildRoutes([])).toThrow('No navigation destination is registered');
     const { router } = renderRouteTree(buildRoutes(features), {
-      state: { session: signedInSession() },
+      state: { session: signedInSession(), dataContext: { dataSet: 'TEST', asOf: '2026-10-21' } },
+      transport: createMockTransport(),
     });
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Overview' })).toBeInTheDocument();

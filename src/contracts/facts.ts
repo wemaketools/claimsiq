@@ -9,6 +9,12 @@ import { DateOnly, Id, Moment, Money } from './primitives.js';
 
 const Days = z.number().int().min(0);
 
+/** The reporting window of the period figures: the last 7, 30 or 90 calendar days ending on the as-of date, or the month to date. */
+export const PERIOD_OPTIONS = ['7d', '30d', '90d', 'mtd'] as const;
+export const PeriodOption = z.enum(PERIOD_OPTIONS);
+export type PeriodOption = z.infer<typeof PeriodOption>;
+export const DEFAULT_PERIOD: PeriodOption = '30d';
+
 export const SLA_STATUSES = ['breached', 'approaching', 'within', 'unknown'] as const;
 export const SlaStatus = z.enum(SLA_STATUSES);
 export type SlaStatus = z.infer<typeof SlaStatus>;
@@ -108,6 +114,12 @@ export const ClaimFacts = z.object({
   paid: Money,
   reserve: Money,
   incurred: Money,
+  /** Reported inside the period window (inclusive); false when the reported date is unknown. */
+  reported_in_period: z.boolean(),
+  /** Closed (not open at the as-of date) with a closed date inside the window. */
+  closed_in_period: z.boolean(),
+  /** Posted payments dated inside the window. */
+  paid_in_period: Money,
   reserve_check: ReconcileStatus,
   age_days: Days.nullable(),
   /** Null for a closed claim and for an open claim without a reported date. */
@@ -133,8 +145,32 @@ export type MoneyTotals = z.infer<typeof MoneyTotals>;
 
 const Counted = MoneyTotals.extend({ count: Days });
 
+export const PeriodSummary = z.object({
+  option: PeriodOption,
+  /** First and last day of the window, both inclusive; `to` is the as-of date. */
+  from: DateOnly,
+  to: DateOnly,
+  new_claims: Days,
+  /** Posted payments dated in the window, and the claims they were paid on. */
+  paid: z.object({ amount: Money, claims: Days }),
+  closed: z.object({
+    /** Claims closed in the window. */
+    count: Days,
+    /** Mean calendar days from reported to closed over the claims that have both dates; null when none do. */
+    average_turnaround_days: z.number().nullable(),
+    /** Closed in the window but left out of the mean: the reported date is unknown. */
+    without_turnaround: Days,
+    /** Closed claims with no closed date at all: they cannot be placed in any window. */
+    undated: Days,
+  }),
+  /** Open claims with High severity. */
+  high_priority: Days,
+});
+export type PeriodSummary = z.infer<typeof PeriodSummary>;
+
 export const ClaimsSummary = z.object({
   as_of: DateOnly,
+  period: PeriodSummary,
   claims: Days,
   open: Days,
   closed: Days,
@@ -143,6 +179,8 @@ export const ClaimsSummary = z.object({
   /** Every stage in workflow order, Closed included, so the counts add up to `claims` with `unknown_stage`. */
   by_stage: z.array(Counted.extend({ stage: ClaimStage })),
   unknown_stage: Counted,
+  /** The open claims among `unknown_stage`, so a screen of open claims can show its remainder without the closed ones. */
+  open_unknown_stage: Counted,
   /** Open claims by age; `to_days` null is the open-ended last bucket. */
   by_age_bucket: z.array(Counted.extend({ bucket: z.string(), from_days: Days, to_days: Days.nullable() })),
   unknown_age: Counted,
@@ -157,3 +195,14 @@ export const ClaimsSummary = z.object({
   closed_without_turnaround: Days,
 });
 export type ClaimsSummary = z.infer<typeof ClaimsSummary>;
+
+/** Open claims grouped by one master-data key (product, broker or handler); `id` null is a claim whose policy names none. */
+export const BreakdownRow = MoneyTotals.extend({ id: Id.nullable(), claims: Days });
+export type BreakdownRow = z.infer<typeof BreakdownRow>;
+
+export const ClaimBreakdowns = z.object({
+  products: z.array(BreakdownRow),
+  brokers: z.array(BreakdownRow),
+  handlers: z.array(BreakdownRow),
+});
+export type ClaimBreakdowns = z.infer<typeof ClaimBreakdowns>;

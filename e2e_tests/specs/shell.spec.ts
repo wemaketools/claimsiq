@@ -1,6 +1,7 @@
 /**
- * Shell journeys: real sign-in against local Supabase Auth, the six destinations, the persona switch and the theme
- * toggle (both survive a reload), sign-out, and axe accessibility checks.
+ * Shell journeys: real sign-in against local Supabase Auth, the six destinations (the claim screens show the shared
+ * filter bar, the rest their empty state), the persona switch and the theme toggle (both survive a reload), sign-out,
+ * and axe accessibility checks.
  *
  * Prerequisites: the local Supabase stack is running and the demo accounts exist (`bun run auth:personas`).
  * Playwright starts Vite on its own port (playwright.config.ts).
@@ -18,6 +19,9 @@ const DESTINATIONS = [
   'Suppliers',
   'Action Queue',
 ];
+
+/** The destinations whose screens come in later items and still show their empty state. */
+const PLACEHOLDERS = ['Exceptions & SLA', 'Suppliers', 'Action Queue'];
 
 async function signIn(page: Page, localPart: string): Promise<void> {
   await page.goto('/signin');
@@ -72,7 +76,11 @@ test.describe('shell', () => {
     for (const name of DESTINATIONS) {
       await nav.getByRole('link', { name }).click();
       await expect(page.getByRole('heading', { name, level: 1 })).toBeVisible();
-      await expect(page.locator('[data-state="empty"]')).toBeVisible();
+      if (PLACEHOLDERS.includes(name)) {
+        await expect(page.locator('[data-state="empty"]')).toBeVisible();
+      } else {
+        await expect(page.getByRole('region', { name: 'Claim filters' })).toBeVisible();
+      }
     }
     await expectNoAxeViolations(page);
 

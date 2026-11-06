@@ -10,6 +10,7 @@ import { summarizeClaimFacts } from './summary.js';
 export * from './calendar.js';
 export * from './claimFacts.js';
 export * from './config.js';
+export * from './period.js';
 export * from './summary.js';
 
 export function computeClaimsFacts(

@@ -1,6 +1,6 @@
 # Testing and CI
 
-Status: as built (scaffold, data layer and rules engine). The decisions behind it (CI and checks, Bun) are in `docs/plan/design-decisions.md`.
+Status: as built (scaffold, data layer, rules engine and the first screens). The decisions behind it (CI and checks, Bun) are in `docs/plan/design-decisions.md`.
 
 ## Test projects
 
@@ -29,7 +29,11 @@ Conventions: fewer, broader tests. A test sets up once and walks a realistic flo
 
 ## Rules-engine tests
 
-`src/rules/rules.test.ts` runs the engine on the real TEST fixture through the loader and the as-of view: the figures of `expected_metrics.json`, every worked case of the requirements (CLM-101 to CLM-106, including CLM-106 high value with a supplier delay) and the mock API's `claims.facts` answer; a rule-config test that changes thresholds and sees the results move (and refuses a config it cannot honour); a missing-evidence test (unknown SLA, unverified supplier request, payment statuses, event order and tie-break, reserve fallback, business-day and age-bucket boundaries); and the money format.
+`src/rules/rules.test.ts` runs the engine on the real TEST fixture through the loader and the as-of view: the figures of `expected_metrics.json`, every worked case of the requirements (CLM-101 to CLM-106, including CLM-106 high value with a supplier delay) and the mock API's `claims.facts` answer, including the filters, the period windows (worked by hand) and the breakdowns; a rule-config test that changes thresholds and sees the results move (and refuses a config it cannot honour); a missing-evidence test (unknown SLA, unverified supplier request, payment statuses, event order and tie-break, reserve fallback, business-day and age-bucket boundaries); and the money format.
+
+## Claim-screen tests
+
+One broad flow per screen, on the real mock API over the TEST fixture unless it says DEMO: `features/overview/overview.test.tsx` (the cards, the period cards included, show the TEST figures worked by hand, each card opens exactly the claims it counts, the period choice moves the period cards, the filters and the as-of date change every figure, the CSV equals the screen), `features/stages/aging.test.tsx` (stage and age tables equal the engine's summary and add up to the open count, stage value and the product, broker and owner tabs match the fixture by hand, rows open their claims, a filter narrows both, the CSV equals the tables, DEMO reconciles, claims with no reported date or no stage event are listed apart), `features/claims/export.test.tsx` (DEMO list: sort, paging, filter, criterion, empty states, the CSV is the whole filtered list in screen order; plus CSV quoting and the formula guard), `features/claim-scope/filters.test.tsx` (over TEST and DEMO, three dates and five filter views: every figure equals the claims its criterion selects, each filter splits the claims without loss, the period windows hold and every breakdown adds up to the open count; Overview, Stages & Aging and Claims each show a failed load with Try again and recover) and `features/overview/performance.test.tsx` (the 3 second budget on a generated 500-claim set, DD-31). The generator has its own test in `src/mock-api/test-support`. Helpers: `test/renderApp.tsx` (the whole app on a route, signed in, plus `tableRows`), `test/csv.ts` (capture a download, parse CSV), `test/datasets.ts` (the CSV fixtures and a mock API over changed files; SPA tests cannot use `readFixtureFiles`, which needs a `file:` URL).
 
 ## The local-stack skip
 
@@ -37,11 +41,11 @@ Conventions: fewer, broader tests. A test sets up once and walks a realistic flo
 
 ## Count floors
 
-`bun run ci:test:ui` and `ci:test:unit` write a Vitest JSON report and run `scripts/ci/assert-test-run.ts`, which fails when the run did not succeed, when any test failed or was skipped, or when fewer than `--min-tests` tests ran (it catches silently dropped suites). The floors in `package.json` are sized to what exists: SPA 43, unit 23 (the number of unit tests that run with the stack up). Raise them in the same change that adds tests. `ci:test:unit` also fails on the skipped local-stack test, so it is only meaningful where the stack is up; CI runs `test:unit` for that reason and `ci:test:ui` for the SPA.
+`bun run ci:test:ui` and `ci:test:unit` write a Vitest JSON report and run `scripts/ci/assert-test-run.ts`, which fails when the run did not succeed, when any test failed or was skipped, or when fewer than `--min-tests` tests ran (it catches silently dropped suites). The floors in `package.json` are sized to what exists: SPA 51, unit 24 (the number of unit tests that run with the stack up). Raise them in the same change that adds tests. `ci:test:unit` also fails on the skipped local-stack test, so it is only meaningful where the stack is up; CI runs `test:unit` for that reason and `ci:test:ui` for the SPA.
 
 ## End-to-end
 
-`e2e_tests/playwright.config.ts` starts Vite itself on `WEB_PORT` (default 5380, strict port, never reusing a server) with the root `.env.local`. `specs/shell.spec.ts` has two flows against the real local stack: the signed-out one (redirect to sign-in, the sign-in page, a wrong password) and the signed-in one (a seeded demo account signs in, walks the six destinations and their empty states, switches persona and theme and keeps them across a reload, and signs out). It runs axe (WCAG 2.0/2.1 A and AA) on the sign-in page, the signed-in shell and the shell after a reload; any violation fails the test.
+`e2e_tests/playwright.config.ts` starts Vite itself on `WEB_PORT` (default 5380, strict port, never reusing a server) with the root `.env.local`. `specs/claims.spec.ts` has one flow at 1366×768: a Head of Claims signs in, selects TEST, reads the Overview figures, reaches a card with the keyboard and opens its claims, filters, downloads the CSV and compares it to the table, reads Stages & Aging, switches the period, resets (the toast on screen passes axe) and switches to the dark theme; every step passes axe with no horizontal scroll. `specs/shell.spec.ts` has two flows against the real local stack: the signed-out one (redirect to sign-in, the sign-in page, a wrong password) and the signed-in one (a seeded demo account signs in, walks the six destinations (the claim screens show the shared filter bar, the others their empty state), switches persona and theme and keeps them across a reload, and signs out). It runs axe (WCAG 2.0/2.1 A and AA) on the sign-in page, the signed-in shell and the shell after a reload; any violation fails the test.
 
 Prerequisites: Docker running, `bun run supabase:start`, `.env.local` written, `bun run auth:personas`, and the browser once with `bunx playwright install chromium` (from `e2e_tests`).
 

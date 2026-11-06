@@ -7,7 +7,7 @@ import { claimRecords } from '../mock-api/asOfViews.js';
 import { loadDataset } from '../mock-api/fixtures/index.js';
 import { memoryStore } from '../mock-api/storage.js';
 import { readFixtureFiles, readFixtureJson } from '../mock-api/test-support/fixtureFiles.js';
-import { ageBucketLabel, businessDaysBetween, computeClaimFacts, computeClaimsFacts, parseRuleConfig, weekdaySet } from './index.js';
+import { ageBucketLabel, businessDaysBetween, computeClaimFacts, computeClaimsFacts, parseRuleConfig, summarizeClaimFacts, weekdaySet } from './index.js';
 import type { RuleContext } from './index.js';
 
 const AS_OF = '2026-10-21';
@@ -94,13 +94,49 @@ describe('the claims rules engine on the TEST fixture', () => {
       const response = await api.fetch(endpoints.claimsFacts.path, { headers: { 'X-Tenant-Id': 'TEST', ...(asOf === undefined ? {} : { 'X-As-Of': asOf }) } });
       return endpoints.claimsFacts.response.parse(await response.json());
     };
-    expect(await ask()).toEqual({ tenant_id: 'TEST', as_of: AS_OF, items, summary });
+    expect(await ask()).toMatchObject({ tenant_id: 'TEST', as_of: AS_OF, items, summary });
     const early = await ask('2026-10-12');
     expect(early.items.map((fact) => fact.claim_id)).toEqual(['CLM-101', 'CLM-102', 'CLM-103', 'CLM-106']);
     expect(early.items.find((fact) => fact.claim_id === 'CLM-103')).toMatchObject({ is_open: true, reserve: '4000.00', stage_check: 'NOT_COMPARABLE' });
     expect(early.summary.open).toBe(4);
     const demo = await api.fetch(endpoints.claimsFacts.path, { headers: { 'X-Tenant-Id': 'DEMO' } });
     expect(endpoints.claimsFacts.response.parse(await demo.json()).summary.claims).toBe(30);
+
+    // Policy, broker, product and handler narrow the claims before the engine runs: items and summary cover the same set.
+    const narrowed = async (query: string) => {
+      const response = await api.fetch(`${endpoints.claimsFacts.path}?${query}`, { headers: { 'X-Tenant-Id': 'TEST' } });
+      return endpoints.claimsFacts.response.parse(await response.json());
+    };
+    const ofBroker = await narrowed('broker_id=BRK-01');
+    expect(ofBroker.items.map((fact) => fact.claim_id)).toEqual(['CLM-101', 'CLM-104']);
+    expect(ofBroker.summary).toEqual(summarizeClaimFacts(ofBroker.items, contextOf()));
+    expect(ofBroker.summary).toMatchObject({ claims: 2, totals: { incurred: '20000.00' } });
+    expect((await narrowed('broker_id=BRK-01&product_id=PRD-01')).items.map((fact) => fact.claim_id)).toEqual(['CLM-101']);
+    expect((await narrowed('policy_id=POL-006&handler_id=USR-CLM')).items.map((fact) => fact.claim_id)).toEqual(['CLM-106']);
+    expect((await narrowed('handler_id=USR-SUP')).summary).toMatchObject({ claims: 0, open: 0, totals: { incurred: '0.00' } });
+    expect(summary.open_unknown_stage.count).toBe(0);
+
+    // The period figures, worked by hand from the fixture (window: the last 30 days, 22 Sep to 21 Oct, both ends in).
+    // Reported in it: CLM-101 (1 Oct), 103, 104, 105 and 106 (25 Sep); CLM-102 (1 Sep) is not. CLM-102's P5,000 was paid on
+    // 22 Sep, the first day of the window, and CLM-103's P4,000 on 13 Oct. CLM-103 closed on 15 Oct, 5 days after it was reported.
+    expect(summary.period).toEqual({
+      option: '30d',
+      from: '2026-09-22',
+      to: '2026-10-21',
+      new_claims: 5,
+      paid: { amount: '9000.00', claims: 2 },
+      closed: { count: 1, average_turnaround_days: 5, without_turnaround: 0, undated: 0 },
+      high_priority: 3,
+    });
+    const inWindow = async (option: string) => (await narrowed(`period=${option}`)).summary.period;
+    // 7 days: 15 to 21 Oct. Reported: CLM-104 (15 Oct) and CLM-105. No payment (the last was 13 Oct). CLM-103 closed on 15 Oct.
+    expect(await inWindow('7d')).toMatchObject({ from: '2026-10-15', new_claims: 2, paid: { amount: '0.00', claims: 0 }, closed: { count: 1 } });
+    // Month to date: from 1 Oct. CLM-106 (25 Sep) drops out and so does CLM-102's payment.
+    expect(await inWindow('mtd')).toMatchObject({ from: '2026-10-01', new_claims: 4, paid: { amount: '4000.00', claims: 1 } });
+    expect(await inWindow('90d')).toMatchObject({ from: '2026-07-24', new_claims: 6, paid: { amount: '9000.00' } });
+    expect(ofBroker.summary.period).toMatchObject({ new_claims: 2, paid: { amount: '0.00' }, high_priority: 1 });
+    expect(ofBroker.breakdowns.brokers).toEqual([expect.objectContaining({ id: 'BRK-01', claims: 2, incurred: '20000.00' })]);
+    expect(ofBroker.breakdowns.products.map((row) => [row.id, row.claims])).toEqual([['PRD-01', 1], ['PRD-04', 1]]);
   });
 
   it('moves its results when a threshold in the rule config changes, and refuses a config it cannot honour', () => {
@@ -166,6 +202,13 @@ describe('the claims rules engine on the TEST fixture', () => {
     expect(paid(...(['PENDING', 'VOID', 'REJECTED'] as const).map((status) => ({ ...payment, status })))).toBe('4000.00');
     expect(paid({ ...payment, status: 'POSTED' })).toBe('5000.00');
     expect(paid({ ...payment, status: 'POSTED', paid_at: '2026-12-01' })).toBe('4000.00');
+    // In the period only posted payments inside the window count; an unknown reported or closed date is left out, not guessed.
+    const paidInPeriod = (...extra: ClaimRecord['payments']) => computeClaimFacts({ ...clm103, payments: [...clm103.payments, ...extra] }, context).paid_in_period;
+    expect(paidInPeriod({ ...payment, status: 'POSTED', paid_at: '2026-09-21' }, { ...payment, status: 'PENDING', paid_at: '2026-10-20' })).toBe('4000.00');
+    expect(paidInPeriod({ ...payment, status: 'POSTED', paid_at: '2026-09-22' })).toBe('5000.00');
+    const noReported = { ...computeClaimsFacts([{ ...clm103, reported_at: null }], context).summary.period };
+    expect(noReported).toMatchObject({ new_claims: 0, closed: { count: 1, average_turnaround_days: null, without_turnaround: 1, undated: 0 } });
+    expect(computeClaimsFacts([{ ...clm103, closed_at: null }], context).summary.period.closed).toEqual({ count: 0, average_turnaround_days: null, without_turnaround: 0, undated: 1 });
 
     // The latest event wins whatever the input order; a tie on time goes to the larger event id.
     const tied = [event(clm104, 'EVT-B', '2026-10-20', 'Settlement'), event(clm104, 'EVT-A', '2026-10-20', 'Negotiation')];

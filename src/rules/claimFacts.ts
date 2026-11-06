@@ -5,6 +5,7 @@ import { addMoney, compareMoney, onOrBeforeAsOf, sumMoney } from '../contracts/i
 import type {
   ClaimFacts,
   ClaimRecord,
+  PeriodOption,
   ReconcileStatus,
   ReserveEvent,
   ReserveMovementFact,
@@ -16,10 +17,13 @@ import type {
 } from '../contracts/index.js';
 import { businessDaysBetween, calendarDaysBetween, momentMs, weekdaySet } from './calendar.js';
 import type { RuleConfig } from './config.js';
+import { inPeriod, periodWindow } from './period.js';
 
 export interface RuleContext {
   readonly asOf: string;
   readonly config: RuleConfig;
+  /** The window of the period figures; the last 30 days when absent. */
+  readonly period?: PeriodOption | undefined;
 }
 
 const SEVERITY_RANK: Readonly<Record<Severity, number>> = { High: 3, Medium: 2, Low: 1 };
@@ -220,6 +224,12 @@ export function computeClaimFacts(claim: ClaimRecord, context: RuleContext): Cla
   );
   const reserve = reserveEvents[reserveEvents.length - 1]?.new_amount ?? claim.current_outstanding_reserve;
   const incurred = addMoney(paid, reserve);
+  const window = periodWindow(context.period, asOf);
+  const paidInPeriod = sumMoney(
+    claim.payments
+      .filter((payment) => payment.status === 'POSTED' && inPeriod(payment.paid_at, window) && onOrBeforeAsOf(payment.paid_at, asOf))
+      .map((payment) => payment.paid_amount),
+  );
 
   const reportedAt = claim.reported_at;
   const ageDays = isOpen && reportedAt !== null ? calendarDaysBetween(reportedAt, asOf) : null;
@@ -272,6 +282,9 @@ export function computeClaimFacts(claim: ClaimRecord, context: RuleContext): Cla
     paid,
     reserve,
     incurred,
+    reported_in_period: inPeriod(reportedAt, window),
+    closed_in_period: !isOpen && inPeriod(closedAt, window),
+    paid_in_period: paidInPeriod,
     reserve_check: reconcile(comparable, reserveEvents.length > 0, compareMoney(reserve, claim.current_outstanding_reserve) === 0),
     age_days: ageDays,
     age_bucket: ageDays === null ? null : ageBucketLabel(config.claims.age_bucket_upper_days, ageDays),

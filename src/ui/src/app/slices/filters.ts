@@ -1,10 +1,12 @@
 /**
  * Filters slice: the filter and sort state of each screen, keyed by a stable screen id (for example `CLM-02`).
- * It resets when the user signs out or switches data set (the ids to filter by differ).
+ * It is remembered in the browser (`store.ts` writes it, `lib/storage.ts` reads it once when the store is created) and
+ * resets when the user signs out or switches data set (the ids to filter by differ).
  */
 import { createSlice, isAnyOf } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
 
+import { readStoredFilters } from '../../lib/storage';
 import { dataSetChanged } from './dataContext';
 import { userBoundaryActions } from './session';
 
@@ -16,11 +18,11 @@ export interface FiltersState {
   readonly byScreen: Record<string, ScreenFilters>;
 }
 
-const initialState: FiltersState = { byScreen: {} };
+const noFilters: FiltersState = { byScreen: {} };
 
 const filtersSlice = createSlice({
   name: 'filters',
-  initialState,
+  initialState: (): FiltersState => ({ byScreen: readStoredFilters() }),
   reducers: {
     /** Merges values into a screen's filters. */
     filtersChanged(state, action: PayloadAction<{ screen: string; values: ScreenFilters }>) {
@@ -36,7 +38,7 @@ const filtersSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    builder.addMatcher(isAnyOf(...userBoundaryActions, dataSetChanged), () => initialState);
+    builder.addMatcher(isAnyOf(...userBoundaryActions, dataSetChanged), () => noFilters);
   },
 });
 

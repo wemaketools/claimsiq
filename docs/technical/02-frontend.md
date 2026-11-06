@@ -1,6 +1,6 @@
 # Frontend (SPA)
 
-Status: as built (scaffold and data layer). The decisions behind it (prefix and palette, brand, navigation, persona switch, tenant) are in `docs/plan/design-decisions.md`.
+Status: as built (scaffold, data layer and the first screens: Overview, Stages & Aging, Claims). The decisions behind it (prefix and palette, brand, navigation, persona switch, tenant) are in `docs/plan/design-decisions.md`.
 
 ## Layout of `src/ui/src`
 
@@ -14,7 +14,8 @@ Status: as built (scaffold and data layer). The decisions behind it (prefix and 
 | `api/` | `client.ts` (`call(endpoint)`), `hooks.ts` (`useApiQuery`, `useApiMutation`, `invalidateApiQueries`), `endpoint.ts`, `problem.ts`, `mockTransport.ts` (Stage A: the in-browser mock API as the transport) |
 | `auth/` | `AuthProvider`, sign-in, forgot and reset password, the development-only `DemoAccounts` |
 | `features/<feature>/` | `routes.tsx`, the page, `i18n/en.ts` |
-| `lib/` | `i18n.ts` (`t()`), `format.ts`, `zonedTime.ts`, `storage.ts` (persona, theme, data set, as-of date), `useMediaQuery.ts`, `useNow.ts` |
+| `features/claim-scope/` | No route: what Overview, Stages & Aging and Claims share (see Claim screens) |
+| `lib/` | `i18n.ts` (`t()`), `format.ts`, `csv.ts` (CSV text and download), `zonedTime.ts`, `storage.ts` (persona, theme, data set, as-of date, screen filters), `useMediaQuery.ts`, `useNow.ts` |
 | `i18n/en.ts` | The shell catalog (namespaces `shell`, `auth`, `ui`, `format`, `charts`, `pages`) |
 
 ## Design system
@@ -38,6 +39,10 @@ The persona is `session.persona`, written by `choosePersona` (which also stores 
 A feature is `features/<feature>/routes.tsx` exporting `features: FeatureModule[]` (`id`, `routes`, `nav`). The registry collects every such file with `import.meta.glob`, validates it (duplicates and malformed modules are reported with `console.error` and skipped), and both the router and the sidebar are built from the result. Routes are paths in the shell, `load` for a code-split page or `element` for an eager one. Nav items have an id, an i18n label key, a path, an order and an icon. The feature's strings live in `features/<feature>/i18n/en.ts`; its keys are namespaced by the directory name, which must not be one of the shell namespaces.
 
 Routes: `/` redirects to the first destination; `/signin`, `/forgot-password`, `/reset-password` are outside the shell; every feature route is inside `RouteGuard` and `AppShell`; anything else is Not found (inside the shell when signed in). A route that fails to load or throws renders `RouteErrorPage` inside the shell.
+
+## Claim screens
+
+Overview (`features/overview`), Stages & Aging (`features/stages`) and Claims (`features/claims`) read one engine answer through `features/claim-scope`: `useClaimScope()` returns the shared filters (policy, broker, product, handler, and the period window of the period cards: `filters.byScreen['claim-scope']`, remembered under `ciq.filters`, cleared with the data set and on sign-out; Clear filters keeps the period), the `claims.facts` query for exactly those filters (the answer holds `items`, `summary` with its `period` figures, and the product, broker and handler `breakdowns`) and the master-data lookups (`useClaimLookups`: names for client, product and handler and the filter choices). `ClaimFilterBar` is the one filter bar. `criteria.ts` holds the criterion a figure counts, how it travels in the address (`/claims?show=stage:Assessment`) and the predicate that selects those claims from the facts; `stageAgeRows.ts` makes the stage and age rows from the summary; `ExportCsvButton` downloads the rows a screen builds from its own figures (`lib/csv.ts`). Screens never recompute a rule: a figure is a field of the engine's summary, a list is a selection of its facts. Decisions: DD-28 to DD-35.
 
 ## States
 

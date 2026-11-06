@@ -1,5 +1,6 @@
 /**
- * ToastProvider (`.ciq-toasts`): renders the toast stack in a polite live region.
+ * ToastProvider (`.ciq-toasts`): renders the toast stack in a polite live region. The toasts are not list items: a
+ * `status` role on an `li` fails axe's `list` rule.
  */
 import { useCallback, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
@@ -43,9 +44,14 @@ export function ToastProvider({ children }: { readonly children: ReactNode }) {
   return (
     <ToastContext.Provider value={api}>
       {children}
-      <ul className="ciq-toasts" aria-live="polite" aria-label={t('ui.toast.region')}>
+      <div
+        className="ciq-toasts"
+        role="region"
+        aria-live="polite"
+        aria-label={t('ui.toast.region')}
+      >
         {toasts.map((toast) => (
-          <li
+          <div
             key={toast.id}
             className={toast.tone === 'info' ? 'ciq-toast' : `ciq-toast ciq-toast--${toast.tone}`}
             role={toast.tone === 'error' ? 'alert' : 'status'}
@@ -67,9 +73,9 @@ export function ToastProvider({ children }: { readonly children: ReactNode }) {
               size="sm"
               onClick={() => dismiss(toast.id)}
             />
-          </li>
+          </div>
         ))}
-      </ul>
+      </div>
     </ToastContext.Provider>
   );
 }

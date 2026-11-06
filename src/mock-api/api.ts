@@ -6,7 +6,8 @@
  * Reads return the raw records of the tenant in `X-Tenant-Id`. Claims and their child records, receipts, allocations
  * and payment attempts are limited to those dated on or before `X-As-Of`; master data, invoices and tasks are not.
  * Nothing is rewritten; the one computed read is `claims.facts`, which runs the rules engine (`src/rules`) over the same
- * as-of records. Commands change a copy kept in `KeyValueStore` and never the fixture.
+ * as-of records, narrowed first by the query (policy, broker, product, handler). Commands change a copy kept in
+ * `KeyValueStore` and never the fixture.
  */
 import type { z } from 'zod';
 
@@ -27,7 +28,7 @@ import type {
   TaskAuditEntry,
   TaskRecord,
 } from '../contracts/index.js';
-import { computeClaimsFacts, parseRuleConfig } from '../rules/index.js';
+import { breakdownOfOpenClaims, computeClaimsFacts, parseRuleConfig } from '../rules/index.js';
 import { claimRecords, invoiceRecords } from './asOfViews.js';
 import { changesKey, clearChanges, readChanges, taskIdOf, writeChanges } from './changes.js';
 import type { Changes } from './changes.js';
@@ -189,11 +190,31 @@ export function createMockApi(options: MockApiOptions): MockApi {
     }
     return { tenant_id: c.data.tenant.tenant_id, as_of: c.asOf, item };
   });
-  route(endpoints.claimsFacts, (c) => ({
-    tenant_id: c.data.tenant.tenant_id,
-    as_of: c.asOf,
-    ...computeClaimsFacts(claimRecords(c.data, c.asOf), { asOf: c.asOf, config: ruleConfig }),
-  }));
+  route(endpoints.claimsFacts, (c) => {
+    const { policy_id, broker_id, product_id, handler_id, period } = c.query;
+    const policies = new Map(c.data.records.policy.map((policy) => [policy.policy_id, policy]));
+    const claims = claimRecords(c.data, c.asOf).filter((claim) => {
+      const policy = policies.get(claim.policy_id);
+      return (
+        (policy_id === undefined || claim.policy_id === policy_id) &&
+        (handler_id === undefined || claim.handler_id === handler_id) &&
+        (broker_id === undefined || policy?.broker_id === broker_id) &&
+        (product_id === undefined || policy?.product_id === product_id)
+      );
+    });
+    const { items, summary } = computeClaimsFacts(claims, { asOf: c.asOf, config: ruleConfig, period });
+    return {
+      tenant_id: c.data.tenant.tenant_id,
+      as_of: c.asOf,
+      items,
+      summary,
+      breakdowns: {
+        products: breakdownOfOpenClaims(items, (fact) => policies.get(fact.policy_id)?.product_id ?? null),
+        brokers: breakdownOfOpenClaims(items, (fact) => policies.get(fact.policy_id)?.broker_id ?? null),
+        handlers: breakdownOfOpenClaims(items, (fact) => fact.handler_id),
+      },
+    };
+  });
   route(endpoints.policiesList, (c) => read(c, c.data.records.policy));
   route(endpoints.clientsList, (c) => read(c, c.data.records.client));
   route(endpoints.brokersList, (c) => read(c, c.data.records.broker));

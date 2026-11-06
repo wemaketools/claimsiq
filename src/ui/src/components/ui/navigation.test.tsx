@@ -152,7 +152,7 @@ describe('navigation widgets', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'save' }));
 
-    const region = screen.getByRole('list', { name: 'Messages' });
+    const region = screen.getByRole('region', { name: 'Messages' });
     expect(within(region).getByRole('status')).toHaveTextContent('Saved');
     await userEvent.click(within(region).getByRole('button', { name: 'Dismiss' }));
     expect(within(region).queryByRole('status')).not.toBeInTheDocument();
