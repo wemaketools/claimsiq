@@ -101,7 +101,8 @@ const en = {
   },
   save: {
     title: 'Save the rules?',
-    scope: '{count} rules in the {dataSet} data set',
+    scope_one: '{count} rule in the {dataSet} data set',
+    scope_other: '{count} rules in the {dataSet} data set',
     consequence:
       'Every screen and CSV export is worked out from the new rules at once. Each change is logged with your name and the time.',
     confirm: 'Save changes',

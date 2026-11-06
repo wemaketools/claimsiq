@@ -71,10 +71,14 @@ const en = {
     claims_one: '{count} claim has a request past the target; {unverified} with no request time.',
     claims_other:
       '{count} claims have a request past the target; {unverified} with no request time.',
-    baseline:
-      'All suppliers’ open waits together: {sample} requests, median {median} and 90th percentile {p90} business days against the {target}-day target.',
-    baselineNotEnough:
-      'All suppliers’ open waits together: {sample} requests, not enough for percentiles (needed: {minimum}).',
+    baseline_one:
+      'All suppliers’ open waits together: {count} request, median {median} and 90th percentile {p90} (business days) against the {target}-day target.',
+    baseline_other:
+      'All suppliers’ open waits together: {count} requests, median {median} and 90th percentile {p90} (business days) against the {target}-day target.',
+    baselineNotEnough_one:
+      'All suppliers’ open waits together: {count} request, not enough for percentiles (needed: {minimum}).',
+    baselineNotEnough_other:
+      'All suppliers’ open waits together: {count} requests, not enough for percentiles (needed: {minimum}).',
     column: {
       supplier: 'Supplier',
       open: 'Open requests',

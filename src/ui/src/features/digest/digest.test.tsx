@@ -125,6 +125,9 @@ describe('Digest', () => {
         'at least 30% of the earlier amount',
       ],
     ]);
+    expect(baseline).toBe(
+      'All suppliers’ open waits together: 2 requests, median 11 and 90th percentile 13 (business days) against the 5-day target.',
+    );
     expect(actions).toHaveLength(5);
     expect(screen.getByText('Showing 5 of 6.')).toBeInTheDocument();
     expect(screen.getByText('6 open actions, 3 overdue.')).toBeInTheDocument();
@@ -201,6 +204,11 @@ describe('Digest', () => {
     const sheet = screen.getByRole('article', { name: 'Claims digest' });
     expect(sheet).toHaveTextContent('FiltersBroker: Kopano Brokers (fictional)');
     expect(card('Incurred')).toHaveTextContent('P20,000.00');
+    expect(
+      await screen.findByText(
+        'All suppliers’ open waits together: 1 request, not enough for percentiles (needed: 2).',
+      ),
+    ).toBeInTheDocument();
     const shown = tableRows('Top exceptions').map((row) => row[0]);
     expect(shown.length).toBeGreaterThan(0);
     expect(shown).not.toContain('CLM-104');

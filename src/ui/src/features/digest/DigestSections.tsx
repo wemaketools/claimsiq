@@ -355,11 +355,11 @@ export function SuppliersSection({
         <p className="ciq-text-muted ciq-digest-note">
           {baseline.median === null || baseline.p90 === null
             ? t('digest.suppliers.baselineNotEnough', {
-                sample: baseline.sample,
+                count: baseline.sample,
                 minimum: answer.min_sample,
               })
             : t('digest.suppliers.baseline', {
-                sample: baseline.sample,
+                count: baseline.sample,
                 median: formatCount(baseline.median),
                 p90: formatCount(baseline.p90),
                 target: answer.target_business_days,

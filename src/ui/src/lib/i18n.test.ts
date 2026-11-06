@@ -78,4 +78,38 @@ describe('translation', () => {
     }
     expect(unread).toEqual([]);
   });
+
+  it('gives every catalog string that counts something a singular and a plural form', () => {
+    const catalogs = import.meta.glob<{ default: Catalog }>('../features/*/i18n/en.ts', {
+      eager: true,
+    });
+    const flat: [string, string][] = [];
+    const walk = (prefix: string, catalog: Catalog): void => {
+      for (const [name, value] of Object.entries(catalog)) {
+        if (typeof value === 'string') flat.push([`${prefix}.${name}`, value]);
+        else walk(`${prefix}.${name}`, value);
+      }
+    };
+    for (const [path, module] of Object.entries(catalogs)) {
+      const namespace = featureNamespaceOf(path);
+      if (namespace !== null) walk(namespace, module.default);
+    }
+    const keys = new Set(flat.map(([key]) => key));
+    // `t()` picks `<key>_one` or `<key>_other` from the `count` parameter, so a string with {count} needs both. These
+    // read the same for any number: {count} is not followed by a noun that changes with it.
+    const NO_NOUN = new Set([
+      'digest.suppliers.noRequestTime',
+      'digest.suppliers.notEnough',
+      'exceptions.summaryOther',
+      'overview.kpi.turnaround.undated',
+      'suppliers.notEnough',
+      'suppliers.percentiles.notEnough',
+    ]);
+    const unformed = flat
+      .filter(([key, text]) => text.includes('{count}') && !/_(one|other)$/.test(key))
+      .filter(([key]) => !NO_NOUN.has(key))
+      .map(([key]) => key)
+      .filter((key) => !(keys.has(`${key}_one`) && keys.has(`${key}_other`)));
+    expect(unformed).toEqual([]);
+  });
 });
