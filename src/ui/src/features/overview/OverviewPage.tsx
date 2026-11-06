@@ -6,8 +6,6 @@ import {
   Card,
   CardLink,
   EmptyState,
-  KpiCard,
-  KpiGrid,
   PageHeader,
   QueryView,
   SkeletonBlock,
@@ -23,6 +21,7 @@ import {
   useClaimScope,
 } from '../claim-scope';
 import { overviewFigures } from './figures';
+import { FigureGroups } from './FigureGroups';
 import { PaidTrendCard } from './PaidTrendCard';
 import { trendRows, usePaidTrend } from './trends';
 
@@ -141,24 +140,7 @@ export default function OverviewPage() {
       >
         {(data) => (
           <div className="ciq-page" aria-busy={scope.facts.isFetching}>
-            {overviewFigures(data.summary).map((group) => (
-              <section key={group.heading} className="ciq-stack">
-                <h2 className="ciq-card-title">{group.heading}</h2>
-                <KpiGrid>
-                  {group.figures.map((figure) => (
-                    <KpiCard
-                      key={figure.id}
-                      label={figure.label}
-                      value={figure.shown}
-                      hint={figure.hint}
-                      icon={figure.icon}
-                      tone={figure.tone}
-                      to={claimsLink(figure.criterion)}
-                    />
-                  ))}
-                </KpiGrid>
-              </section>
-            ))}
+            <FigureGroups summary={data.summary} Heading="h2" headingClassName="ciq-card-title" />
             <PaidTrendCard query={trend} />
             <Breakdowns summary={data.summary} />
           </div>

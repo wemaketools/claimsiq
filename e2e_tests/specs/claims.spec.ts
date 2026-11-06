@@ -2,7 +2,7 @@
  * The claim screens in a real browser at 1366px: a Head of Claims signs in, reads the TEST figures on Overview, opens
  * the claims behind a card with the keyboard, narrows by filter, downloads the CSV and compares it to the table, reads
  * Stages & Aging, edits the rules (a higher high-value line reaches Overview; Restore defaults and Reset bring the
- * spec's back), reads Exceptions & SLA with the filter kept, opens the flagged claim (Claim Detail, with its reserve
+ * spec's back), reads the Digest (it follows the filter and prints light on one A4 page), reads Exceptions & SLA with the filter kept, opens the flagged claim (Claim Detail, with its reserve
  * flag) and its policy's invoices, resets (the toast passes axe), and everything passes axe in both themes.
  *
  * Every figure comes from the real API and the database: the test records the API calls the page makes and ends by

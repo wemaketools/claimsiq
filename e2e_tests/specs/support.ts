@@ -1,5 +1,6 @@
 /**
- * Checks every spec runs on a screen: WCAG 2.0/2.1 A and AA through axe, and no horizontal page scroll.
+ * What the specs share: the checks every screen gets (WCAG 2.0/2.1 A and AA through axe, no horizontal page scroll), the
+ * Reset step, the Digest's one-A4-page check, and the sidebar's destinations.
  */
 import AxeBuilder from '@axe-core/playwright';
 import { expect } from '@playwright/test';
@@ -41,9 +42,9 @@ export async function resetData(page: Page, dataSet: string): Promise<void> {
 
 /**
  * The Digest as the browser prints it: whatever the screen theme, the sheet is light, the shell is gone, the as-of date and
- * data set stay, and the A4 PDF has one page. Returns the PDF, so a caller can keep it.
+ * data set stay, and the A4 PDF has one page.
  */
-export async function expectOneLightA4Page(page: Page): Promise<Buffer> {
+export async function expectOneLightA4Page(page: Page): Promise<void> {
   await page.emulateMedia({ media: 'print' });
   try {
     const sheet = page.getByRole('article', { name: 'Claims digest' });
@@ -55,14 +56,13 @@ export async function expectOneLightA4Page(page: Page): Promise<Buffer> {
     expect(background).toBe('rgb(255, 255, 255)');
     const pdf = await page.pdf({ format: 'A4' });
     expect(pdfPages(pdf)).toBe(1);
-    return pdf;
   } finally {
     await page.emulateMedia({ media: null });
   }
 }
 
 /** The page objects of a PDF; Chromium writes them as plain dictionaries, not inside compressed object streams. */
-export function pdfPages(pdf: Buffer): number {
+function pdfPages(pdf: Buffer): number {
   return pdf.toString('latin1').match(/\/Type\s*\/Page(?![a-z])/g)?.length ?? 0;
 }
 

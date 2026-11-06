@@ -2,24 +2,15 @@
 import { formatMoney } from '../../../../contracts/index';
 import type { ClaimsSummary, SupplierInsights } from '../../../../contracts/index';
 import type { ApiError } from '../../api/client';
-import {
-  Card,
-  CardLink,
-  Chip,
-  DataTable,
-  EmptyState,
-  KpiCard,
-  KpiGrid,
-  Reference,
-} from '../../components/ui';
+import { Card, CardLink, Chip, DataTable, EmptyState, Reference } from '../../components/ui';
 import type { DataTableColumn } from '../../components/ui';
 import { EMPTY_VALUE, formatCount } from '../../lib/format';
 import { t } from '../../lib/i18n';
-import { SeverityChip, claimPath, claimsLink, materialBasis, stageLabel } from '../claim-scope';
+import { SeverityChip, claimPath, formatMoment, materialBasis, stageLabel } from '../claim-scope';
 import { TaskDue, TaskStatusChip, priorityLabel } from '../claim-tasks';
 import type { QueueRow } from '../actions/rows';
 import type { ExceptionRow } from '../exceptions/rows';
-import { overviewFigures } from '../overview/figures';
+import { FigureGroups } from '../overview/FigureGroups';
 import type { SupplierRow } from '../suppliers/rows';
 import { Placement } from '../suppliers/WaitPercentiles';
 import type { ReserveRow, Shown } from './rows';
@@ -45,24 +36,7 @@ export function HeadlineFigures({ summary }: { readonly summary: ClaimsSummary }
       <h3 className="ciq-card-title ciq-digest-headline" id="digest-headline">
         {t('digest.headline.title')}
       </h3>
-      {overviewFigures(summary).map((group) => (
-        <div key={group.heading} className="ciq-stack">
-          <h4 className="ciq-digest-group">{group.heading}</h4>
-          <KpiGrid>
-            {group.figures.map((figure) => (
-              <KpiCard
-                key={figure.id}
-                label={figure.label}
-                value={figure.shown}
-                hint={figure.hint}
-                icon={figure.icon}
-                tone={figure.tone}
-                to={claimsLink(figure.criterion)}
-              />
-            ))}
-          </KpiGrid>
-        </div>
-      ))}
+      <FigureGroups summary={summary} Heading="h4" headingClassName="ciq-digest-group" />
     </section>
   );
 }
@@ -167,7 +141,7 @@ export function ReserveSection({
     {
       id: 'date',
       header: t('digest.reserve.column.date'),
-      cell: (row) => row.movement.event_at.slice(0, 10),
+      cell: (row) => formatMoment(row.movement.event_at),
     },
     {
       id: 'before',

@@ -1,7 +1,7 @@
 /**
  * Shell journeys: real sign-in against local Supabase Auth (a click on a demo role signs in through the server's demo
  * sign-in endpoint; an e-mail off the list is refused), the eight destinations (the claim screens show the shared
- * filter bar, the Action Queue its task filters, Rules none), a supplier's figures, a task created, assigned and moved on in the Action
+ * filter bar, the Action Queue its task filters, Rules none), a supplier's figures, the Digest printed light on one A4 page, a task created, assigned and moved on in the Action
  * Queue and kept across a reload (in the database, through the real API), the persona switch and the theme toggle (both survive a reload), sign-out,
  * and axe accessibility checks.
  *
@@ -149,7 +149,7 @@ test.describe('shell', () => {
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     await expectNoAxeViolations(page);
 
-    // Digest: no persona is kept from it, the DEMO figures come from the API, and in the dark theme it prints light on one A4 page.
+    // Digest: in the dark theme it prints light on one A4 page.
     await nav.getByRole('link', { name: 'Digest' }).click();
     const sheet = page.getByRole('article', { name: 'Claims digest' });
     await expect(sheet).toContainText('Data setDEMO');

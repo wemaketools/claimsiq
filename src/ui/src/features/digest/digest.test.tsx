@@ -118,7 +118,7 @@ describe('Digest', () => {
     expect(reserve).toEqual([
       [
         'CLM-101',
-        '2026-10-16',
+        '16 Oct 2026',
         'P8,000.00',
         'P11,000.00',
         'Up P3,000.0037.5% of the earlier amount',

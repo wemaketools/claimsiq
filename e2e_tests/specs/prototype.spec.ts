@@ -2,7 +2,7 @@
  * The static demo (a production build in prototype mode served by `vite preview`, no Supabase stack): a deep link
  * meets the sign-in page with the roles card and the banner, a role click signs in and returns to the link, every
  * screen works on the in-browser mock API, the session survives a reload, the persona and theme switch, sign-out
- * returns to sign-in, the rules are edited, restored and reset, nothing leaves the page's own origin, and every screen passes axe in both themes.
+ * returns to sign-in, the Digest prints light on one A4 page for both data sets, the rules are edited, restored and reset, nothing leaves the page's own origin, and every screen passes axe in both themes.
  *
  * Prerequisites: none beyond the browser. Playwright builds and serves the app (playwright.config.ts).
  */

@@ -15,7 +15,7 @@ import { formatCalendarDate } from '../../lib/format';
 import { t } from '../../lib/i18n';
 import { ClaimFilterBar, useClaimFilteredQuery, useClaimScope } from '../claim-scope';
 import { queueRows } from '../actions/rows';
-import { exceptionRows, sortRows } from '../exceptions/rows';
+import { exceptionRows, exceptionsSummary, sortRows } from '../exceptions/rows';
 import { supplierRows } from '../suppliers/rows';
 import {
   ActionsSection,
@@ -73,23 +73,6 @@ export default function DigestPage() {
   }, [taskItems, userItems, facts, scope.filtered]);
 
   const filters = filterSummary(scope.filters, lookups?.options);
-  const countOf = (severity: 'High' | 'Medium' | 'Low'): number =>
-    exceptions?.filter((row) => row.severity === severity).length ?? 0;
-  const unranked = exceptions?.filter((row) => row.severity === null).length ?? 0;
-  const exceptionsSummary =
-    exceptions === undefined || exceptions.length === 0
-      ? null
-      : [
-          t('exceptions.summary', {
-            count: exceptions.length,
-            high: countOf('High'),
-            medium: countOf('Medium'),
-            low: countOf('Low'),
-          }),
-          unranked > 0 ? t('exceptions.summaryOther', { count: unranked }) : '',
-        ]
-          .filter((part) => part !== '')
-          .join(' ');
   const exceptionsError = scope.lookups.error;
   const suppliersError = insights.error ?? suppliers.error;
   const actionsError = tasks.error ?? users.error;
@@ -160,7 +143,7 @@ export default function DigestPage() {
             <div className="ciq-stack" aria-busy={scope.facts.isFetching}>
               <HeadlineFigures summary={data.summary} />
               <ExceptionsSection
-                summary={exceptionsSummary}
+                summary={exceptions === undefined ? null : exceptionsSummary(exceptions)}
                 data={{
                   shown:
                     exceptions === undefined
