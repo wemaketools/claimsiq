@@ -3,10 +3,10 @@ import { describe, expect, it } from 'vitest';
 import { endpoints, formatMoney } from '../contracts/index.js';
 import type { ClaimEvent, ClaimRecord } from '../contracts/index.js';
 import { createMockApi } from '../mock-api/api.js';
-import { claimRecords } from '../mock-api/asOfViews.js';
-import { loadDataset } from '../mock-api/fixtures/index.js';
+import { claimRecords } from '../read-model/asOfViews.js';
+import { loadDataset } from '../read-model/fixtures/index.js';
 import { memoryStore } from '../mock-api/storage.js';
-import { readFixtureFiles, readFixtureJson } from '../mock-api/test-support/fixtureFiles.js';
+import { readFixtureFiles, readFixtureJson } from '../read-model/test-support/fixtureFiles.js';
 import { ageBucketLabel, businessDaysBetween, computeClaimFacts, computeClaimsFacts, isTaskOverdue, parseRuleConfig, summarizeClaimFacts, summarizeSuppliers, weekdaySet } from './index.js';
 import type { RuleContext } from './index.js';
 

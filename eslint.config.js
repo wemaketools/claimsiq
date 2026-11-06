@@ -2,7 +2,7 @@
 /**
  * Backend ESLint flat config.
  *
- * `bun run lint` lints api/, src/server/, src/contracts/, src/mock-api/, src/rules/ and scripts/. The folders that do not exist
+ * `bun run lint` lints api/, src/server/, src/contracts/, src/mock-api/, src/read-model/, src/rules/ and scripts/. The folders that do not exist
  * yet are skipped. The SPA has its own config (src/ui/eslint.config.js). The Playwright workspace is type-checked
  * with `bun run --filter @claimsiq/e2e typecheck`.
  *
@@ -15,7 +15,10 @@
  *   use Node APIs.
  * - src/rules (the claims rules engine) is pure too: only zod, decimal.js, its own files and src/contracts, and no
  *   Node or browser APIs, so Collections and the SPA can reuse it. Its tests may use Node APIs.
- * - The mock API runs in the browser for Stage A (no Node modules outside its tests and test-support) and is never
+ * - src/read-model (the record sets and the reads both transports answer through) is pure as well: zod, decimal.js,
+ *   its own files, src/contracts and src/rules, and nothing of the server, the mock API or the SPA. Its tests and
+ *   test-support may use Node APIs.
+ * - The mock API runs in the browser for Stage A (no Node modules outside its tests) and is never
  *   reachable from src/server or api/.
  */
 import js from '@eslint/js';
@@ -53,6 +56,11 @@ const RULES_PURITY = {
   message:
     'src/rules is pure: import only zod, decimal.js, files of src/rules and src/contracts. No Node, browser, mock API or server modules.',
 };
+const READ_MODEL_PURITY = {
+  regex: '^(?!zod(?:/|$)|decimal\\.js$|\\.{1,2}/)',
+  message:
+    'src/read-model is pure: import only zod, decimal.js, files of src/read-model, src/contracts and src/rules. No Node, browser, mock API or server modules.',
+};
 const PURE_GLOBALS = [
   'process',
   'Buffer',
@@ -69,7 +77,7 @@ const PURE_GLOBALS = [
 ];
 const BROWSER_SAFE = {
   regex: '^(node:|fs$|path$|os$|child_process$)',
-  message: 'src/mock-api runs in the browser: no Node modules outside its tests and test-support.',
+  message: 'src/mock-api runs in the browser: no Node modules outside its tests.',
 };
 
 export default defineConfig([
@@ -135,9 +143,32 @@ export default defineConfig([
     },
   },
   {
+    name: 'claimsiq/read-model-purity',
+    files: ['src/read-model/**/*.ts'],
+    ignores: ['src/read-model/**/*.test.ts', 'src/read-model/test-support/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: processEnvImportPaths,
+          patterns: [
+            READ_MODEL_PURITY,
+            MOCK_API_BOUNDARY,
+            SPA_BOUNDARY,
+            { group: ['**/server', '**/server/**'], message: 'src/read-model is shared with the browser: it never imports the server.' },
+          ],
+        },
+      ],
+      'no-restricted-globals': [
+        'error',
+        ...PURE_GLOBALS.map((name) => ({ name, message: 'src/read-model is pure: no Node or browser APIs.' })),
+      ],
+    },
+  },
+  {
     name: 'claimsiq/mock-api-browser-safe',
     files: ['src/mock-api/**/*.ts'],
-    ignores: ['src/mock-api/**/*.test.ts', 'src/mock-api/test-support/**'],
+    ignores: ['src/mock-api/**/*.test.ts'],
     rules: {
       'no-restricted-imports': ['error', { paths: processEnvImportPaths, patterns: [BROWSER_SAFE] }],
     },

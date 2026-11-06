@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { DATA_SETS, ENTITIES, ENTITY_NAMES, sumMoney } from '../../contracts/index.js';
 import { readFixtureFiles, readFixtureJson, withEdit } from '../test-support/fixtureFiles.js';
+import { quarantinedRowCount } from '../reads.js';
 import { loadDataset } from './load.js';
 
 describe('loading the spec fixtures', () => {
@@ -87,7 +88,7 @@ describe('loading the spec fixtures', () => {
     expect(at('ALLOC-OVER')).toEqual(['5:allocated_amount', '5:allocated_amount']);
     expect(at('RCP-OTHER')).toEqual(['6:tenant_id']);
     expect(quarantined.find((issue) => issue.record_id === 'CLM-201' && issue.field === 'stage')?.fix).toMatch(/Use one of: .*Triage/);
-    expect(loaded.quarantinedRows).toBe(7);
+    expect(quarantinedRowCount(loaded.issues)).toBe(7);
 
     expect(loaded.issues.filter((issue) => issue.kind === 'warning')).toEqual([
       expect.objectContaining({ entity: 'claim_event', record_id: 'EVT-X-2', field: 'event_at', row: 14 }),

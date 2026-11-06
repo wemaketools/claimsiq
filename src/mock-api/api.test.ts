@@ -4,7 +4,7 @@ import { endpoints } from '../contracts/index.js';
 import type { DataSetId, EndpointContract, PersonaId } from '../contracts/index.js';
 import { createMockApi } from './api.js';
 import { memoryStore } from './storage.js';
-import { readFixtureFiles, readFixtureJson } from './test-support/fixtureFiles.js';
+import { readFixtureFiles, readFixtureJson } from '../read-model/test-support/fixtureFiles.js';
 
 const FIXTURES = { TEST: readFixtureFiles('test'), DEMO: readFixtureFiles('demo') };
 

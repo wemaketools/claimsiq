@@ -1,7 +1,7 @@
 import { screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { generateClaimsFixture } from '../../../../mock-api/test-support/generatedFixture';
+import { generateClaimsFixture } from '../../../../read-model/test-support/generatedFixture';
 import { fixtureFiles, transportOver } from '../../test/datasets';
 import { renderApp } from '../../test/renderApp';
 

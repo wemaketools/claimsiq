@@ -6,6 +6,7 @@
     "src/server/**/*.ts",
     "src/contracts/**/*.ts",
     "src/mock-api/**/*.ts",
+    "src/read-model/**/*.ts",
     "src/rules/**/*.ts",
     "scripts/**/*.ts",
     "vitest.config.ts"

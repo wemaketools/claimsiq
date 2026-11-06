@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { endpoints } from '../../contracts/index.js';
-import { createMockApi } from '../api.js';
-import { loadDataset } from '../fixtures/index.js';
-import { memoryStore } from '../storage.js';
-import { readFixtureFiles, readFixtureJson } from './fixtureFiles.js';
-import { generateClaimsFixture } from './generatedFixture.js';
+import { endpoints } from '../contracts/index.js';
+import { createMockApi } from './api.js';
+import { loadDataset } from '../read-model/fixtures/index.js';
+import { memoryStore } from './storage.js';
+import { readFixtureFiles, readFixtureJson } from '../read-model/test-support/fixtureFiles.js';
+import { generateClaimsFixture } from '../read-model/test-support/generatedFixture.js';
 
 describe('the generated claims fixture', () => {
   it('is the same every time, loads without data issues, and the engine serves 500 claims that reconcile with their events well inside the 3 second budget', async () => {

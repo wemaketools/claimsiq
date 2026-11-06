@@ -31,7 +31,6 @@ export interface LoadedDataset {
   readonly tenant: Tenant;
   readonly records: DatasetRecords;
   readonly issues: readonly DataIssue[];
-  readonly quarantinedRows: number;
 }
 
 interface Problem {
@@ -95,7 +94,6 @@ export function loadDataset(dataSet: DataSetId, files: FixtureFiles): LoadedData
   const accepted = new Map<EntityName, Raw[]>();
   const index = createRowIndex();
   const issues: DataIssue[] = [];
-  const quarantinedLines = new Set<string>();
   const allocatedToInvoice = new Map<string, string>();
   const allocatedFromReceipt = new Map<string, string>();
 
@@ -117,7 +115,6 @@ export function loadDataset(dataSet: DataSetId, files: FixtureFiles): LoadedData
         problem: `${definition.file} is missing from the data set`,
         fix: `Add ${definition.file} with the header row of the fixture schema.`,
       });
-      quarantinedLines.add(`${name}:1`);
       continue;
     }
     const table = parseCsv(text);
@@ -177,7 +174,6 @@ export function loadDataset(dataSet: DataSetId, files: FixtureFiles): LoadedData
 
       if (problems.length > 0) {
         for (const problem of problems) add('quarantined', row.line, recordId, problem);
-        quarantinedLines.add(`${name}:${row.line}`);
         continue;
       }
       const record: Raw = parsed.success ? parsed.data : raw;
@@ -207,7 +203,7 @@ export function loadDataset(dataSet: DataSetId, files: FixtureFiles): LoadedData
     ...expected,
     dataset_tag: dataSet,
   };
-  return { dataSet, tenant, records, issues, quarantinedRows: quarantinedLines.size };
+  return { dataSet, tenant, records, issues };
 }
 
 interface Sums {

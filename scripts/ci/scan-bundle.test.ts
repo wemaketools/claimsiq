@@ -1,6 +1,7 @@
 /**
- * Guard for the prototype scan itself: it must fail on supabase-js (code or chunk) and on a Content-Security-Policy
- * that lets a prototype build connect anywhere but its own origin, and stay quiet on a clean prototype build.
+ * Guard for the scan itself: a prototype build must fail on supabase-js (code or chunk) and on a Content-Security-Policy
+ * that lets it connect anywhere but its own origin, and stay quiet when clean; any other build must fail on the
+ * in-browser mock API.
  */
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -32,6 +33,10 @@ describe('scan-bundle in prototype mode', () => {
         expect.arrayContaining(['assets/index-abc.js supabase-js', 'assets/vendor-supabase-abc.js supabase-js']),
       );
       expect(scanBundle(dist, { ...inputs, prototype: false })).toEqual([]);
+
+      writeFileSync(join(dist, 'assets', 'index-abc.js'), 'throw new Error("The mock API failed on this request.")');
+      expect(scanBundle(dist, inputs).map((finding) => finding.rule)).not.toContain('mock-api-in-api-build');
+      expect(scanBundle(dist, { ...inputs, prototype: false }).map((finding) => finding.rule)).toContain('mock-api-in-api-build');
 
       expect(checkProductionCsp(csp("connect-src 'self' http://127.0.0.1:54421"), true)).toHaveLength(1);
       expect(checkProductionCsp(csp("connect-src 'self' http://127.0.0.1:54421"))).toEqual([]);

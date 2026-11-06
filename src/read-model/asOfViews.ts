@@ -1,9 +1,14 @@
 /** The records of a data set as an as-of date sees them: the one place that limits claims and their children. */
 import { onOrBeforeAsOf } from '../contracts/index.js';
 import type { ClaimRecord, InvoiceRecord } from '../contracts/index.js';
-import type { LoadedDataset } from './fixtures/index.js';
+import type { DatasetRecords } from './fixtures/index.js';
 
-const within = (asOf: string, moment: string | null): boolean => moment === null || onOrBeforeAsOf(moment, asOf);
+/** What the as-of views need of a data set: its records. Tasks are not limited by the as-of date and come from their own source. */
+export interface RecordSet {
+  readonly records: Omit<DatasetRecords, 'task'>;
+}
+
+export const within = (asOf: string, moment: string | null): boolean => moment === null || onOrBeforeAsOf(moment, asOf);
 
 function byKey<T>(items: readonly T[], key: (item: T) => string): Map<string, T[]> {
   const grouped = new Map<string, T[]>();
@@ -15,7 +20,7 @@ function byKey<T>(items: readonly T[], key: (item: T) => string): Map<string, T[
   return grouped;
 }
 
-export function claimRecords(data: LoadedDataset, asOf: string, claimId?: string): ClaimRecord[] {
+export function claimRecords(data: RecordSet, asOf: string, claimId?: string): ClaimRecord[] {
   const { claim, claim_event, reserve_event, claim_payment, supplier_request } = data.records;
   const claims = claim.filter(
     (row) => (claimId === undefined || row.claim_id === claimId) && within(asOf, row.reported_at),
@@ -36,7 +41,7 @@ export function claimRecords(data: LoadedDataset, asOf: string, claimId?: string
   }));
 }
 
-export function invoiceRecords(data: LoadedDataset, asOf: string): InvoiceRecord[] {
+export function invoiceRecords(data: RecordSet, asOf: string): InvoiceRecord[] {
   const { invoice, payment_allocation, receipt, payment_attempt } = data.records;
   const receiptsById = new Map(receipt.filter((row) => within(asOf, row.received_at)).map((row) => [row.receipt_id, row]));
   const allocations = byKey(

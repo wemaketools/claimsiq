@@ -24,13 +24,14 @@
     "noUncheckedSideEffectImports": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src", "../contracts", "../mock-api", "../rules"],
+  "include": ["src", "../contracts", "../mock-api", "../read-model", "../rules"],
   "exclude": [
     "dist",
     "node_modules",
     "../contracts/**/*.test.ts",
     "../mock-api/**/*.test.ts",
-    "../mock-api/test-support",
+    "../read-model/**/*.test.ts",
+    "../read-model/test-support",
     "../rules/**/*.test.ts"
   ]
 }

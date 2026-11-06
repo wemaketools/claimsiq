@@ -3,7 +3,8 @@
  *
  * Builds the SPA (`bun run build:ui`; skip with `--no-build`) and fails if any file in `src/ui/dist` contains:
  * - persona e-mails (`@claimsiq.local`) and mock-api source paths or messages in plain text (the in-browser mock API
- *   ships in the bundle on purpose in Stage A, over the synthetic CSV fixtures);
+ *   ships only in the prototype build, over the synthetic CSV fixtures; any other build calls the real API and must
+ *   not carry it);
  * - `src/server` code (paths and messages unique to the server platform modules);
  * - a server-only environment variable name (the keys of src/server/lib/config plus the keys of the planned
  *   backend; the browser-safe `VITE_` names are allowed);
@@ -100,6 +101,13 @@ export function bundleRules(inputs: BundleScanInputs): BundleRule[] {
       id: 'supabase-js',
       description: 'supabase-js in a prototype build',
       pattern: /GoTrueClient|supabase-js|gotrue-js|@supabase\/|PASSWORD_RECOVERY/g,
+    });
+  }
+  if (inputs.prototype !== true) {
+    rules.push({
+      id: 'mock-api-in-api-build',
+      description: 'the in-browser mock API in a build that calls the real API',
+      pattern: /The mock API failed on this request/g,
     });
   }
   return rules;

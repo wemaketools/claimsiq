@@ -10,6 +10,7 @@ export interface BrokersTable {
   channel: string;
   owner_user_id: string;
   branch: string;
+  row_no: ColumnType<number, never, never>;
 }
 
 export interface ClaimEventsTable {
@@ -21,6 +22,7 @@ export interface ClaimEventsTable {
   to_stage: string;
   reason: string;
   actor_id: string;
+  row_no: ColumnType<number, never, never>;
 }
 
 export interface ClaimPaymentsTable {
@@ -32,6 +34,7 @@ export interface ClaimPaymentsTable {
   currency: string;
   payment_ref: string;
   status: string;
+  row_no: ColumnType<number, never, never>;
 }
 
 export interface ClaimsTable {
@@ -47,6 +50,7 @@ export interface ClaimsTable {
   current_outstanding_reserve: string;
   currency: string;
   closed_at: string | null;
+  row_no: ColumnType<number, never, never>;
 }
 
 export interface ClientsTable {
@@ -56,6 +60,20 @@ export interface ClientsTable {
   segment: string;
   region: string;
   is_corporate: boolean;
+  row_no: ColumnType<number, never, never>;
+}
+
+export interface DataIssuesTable {
+  tenant_id: string;
+  issue_no: number;
+  kind: string;
+  entity: string;
+  file: string;
+  source_row: number;
+  record_id: string | null;
+  field: string;
+  problem: string;
+  fix: string;
 }
 
 export interface InvoicesTable {
@@ -67,6 +85,7 @@ export interface InvoicesTable {
   issued_amount: string;
   currency: string;
   status: string;
+  row_no: ColumnType<number, never, never>;
 }
 
 export interface PaymentAllocationsTable {
@@ -76,6 +95,7 @@ export interface PaymentAllocationsTable {
   invoice_id: string;
   allocated_amount: string;
   posted_at: string;
+  row_no: ColumnType<number, never, never>;
 }
 
 export interface PaymentAttemptsTable {
@@ -86,6 +106,7 @@ export interface PaymentAttemptsTable {
   method: string;
   outcome: string;
   reason_code: string | null;
+  row_no: ColumnType<number, never, never>;
 }
 
 export interface PoliciesTable {
@@ -98,6 +119,7 @@ export interface PoliciesTable {
   inception_at: string;
   expiry_at: string;
   status: string;
+  row_no: ColumnType<number, never, never>;
 }
 
 export interface ProductsTable {
@@ -106,6 +128,7 @@ export interface ProductsTable {
   class_of_business: string;
   product_name: string;
   currency: string;
+  row_no: ColumnType<number, never, never>;
 }
 
 export interface ReceiptsTable {
@@ -116,6 +139,7 @@ export interface ReceiptsTable {
   currency: string;
   bank_ref: string;
   status: string;
+  row_no: ColumnType<number, never, never>;
 }
 
 export interface ReserveEventsTable {
@@ -126,6 +150,7 @@ export interface ReserveEventsTable {
   old_amount: string;
   new_amount: string;
   reason: string;
+  row_no: ColumnType<number, never, never>;
 }
 
 export interface RuleConfigsTable {
@@ -145,6 +170,7 @@ export interface SupplierRequestsTable {
   requested_at: string | null;
   completed_at: string | null;
   request_type: string;
+  row_no: ColumnType<number, never, never>;
 }
 
 export interface SuppliersTable {
@@ -153,6 +179,7 @@ export interface SuppliersTable {
   name: string;
   service_type: string;
   active: boolean;
+  row_no: ColumnType<number, never, never>;
 }
 
 export interface TaskAuditEntriesTable {
@@ -165,6 +192,7 @@ export interface TaskAuditEntriesTable {
   from_value: string | null;
   to_value: string | null;
   note: string | null;
+  actor_user_id: string | null;
 }
 
 export interface TaskCountersTable {
@@ -197,6 +225,7 @@ export interface TenantsTable {
   tenant_id: string;
   display_name: string;
   dataset_tag: string;
+  row_no: ColumnType<number, never, never>;
 }
 
 export interface UsersTable {
@@ -205,6 +234,7 @@ export interface UsersTable {
   display_name: string;
   role: string;
   team: string;
+  row_no: ColumnType<number, never, never>;
 }
 
 export interface Database {
@@ -213,6 +243,7 @@ export interface Database {
   claim_payments: ClaimPaymentsTable;
   claims: ClaimsTable;
   clients: ClientsTable;
+  data_issues: DataIssuesTable;
   invoices: InvoicesTable;
   payment_allocations: PaymentAllocationsTable;
   payment_attempts: PaymentAttemptsTable;
@@ -238,6 +269,7 @@ export const TENANT_TABLES = [
   'claim_payments',
   'claims',
   'clients',
+  'data_issues',
   'invoices',
   'payment_allocations',
   'payment_attempts',

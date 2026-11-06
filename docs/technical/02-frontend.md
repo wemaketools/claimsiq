@@ -11,7 +11,7 @@ Status: as built (scaffold, data layer, the claim screens: Overview, Stages & Ag
 | `components/charts/` | Recharts wrappers on token colours; every chart has a table alternative for assistive technology |
 | `components/shell/` | `AppShell`, `Sidebar`, `Topbar`, `UserCard`, `PrototypeBanner` |
 | `app/` | Store and slices (`session`, `dataContext`, `filters`), `dataContextActions.ts`, `router.tsx`, `RouteGuard`, the feature registry, `personas.ts`, `tenant.ts` |
-| `api/` | `client.ts` (`call(endpoint)`), `hooks.ts` (`useApiQuery`, `useApiMutation`, `invalidateApiQueries`), `endpoint.ts`, `problem.ts`, `mockTransport.ts` (Stage A: the in-browser mock API as the transport) |
+| `api/` | `client.ts` (`call(endpoint)`), `hooks.ts` (`useApiQuery`, `useApiMutation`, `invalidateApiQueries`), `endpoint.ts`, `problem.ts`, `mockTransport.ts` (the in-browser mock API as the transport; imported only by prototype builds) |
 | `auth/` | `authMode` (the build-time mode), `SupabaseAuthProvider` and `PrototypeAuthProvider` (the shared effects are in `sessionEffects.ts`), sign-in (`PrototypeSignIn` in prototype builds), forgot and reset password, `DemoAccounts` (the card of demo accounts, shared) and the development-only `DevDemoAccounts` |
 | `features/<feature>/` | `routes.tsx`, the page, `i18n/en.ts` |
 | `features/claim-scope/` | No route: what the claim screens share (see Claim screens) |
@@ -55,7 +55,7 @@ Every screen has a loading, an empty and an error state, and a restricted state 
 
 ## API client
 
-`call(endpoint, { params, query, body }, options)` sends the bearer token (read per request from the supabase-js session), `X-Tenant-Id`, `X-As-Of` and `X-Persona` (none of them on `public` endpoints), an `Idempotency-Key` on idempotent commands, normalizes `application/problem+json` to `ApiError`, signs the user out on 401 and, in development builds, parses the response with the endpoint's zod schema so drift fails loudly. The auth provider of the build's mode installs the adapters with `configureApiClient` (a prototype build sends no token), including the `transport` that `main.tsx` passes (the mock API in Stage A; the platform `fetch` when none is given). The endpoints are the typed contracts of `src/contracts` (`endpoints.claimsList`, `endpoints.tasksCreate`, …); screens call them with `useApiQuery` and `useApiMutation` and never import the mock API.
+`call(endpoint, { params, query, body }, options)` sends the bearer token (read per request from the supabase-js session), `X-Tenant-Id`, `X-As-Of` and `X-Persona` (none of them on `public` endpoints), an `Idempotency-Key` on idempotent commands, normalizes `application/problem+json` to `ApiError`, signs the user out on 401 and, in development builds, parses the response with the endpoint's zod schema so drift fails loudly. The auth provider of the build's mode installs the adapters with `configureApiClient` (a prototype build sends no token), including the `transport` that `main.tsx` passes (the mock API in a prototype build; none otherwise, so the platform `fetch` sends the request to `/api/v1` on the app's own origin, proxied to the API server by Vite in development). The endpoints are the typed contracts of `src/contracts` (`endpoints.claimsList`, `endpoints.tasksCreate`, …); screens call them with `useApiQuery` and `useApiMutation` and never import the mock API.
 
 ## Tests
 

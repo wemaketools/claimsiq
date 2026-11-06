@@ -6,6 +6,7 @@
  *
  * | Variable                    | Required | Purpose                                                            |
  * |-----------------------------|----------|--------------------------------------------------------------------|
+ * | `API_PORT`                  | no       | Port of the local API server (`bun run dev:api`), default 5274      |
  * | `APP_ENV`                   | no       | `local` (default) / `dev` / `preview` / `staging` / `production`   |
  * | `DATABASE_URL`              | no       | Postgres connection URL (direct, not a pooler); the db scripts and tests need it |
  * | `LOG_LEVEL`                 | no       | `debug` / `info` (default) / `warn` / `error`                      |
@@ -56,6 +57,14 @@ const httpUrl = (name: string) =>
 /** The raw environment variables, validated. Keys are the variable names. */
 export const serverEnvSchema = z
   .object({
+    API_PORT: blankAsAbsent(
+      z.coerce
+        .number({ error: 'API_PORT must be a TCP port between 1024 and 65535.' })
+        .int('API_PORT must be a TCP port between 1024 and 65535.')
+        .min(1024, 'API_PORT must be a TCP port between 1024 and 65535.')
+        .max(65535, 'API_PORT must be a TCP port between 1024 and 65535.')
+        .default(5274),
+    ),
     APP_ENV: blankAsAbsent(z.enum(APP_ENV_VALUES, { error: `APP_ENV must be one of ${APP_ENV_VALUES.join(', ')}.` }).default('local')),
     DATABASE_URL: blankAsAbsent(
       z
@@ -98,6 +107,8 @@ export const BROWSER_ENV_KEYS = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'] 
 /** The typed, frozen configuration handed to the rest of the server. */
 export interface AppConfig {
   readonly appEnv: AppEnvValue;
+  /** The port `bun run dev:api` listens on. */
+  readonly apiPort: number;
   readonly logLevel: LogLevel;
   readonly database: {
     /** The Postgres connection URL, or null when `DATABASE_URL` is unset. */
@@ -120,6 +131,7 @@ export function toAppConfig(env: z.output<typeof serverEnvSchema>): AppConfig {
   const url = env.SUPABASE_URL.replace(/\/+$/, '');
   return {
     appEnv: env.APP_ENV,
+    apiPort: env.API_PORT,
     logLevel: env.LOG_LEVEL,
     database: { url: env.DATABASE_URL ?? null },
     supabase: {

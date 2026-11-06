@@ -11,6 +11,7 @@ import {
 } from '../../../lib/config/index.js';
 
 const VALID = {
+  API_PORT: '5400',
   APP_ENV: 'local',
   LOG_LEVEL: 'debug',
   DATABASE_URL: 'postgresql://postgres:<local-db-password>@127.0.0.1:54322/postgres',
@@ -41,6 +42,7 @@ describe('loadConfig', () => {
     const config = loadConfig(VALID);
 
     expect(config).toEqual({
+      apiPort: 5400,
       appEnv: 'local',
       logLevel: 'debug',
       database: { url: 'postgresql://postgres:<local-db-password>@127.0.0.1:54322/postgres' },
@@ -54,8 +56,9 @@ describe('loadConfig', () => {
     });
     expect(Object.isFrozen(config)).toBe(true);
     expect(Object.isFrozen(config.supabase)).toBe(true);
-    expect(loadConfig({ ...VALID, APP_ENV: '  ', LOG_LEVEL: '' })).toMatchObject({
+    expect(loadConfig({ ...VALID, APP_ENV: '  ', LOG_LEVEL: '', API_PORT: '' })).toMatchObject({
       appEnv: 'local',
+      apiPort: 5274,
       logLevel: 'info',
     });
     expect([...SERVER_ENV_KEYS].sort()).toEqual(Object.keys(VALID).sort());
@@ -63,10 +66,10 @@ describe('loadConfig', () => {
 
   it('lists every bad variable by name without echoing a value, requires https outside local and refuses a reused key', () => {
     const error = captureError(() =>
-      loadConfig({ APP_ENV: 'prod', LOG_LEVEL: 'verbose', SUPABASE_URL: 'not a url', SUPABASE_ANON_KEY: ' ' }),
+      loadConfig({ API_PORT: '80', APP_ENV: 'prod', LOG_LEVEL: 'verbose', SUPABASE_URL: 'not a url', SUPABASE_ANON_KEY: ' ' }),
     );
     expect(error.variables.sort()).toEqual(
-      ['APP_ENV', 'LOG_LEVEL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_URL'].sort(),
+      ['API_PORT', 'APP_ENV', 'LOG_LEVEL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_URL'].sort(),
     );
     const secret = captureError(() =>
       loadConfig({ ...VALID, SUPABASE_URL: ['postgres://user', 'hunter2@db'].join(':') }),

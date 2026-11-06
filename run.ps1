@@ -13,7 +13,7 @@
     5. applies the database migrations (`bun run db:migrate`), creates or updates the demo accounts in local
        Supabase Auth (`bun run auth:personas`, password test1234) and loads the TEST and DEMO fixtures into the
        database (`bun run db:seed`, which replaces both data sets and links the accounts to them);
-    6. runs the app (`bun run dev`): the SPA on http://localhost:5273. Press Ctrl+C to stop it; the Supabase
+    6. runs the app (`bun run dev`): the API on http://127.0.0.1:5274 and the SPA on http://localhost:5273. Press Ctrl+C to stop them; the Supabase
        stack keeps running.
 
 .PARAMETER StopDb
@@ -166,6 +166,6 @@ Invoke-Bun @('run', 'auth:personas')
 Write-Step 'Seeding TEST and DEMO into the database'
 Invoke-Bun @('run', 'db:seed')
 
-Write-Step 'Running the app: http://localhost:5273 (Ctrl+C to stop)'
+Write-Step 'Running the app: http://localhost:5273, API http://127.0.0.1:5274 (Ctrl+C to stop)'
 Write-Host '    Password-reset emails: Mailpit at http://127.0.0.1:54424' -ForegroundColor DarkGray
 Invoke-Bun @('run', 'dev')

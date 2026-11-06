@@ -10,11 +10,12 @@ import { DEMO_ACCOUNTS } from '../../src/ui/src/auth/demoAccountList.js';
 import { z } from 'zod';
 
 import { ENTITIES, ENTITY_NAMES, PERSONA_IDS, TaskAuditEntry } from '../../src/contracts/index.js';
-import { readFixtureFiles, readFixtureJson, withEdit } from '../../src/mock-api/test-support/fixtureFiles.js';
+import { readFixtureFiles, readFixtureJson, withEdit } from '../../src/read-model/test-support/fixtureFiles.js';
 import { renderSchema, SCHEMA_FILE } from './generate-types.js';
 import { createScratchDatabase, reachableDatabaseUrl } from './scratchDatabase.js';
 import type { ScratchDatabase } from './scratchDatabase.js';
-import { ENTITY_TABLES, findPersonaAccounts, seedDataSet, seedFromFixtures } from './seed.js';
+import { ENTITY_TABLES } from '../../src/server/lib/db/index.js';
+import { findPersonaAccounts, seedDataSet, seedFromFixtures } from './seed.js';
 
 const serverUrl = await reachableDatabaseUrl();
 
@@ -45,7 +46,7 @@ describe.skipIf(serverUrl === null)('the Stage B database', () => {
     expect(tables.rows.map((row) => row.relname)).toEqual(
       expect.arrayContaining(ENTITY_NAMES.map((name) => ENTITY_TABLES[name])),
     );
-    expect(tables.rows).toHaveLength(ENTITY_NAMES.length + 4);
+    expect(tables.rows).toHaveLength(ENTITY_NAMES.length + 5);
     for (const row of tables.rows) {
       expect(row, row.relname).toMatchObject({ relrowsecurity: true, policies: '1', anon_reads: false, authenticated_reads: false });
     }
@@ -138,6 +139,9 @@ describe.skipIf(serverUrl === null)('the Stage B database', () => {
     expect(flagged.quarantined).toHaveLength(1);
     expect(flagged.quarantined[0]).toMatchObject({ file: 'claims.csv', record_id: 'CLM-999', field: 'current_outstanding_reserve' });
     expect(flagged.rows.claim).toBe(6);
+    const stored = await db.selectFrom('data_issues').select(['kind', 'source_row', 'record_id']).where('tenant_id', '=', 'TEST').orderBy('issue_no').execute();
+    expect(stored).toHaveLength(flagged.quarantined.length + flagged.warnings.length);
+    expect(stored[0]).toMatchObject({ kind: 'quarantined', record_id: 'CLM-999' });
     expect(await db.selectFrom('claims').select('claim_id').where('claim_id', '=', 'CLM-999').execute()).toEqual([]);
 
     await seedFromFixtures(db, 'TEST', accounts);

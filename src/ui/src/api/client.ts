@@ -12,8 +12,8 @@
  *   fails loudly.
  *
  * The client never imports supabase-js or the store: the auth provider installs the adapters (`configureApiClient`). The
- * adapters also carry the transport: Stage A sends every request to the mock API running in the browser, a real
- * server later is the platform `fetch` with no change to the callers.
+ * adapters also carry the transport: a prototype build sends every request to the mock API running in the browser,
+ * every other build uses the platform `fetch` against `/api/v1`, with no change to the callers.
  */
 import { AS_OF_HEADER, PERSONA_HEADER, TENANT_HEADER } from '../../../contracts/index';
 import { t } from '../lib/i18n';

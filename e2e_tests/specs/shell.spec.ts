@@ -1,11 +1,12 @@
 /**
  * Shell journeys: real sign-in against local Supabase Auth, the six destinations (the claim screens show the shared
  * filter bar, the Action Queue its task filters), a supplier's figures, a task created, assigned and moved on in the Action
- * Queue and kept across a reload, the persona switch and the theme toggle (both survive a reload), sign-out,
+ * Queue and kept across a reload (in the database, through the real API), the persona switch and the theme toggle (both survive a reload), sign-out,
  * and axe accessibility checks.
  *
- * Prerequisites: the local Supabase stack is running and the demo accounts exist (`bun run auth:personas`).
- * Playwright starts Vite on its own port (playwright.config.ts).
+ * Prerequisites: the local Supabase stack is running and the database is built (`bun run db:reset`).
+ * Playwright starts the API and Vite on their own ports (playwright.config.ts). The walk changes DEMO data, so it starts
+ * and ends with Reset, which is also the proof that Reset restores the fixture.
  */
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
@@ -24,6 +25,12 @@ const DESTINATIONS = [
 
 /** Every screen has a filter bar; the Action Queue's is its own. */
 const FILTERS = (name: string): string => (name === 'Action Queue' ? 'Task filters' : 'Claim filters');
+
+async function resetData(page: Page, dataSet: string): Promise<void> {
+  await page.getByRole('button', { name: 'Reset', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Reset', exact: true }).click();
+  await expect(page.getByText(`The ${dataSet} fixture is back as loaded.`)).toBeVisible();
+}
 
 async function signIn(page: Page, localPart: string): Promise<void> {
   await page.goto('/signin');
@@ -60,6 +67,7 @@ test.describe('shell', () => {
     await page.setViewportSize({ width: 1366, height: 768 });
     await signIn(page, 'finance');
     await expect(page).toHaveURL(/\/overview$/);
+    await resetData(page, 'DEMO');
     const sidebar = page.getByRole('complementary', { name: 'Main navigation and account' });
     await expect(sidebar.locator('.ciq-brand-name')).toHaveText('ClaimsIQ');
     await expect(sidebar.getByText('Claims Intelligence')).toBeVisible();
@@ -145,6 +153,12 @@ test.describe('shell', () => {
     );
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     await expectNoAxeViolations(page);
+
+    await nav.getByRole('link', { name: 'Action Queue' }).click();
+    const queueRows = page.getByRole('table', { name: 'Action Queue' }).getByRole('row').filter({ hasText: 'DCLM-016' });
+    await expect(queueRows).toHaveCount(1);
+    await resetData(page, 'DEMO');
+    await expect(queueRows).toHaveCount(0);
 
     await page.getByRole('button', { name: /^Finance/ }).click();
     await page.getByRole('menuitem', { name: 'Sign out' }).click();

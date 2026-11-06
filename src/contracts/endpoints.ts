@@ -1,6 +1,6 @@
 /**
  * The typed endpoints of the API, shared by the SPA (which calls them), the mock API (which implements them in the
- * browser for Stage A) and the backend later. Reads return raw records of the active tenant, limited by the as-of date
+ * browser for the prototype build) and the server (`/api/v1`, from the database). Reads return raw records of the active tenant, limited by the as-of date
  * where the mock API says so; the computed reads are `claims.facts` and `suppliers.insights`, which run the rules engine over those records, and
  * the `overdue` flag of `tasks.list`.
  *

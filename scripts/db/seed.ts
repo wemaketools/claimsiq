@@ -1,6 +1,6 @@
 /**
  * `bun run db:seed`: loads the TEST and DEMO fixtures into the LOCAL database, each as its own tenant, through the
- * loader of the mock API (`src/mock-api/fixtures`), so a row is accepted or quarantined by exactly the rules the
+ * fixture loader (`src/read-model/fixtures`, the mock API's too), so a row is accepted or quarantined by exactly the rules the
  * mock API applies. A quarantined row is reported and never inserted. Every run replaces the data set's rows, tasks
  * and audit trail included (the same as Reset in the demo), so a second run changes nothing.
  *
@@ -15,44 +15,19 @@ import { pathToFileURL } from 'node:url';
 import { sql } from 'kysely';
 import type { Kysely } from 'kysely';
 
-import { DATA_SET_IDS, DataSetId, ENTITIES, ENTITY_NAMES, PersonaId } from '../../src/contracts/index.js';
+import { DATA_SET_IDS, DataSetId, ENTITY_NAMES, PersonaId } from '../../src/contracts/index.js';
 import type { DataIssue, EntityName } from '../../src/contracts/index.js';
-import { loadDataset } from '../../src/mock-api/fixtures/index.js';
-import type { FixtureFiles } from '../../src/mock-api/fixtures/index.js';
-import { readFixtureFiles, readFixtureJson } from '../../src/mock-api/test-support/fixtureFiles.js';
-import { RuleConfig } from '../../src/rules/index.js';
+import { loadDataset } from '../../src/read-model/index.js';
+import type { FixtureFiles } from '../../src/read-model/index.js';
 import { getConfig } from '../../src/server/lib/config/index.js';
-import { createDb } from '../../src/server/lib/db/index.js';
+import { ENTITY_TABLES, createDb } from '../../src/server/lib/db/index.js';
 import type { Database } from '../../src/server/lib/db/index.js';
+import { committedFixture } from '../../src/server/lib/seed/fixtureFiles.js';
+import { replaceDataSetRows } from '../../src/server/lib/seed/replace.js';
 import { DEMO_ACCOUNTS } from '../../src/ui/src/auth/demoAccountList.js';
 import { requireLocalDatabaseUrl } from './local.js';
 
 type Db = Kysely<Database>;
-
-export const ENTITY_TABLES = {
-  tenant: 'tenants',
-  user: 'users',
-  client: 'clients',
-  broker: 'brokers',
-  product: 'products',
-  supplier: 'suppliers',
-  policy: 'policies',
-  invoice: 'invoices',
-  receipt: 'receipts',
-  payment_allocation: 'payment_allocations',
-  payment_attempt: 'payment_attempts',
-  claim: 'claims',
-  claim_event: 'claim_events',
-  claim_payment: 'claim_payments',
-  reserve_event: 'reserve_events',
-  supplier_request: 'supplier_requests',
-  task: 'tasks',
-} as const satisfies Record<EntityName, keyof Database>;
-
-/** The tables a tenant owns beyond the 17 entities, in the order their rows can be deleted. */
-const EXTRA_TABLES = ['tenant_memberships', 'rule_configs', 'task_audit_entries', 'task_counters'] as const satisfies readonly (keyof Database)[];
-
-const ROWS_PER_STATEMENT = 500;
 
 export interface PersonaAccount {
   readonly authUserId: string;
@@ -77,15 +52,6 @@ export async function findPersonaAccounts(db: Db): Promise<PersonaAccount[]> {
   }));
 }
 
-async function insertRows(db: Db, name: EntityName, rows: readonly object[]): Promise<void> {
-  const table = sql.table(ENTITY_TABLES[name]);
-  const columns = sql.join(Object.keys(ENTITIES[name].schema.shape).map((column) => sql.ref(column)));
-  for (let start = 0; start < rows.length; start += ROWS_PER_STATEMENT) {
-    const chunk = JSON.stringify(rows.slice(start, start + ROWS_PER_STATEMENT));
-    await sql`insert into ${table} (${columns}) select ${columns} from jsonb_populate_recordset(null::${table}, ${chunk}::jsonb)`.execute(db);
-  }
-}
-
 /** Replaces one data set, in one transaction: either all of it is there or none of it changed. */
 export async function seedDataSet(
   db: Db,
@@ -95,28 +61,9 @@ export async function seedDataSet(
   accounts: readonly PersonaAccount[],
 ): Promise<SeedReport> {
   const data = loadDataset(dataSet, files);
-  const tenantId = data.tenant.tenant_id;
-  RuleConfig.parse(ruleConfig);
 
   await db.transaction().execute(async (trx) => {
-    for (const table of EXTRA_TABLES) {
-      await trx.deleteFrom(table).where('tenant_id', '=', tenantId).execute();
-    }
-    for (const name of [...ENTITY_NAMES].reverse()) {
-      await trx.deleteFrom(ENTITY_TABLES[name]).where('tenant_id', '=', tenantId).execute();
-    }
-    for (const name of ENTITY_NAMES) {
-      await insertRows(trx, name, data.records[name]);
-    }
-    await trx.insertInto('rule_configs').values({ tenant_id: tenantId, data_set: dataSet, config: JSON.stringify(ruleConfig) }).execute();
-    const lastTask = Math.max(0, ...data.records.task.map((task) => Number(/^TASK-(\d+)$/.exec(task.task_id)?.[1] ?? 0)));
-    await trx.insertInto('task_counters').values({ tenant_id: tenantId, next_number: lastTask + 1 }).execute();
-    if (accounts.length > 0) {
-      await trx
-        .insertInto('tenant_memberships')
-        .values(accounts.map((account) => ({ tenant_id: tenantId, auth_user_id: account.authUserId, persona: account.persona })))
-        .execute();
-    }
+    await replaceDataSetRows(trx, data, ruleConfig, accounts);
   });
 
   return {
@@ -130,7 +77,8 @@ export async function seedDataSet(
 
 /** Seeds one data set from the committed fixtures in `fixtures/v1`. */
 export async function seedFromFixtures(db: Db, dataSet: DataSetId, accounts: readonly PersonaAccount[]): Promise<SeedReport> {
-  return await seedDataSet(db, dataSet, readFixtureFiles(dataSet === 'TEST' ? 'test' : 'demo'), readFixtureJson('proposed_rule_config.json'), accounts);
+  const { files, ruleConfig } = committedFixture(dataSet);
+  return await seedDataSet(db, dataSet, files, ruleConfig, accounts);
 }
 
 function describeIssue(issue: DataIssue): string {

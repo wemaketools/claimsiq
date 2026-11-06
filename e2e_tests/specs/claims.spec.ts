@@ -4,6 +4,9 @@
  * Stages & Aging, reads Exceptions & SLA with the filter kept, opens the flagged claim (Claim Detail, with its reserve
  * flag) and its policy's invoices, resets (the toast passes axe), and everything passes axe in both themes.
  *
+ * Every figure comes from the real API and the database: the test records the API calls the page makes and ends by
+ * checking the Overview figures were requested from `/api/v1`, with Reset as a command on it.
+ *
  * Prerequisites: as in shell.spec.ts. The 3 second budget on 500 claims is measured in the SPA suite
  * (features/overview/performance.test.tsx), because the browser build bundles only the TEST and DEMO fixtures.
  */
@@ -20,6 +23,11 @@ test.describe('claim screens', () => {
     page,
   }) => {
     await page.setViewportSize({ width: 1366, height: 768 });
+    const apiCalls: string[] = [];
+    page.on('request', (request) => {
+      const url = new URL(request.url());
+      if (url.pathname.startsWith('/api/v1/')) apiCalls.push(`${request.method()} ${url.pathname}`);
+    });
     await page.goto('/signin');
     await page.getByLabel('Email address').fill('head.of.claims@claimsiq.local');
     await page.getByLabel('Password').fill(PASSWORD);
@@ -106,5 +114,6 @@ test.describe('claim screens', () => {
     await page.getByRole('dialog').getByRole('button', { name: 'Reset', exact: true }).click();
     await expect(page.getByText('The TEST fixture is back as loaded.')).toBeVisible();
     await expectNoAxeViolations(page);
+    expect(apiCalls).toEqual(expect.arrayContaining(['GET /api/v1/claim-facts', 'GET /api/v1/claims', 'POST /api/v1/demo/reset']));
   });
 });
