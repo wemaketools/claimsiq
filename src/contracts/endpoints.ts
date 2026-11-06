@@ -1,7 +1,7 @@
 /**
  * The typed endpoints of the API, shared by the SPA (which calls them), the mock API (which implements them in the
  * browser for the prototype build) and the server (`/api/v1`, from the database). Reads return raw records of the active tenant, limited by the as-of date
- * where the read model (`src/read-model`, which the mock API and the server share) says so; the computed reads are `claims.facts`, `claims.whatIf` and `suppliers.insights`, which run the rules engine over those records, and
+ * where the read model (`src/read-model`, which the mock API and the server share) says so; the computed reads are `claims.facts`, `claims.paidTrend`, `claims.whatIf` and `suppliers.insights`, which run the rules engine over those records, and
  * the `overdue` flag of `tasks.list`; every one of them runs on the rule config `rules.config` shows.
  *
  * Request context travels in headers: `X-Tenant-Id`, `X-As-Of` (a date, default 2026-10-21) and, on commands,
@@ -14,6 +14,7 @@ import { PersonaId } from './personas.js';
 import { DateOnly, Id, Instant, Moment, Text } from './primitives.js';
 import { EditableClaimsRules, RuleConfig } from './ruleConfig.js';
 import { SupplierInsights } from './suppliers.js';
+import { PaidTrend } from './trends.js';
 import {
   Broker,
   Claim,
@@ -155,6 +156,15 @@ export type ClaimFactsQuery = z.infer<typeof ClaimFactsQuery>;
 export const ClaimWhatIfQuery = z.object({ to_stage: ClaimStage.optional() });
 export type ClaimWhatIfQuery = z.infer<typeof ClaimWhatIfQuery>;
 
+/** The claim filters of `claims.paidTrend`: the payments of the claims these filters leave. */
+export const PaidTrendQuery = ClaimFactsQuery.pick({
+  policy_id: true,
+  broker_id: true,
+  product_id: true,
+  handler_id: true,
+});
+export type PaidTrendQuery = z.infer<typeof PaidTrendQuery>;
+
 /** The claim filters of `suppliers.insights`: the figures cover the open claims these filters leave. */
 export const SupplierInsightsQuery = ClaimFactsQuery.pick({
   policy_id: true,
@@ -240,6 +250,14 @@ export const endpoints = {
       summary: ClaimsSummary,
       breakdowns: ClaimBreakdowns,
     }),
+  }),
+  /** Posted paid per calendar month up to the as-of date over the filtered claims (the rules engine's `paidTrend`). */
+  claimsPaidTrend: endpoint({
+    id: 'claims.paidTrend',
+    method: 'GET',
+    path: `${API}/paid-trend`,
+    query: PaidTrendQuery,
+    response: z.object({ ...readContext, ...PaidTrend.shape }),
   }),
   /**
    * A claim's facts now beside its facts with one hypothetical stage event appended at the as-of date, both from the

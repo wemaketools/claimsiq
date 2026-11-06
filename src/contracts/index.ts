@@ -9,4 +9,5 @@ export * from './personas.js';
 export * from './primitives.js';
 export * from './ruleConfig.js';
 export * from './suppliers.js';
+export * from './trends.js';
 export * from './time.js';

@@ -8,7 +8,7 @@ Status: as built (scaffold, data layer, the claim screens: Overview, Stages & Ag
 |---|---|
 | `theme/` | `tokens.css` (the `--ciq-*` custom properties for light and dark), `components.css` (the `.ciq-*` classes), `index.css` (self-hosted Inter and JetBrains Mono from `public/fonts`, imports) |
 | `components/ui/` | The design-system components (Button, Card, Chip, DataTable, Dialog, forms, KpiCard, Menu, Tabs, Timeline, EmptyState/ErrorState/RestrictedState, …). Features import from `components/ui` |
-| `components/charts/` | Recharts wrappers on token colours; every chart has a table alternative for assistive technology |
+| `components/charts/` | Recharts wrappers on token colours (including `GroupedBarChart`, side-by-side bars with an optional reference line); every chart has a table alternative for assistive technology |
 | `components/shell/` | `AppShell`, `Sidebar`, `Topbar`, `UserCard`, `PrototypeBanner` |
 | `app/` | Store and slices (`session`, `dataContext`, `filters`), `dataContextActions.ts`, `router.tsx`, `RouteGuard`, the feature registry, `personas.ts`, `tenant.ts` |
 | `api/` | `client.ts` (`call(endpoint)`), `hooks.ts` (`useApiQuery`, `useApiMutation`, `invalidateApiQueries`), `endpoint.ts`, `problem.ts`, `mockTransport.ts` (the in-browser mock API as the transport; imported only by prototype builds) |
@@ -50,7 +50,7 @@ Overview (`features/overview`), Stages & Aging (`features/stages`) and Claims (`
 
 Claim Detail's what-if card (`features/claim-detail/WhatIfCard.tsx`, DD-60) reads `claims.whatIf` with the chosen stage kept in component state (keyed on data set, as-of date and claim, so it never survives a change of any of them), and shows the engine's answer for the real and the what-if view side by side; it saves and invalidates nothing.
 
-Supplier Insights reads the shared filters through `useClaimScope()` and its own figures from `suppliers.insights`; a supplier opens the Claims list with the `supplier:<id>` criterion (DD-40, DD-41). The Action Queue has its own filters (status, owner, priority), is never limited by persona (DD-43) and shows the engine's `overdue` flag on each task (DD-42); its dialogs, and the same assign and status buttons on Claim Detail's task list, are the ones in `features/claim-tasks`.
+Overview's "Paid by month" card (`features/overview/PaidTrendCard.tsx`, `trends.ts`, DD-62) reads `claims.paidTrend` with the shared filters and has its own loading, error and empty states; its months are also rows of the Overview CSV. Supplier Insights reads the shared filters through `useClaimScope()` and its own figures from `suppliers.insights`, including the wait percentiles and their baseline (`WaitPercentiles.tsx`: a chart and a table that show a supplier below the sample minimum with its sample and no percentile, DD-62); a supplier opens the Claims list with the `supplier:<id>` criterion (DD-40, DD-41). The Action Queue has its own filters (status, owner, priority), is never limited by persona (DD-43) and shows the engine's `overdue` flag on each task (DD-42); its dialogs, and the same assign and status buttons on Claim Detail's task list, are the ones in `features/claim-tasks`.
 
 ## States
 

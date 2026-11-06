@@ -16,7 +16,7 @@ const PAGES = [
   ['Stages & Aging', 'Age detail'],
   ['Exceptions & SLA', 'Why it needs review'],
   ['Claims', 'Showing 1–6 of 6'],
-  ['Suppliers', 'Mma-Motor Repairs (fictional)'],
+  ['Suppliers', 'Waits against the baseline'],
   ['Action Queue', 'No actions in the queue'],
   ['Rules', 'Change history'],
 ] as const;
@@ -105,6 +105,6 @@ describe('the application routes', () => {
 
     expect(await screen.findByRole('button', { name: 'Try again' })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
-    expect(await screen.findByText('Mma-Motor Repairs (fictional)')).toBeInTheDocument();
+    expect(await screen.findByText('Waits against the baseline')).toBeInTheDocument();
   });
 });

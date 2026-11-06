@@ -50,6 +50,11 @@ test.describe('claim screens', () => {
     await expect(card('New claims')).toContainText('2');
     await expect(card('Paid in period')).toContainText('P0.00');
     await page.getByLabel('Period', { exact: true }).selectOption('30d');
+    // Paid by month: the posted payments of 22 Sep (P5,000) and 13 Oct (P4,000), which add up to Paid to date.
+    const paidByMonth = page.getByRole('table', { name: 'Posted paid by month' });
+    await expect(paidByMonth.getByRole('row')).toHaveText(['MonthPosted paid (BWP)', 'Sep 2026P5,000.00', 'Oct 2026P4,000.00']);
+    await expect(page.getByRole('region', { name: 'Paid by month' })).toContainText('P9,000.00 posted on 2 payments over 2 months.');
+    await expect(page.getByRole('region', { name: 'Paid by month' }).locator('.recharts-bar-rectangle').first()).toBeVisible();
     await expectNoHorizontalScroll(page);
     await expectNoAxeViolations(page);
 
@@ -61,10 +66,24 @@ test.describe('claim screens', () => {
     await expect(highValue).toHaveValue('25000');
     await expectNoHorizontalScroll(page);
     await expectNoAxeViolations(page);
+    // The supplier sample minimum is raised in the same save, so Supplier Insights stops placing Mma-Motor against the baseline.
+    await nav.getByRole('link', { name: 'Suppliers' }).click();
+    const waitPercentiles = page.getByRole('table', { name: 'Wait percentiles by supplier' });
+    const mma = waitPercentiles.getByRole('row', { name: /Mma-Motor Repairs/ });
+    await expect(mma).toContainText('11Over the target');
+    await expect(mma).toContainText('13Over the target');
+    await expectNoHorizontalScroll(page);
+    await expectNoAxeViolations(page);
+    await nav.getByRole('link', { name: 'Rules' }).click();
     await highValue.fill('40000');
+    await page.getByLabel('Supplier sample minimum').fill('3');
     await page.getByRole('button', { name: 'Save changes' }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Save changes' }).click();
     await expect(page.getByText('The rules were saved (version 2).')).toBeVisible();
+    await nav.getByRole('link', { name: 'Suppliers' }).click();
+    await expect(mma).toContainText('Not enough data: 2 of 3 needed');
+    await expect(mma).not.toContainText('Over the target');
+    await nav.getByRole('link', { name: 'Rules' }).click();
     await expect(page.getByRole('table', { name: 'History of changes to the rules' })).toContainText('Head of Claims');
     await nav.getByRole('link', { name: 'Overview' }).click();
     await expect(card('High-value claims')).toContainText('0');
@@ -157,6 +176,6 @@ test.describe('claim screens', () => {
     await expect(highValue).toHaveValue('25000');
     await expect(page.getByText('No changes yet')).toBeVisible();
     await expectNoAxeViolations(page);
-    expect(apiCalls).toEqual(expect.arrayContaining(['GET /api/v1/rule-config', 'POST /api/v1/rule-config', 'POST /api/v1/rule-config/restore', 'GET /api/v1/claim-facts', 'GET /api/v1/claims', 'GET /api/v1/claims/CLM-101/what-if', 'POST /api/v1/demo/reset']));
+    expect(apiCalls).toEqual(expect.arrayContaining(['GET /api/v1/rule-config', 'POST /api/v1/rule-config', 'POST /api/v1/rule-config/restore', 'GET /api/v1/claim-facts', 'GET /api/v1/paid-trend', 'GET /api/v1/supplier-insights', 'GET /api/v1/claims', 'GET /api/v1/claims/CLM-101/what-if', 'POST /api/v1/demo/reset']));
   });
 });

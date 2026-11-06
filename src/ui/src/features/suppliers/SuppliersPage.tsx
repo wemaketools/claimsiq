@@ -3,13 +3,14 @@ import { Link } from 'react-router';
 
 import { endpoints } from '../../../../contracts/index';
 import { useApiQuery } from '../../api/hooks';
-import { Chip, DataTable, EmptyState, PageHeader } from '../../components/ui';
+import { Card, Chip, DataTable, EmptyState, PageHeader, SkeletonBlock } from '../../components/ui';
 import type { DataTableColumn } from '../../components/ui';
 import { EMPTY_VALUE, formatCount } from '../../lib/format';
 import { t } from '../../lib/i18n';
 import { ClaimFilterBar, ExportCsvButton, claimsLink, useClaimScope } from '../claim-scope';
 import { oneDecimal, supplierRows, suppliersTable } from './rows';
 import type { SupplierRow } from './rows';
+import { WaitPercentilesCard } from './WaitPercentiles';
 
 /** An average with the number of requests behind it: shown from the minimum sample, otherwise only the sample. */
 function Average({
@@ -169,7 +170,13 @@ export default function SuppliersPage() {
       answer === undefined || names === undefined ? undefined : supplierRows(answer.items, names),
     [answer, names],
   );
-  const table = useMemo(() => (rows === undefined ? undefined : suppliersTable(rows)), [rows]);
+  const table = useMemo(
+    () =>
+      rows === undefined || answer === undefined
+        ? undefined
+        : suppliersTable(rows, answer.all_suppliers),
+    [rows, answer],
+  );
   const queryError = insights.error ?? suppliers.error;
 
   return (
@@ -210,6 +217,14 @@ export default function SuppliersPage() {
           />
         }
       />
+      {queryError === null &&
+        (rows === undefined || answer === undefined ? (
+          <Card data-state="loading">
+            <SkeletonBlock lines={4} />
+          </Card>
+        ) : (
+          rows.length > 0 && <WaitPercentilesCard rows={rows} answer={answer} />
+        ))}
     </div>
   );
 }

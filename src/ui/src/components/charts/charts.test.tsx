@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { BarList } from './BarList';
 import { chartColor } from './chartTheme';
 import { DonutChart } from './DonutChart';
+import { GroupedBarChart } from './GroupedBarChart';
 import { StackedBarChart } from './StackedBarChart';
 import { TrendChart } from './TrendChart';
 
@@ -70,6 +71,13 @@ describe('charts', () => {
           points={points}
           horizontal
         />
+        <GroupedBarChart
+          label="Grouped"
+          categoryLabel="Supplier"
+          series={series}
+          points={points}
+          reference={{ value: 5, label: 'Target' }}
+        />
       </>,
     );
 
@@ -88,5 +96,8 @@ describe('charts', () => {
         .map((th) => th.textContent),
     ).toEqual(['Owner', 'Awarded', 'Cancelled']);
     expect(stacked.parentElement).toHaveClass('ciq-visually-hidden');
+    const grouped = screen.getByRole('table', { name: 'Grouped' });
+    expect(within(grouped).getByRole('row', { name: 'Aug 2,000,000 —' })).toBeInTheDocument();
+    expect(screen.getByText('Target')).toBeInTheDocument();
   });
 });

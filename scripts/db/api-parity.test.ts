@@ -87,6 +87,8 @@ describe.skipIf(serverUrl === null)('the API and the mock API', () => {
         await same(tenant, '/api/v1/claim-facts?period=7d&broker_id=BRK-01', { asOf });
         await same(tenant, '/api/v1/claim-facts?handler_id=USR-CLM', { asOf });
         await same(tenant, '/api/v1/supplier-insights?product_id=PRD-01', { asOf });
+        await same(tenant, '/api/v1/paid-trend?broker_id=BRK-01', { asOf });
+        await same(tenant, '/api/v1/paid-trend?handler_id=USR-CLM', { asOf });
         await same(tenant, '/api/v1/invoices?policy_id=POL-001', { asOf });
       }
       const claims = (await same(tenant, endpoints.claimsList.path)).body as unknown as { items: { claim_id: string }[] };
@@ -138,6 +140,7 @@ describe.skipIf(serverUrl === null)('the API and the mock API', () => {
       await same(tenant, endpoints.ruleConfigSave.path, { ...save, body: { version: 2, claims: { ...save.body.claims, supplier_min_sample: 3 } }, persona: 'finance' });
       await same(tenant, endpoints.ruleConfigGet.path);
       await same(tenant, endpoints.claimsFacts.path);
+      await same(tenant, endpoints.claimsPaidTrend.path);
       await same(tenant, endpoints.suppliersInsights.path);
       await same(tenant, endpoints.ruleConfigRestore.path, { method: 'POST', body: { version: 3 }, persona: 'claims-handler' });
       await same(tenant, endpoints.ruleConfigRestore.path, { method: 'POST', body: { version: 2 } });

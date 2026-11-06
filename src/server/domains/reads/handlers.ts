@@ -7,6 +7,7 @@ type ReadEndpoints =
   | 'claimsList'
   | 'claimsGet'
   | 'claimsFacts'
+  | 'claimsPaidTrend'
   | 'claimsWhatIf'
   | 'suppliersInsights'
   | 'policiesList'
@@ -42,6 +43,7 @@ export const readHandlers: HandlersOf<ReadEndpoints> = {
     },
   },
   claimsFacts: { run: async (c) => reads.claimsFacts(await c.model(), c.asOf, c.query) },
+  claimsPaidTrend: { run: async (c) => reads.claimsPaidTrend(await c.model(), c.asOf, c.query) },
   suppliersInsights: { run: async (c) => reads.suppliersInsights(await c.model(), c.asOf, c.query) },
   policiesList: { run: async (c) => reads.policiesList(await c.model(), c.asOf) },
   clientsList: { run: async (c) => reads.clientsList(await c.model(), c.asOf) },

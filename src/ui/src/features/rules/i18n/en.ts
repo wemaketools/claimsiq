@@ -52,7 +52,7 @@ const en = {
   },
   hint: {
     supplier_wait_target_business_days: 'A request waiting longer than this is past target.',
-    supplier_min_sample: 'An average wait shows only from this many requests.',
+    supplier_min_sample: 'An average wait or wait percentile shows only from this many requests.',
     material_reserve_delta_absolute_BWP: 'A reserve move of at least this amount is material.',
     material_reserve_delta_percent:
       'A reserve move of at least this share of the earlier amount is material.',

@@ -230,6 +230,7 @@ export function createMockApi(options: MockApiOptions): MockApi {
     return found;
   });
   route(endpoints.claimsFacts, (c) => reads.claimsFacts(readModel(c.data), c.asOf, c.query));
+  route(endpoints.claimsPaidTrend, (c) => reads.claimsPaidTrend(readModel(c.data), c.asOf, c.query));
   route(endpoints.suppliersInsights, (c) => reads.suppliersInsights(readModel(c.data), c.asOf, c.query));
   route(endpoints.policiesList, (c) => reads.policiesList(readModel(c.data), c.asOf));
   route(endpoints.clientsList, (c) => reads.clientsList(readModel(c.data), c.asOf));

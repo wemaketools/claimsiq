@@ -1,3 +1,4 @@
+import { Decimal } from 'decimal.js';
 import { describe, expect, it } from 'vitest';
 
 import { endpoints, formatMoney } from '../contracts/index.js';
@@ -7,7 +8,7 @@ import { claimRecords } from '../read-model/asOfViews.js';
 import { loadDataset } from '../read-model/fixtures/index.js';
 import { memoryStore } from '../mock-api/storage.js';
 import { readFixtureFiles, readFixtureJson } from '../server/lib/seed/fixtureFiles.js';
-import { ageBucketLabel, businessDaysBetween, computeClaimFacts, computeClaimsFacts, isTaskOverdue, parseRuleConfig, summarizeClaimFacts, summarizeSuppliers, weekdaySet, nextStages, withHypotheticalStage } from './index.js';
+import { ageBucketLabel, businessDaysBetween, computeClaimFacts, computeClaimsFacts, isTaskOverdue, nearestRank, paidTrend, parseRuleConfig, summarizeClaimFacts, summarizeSuppliers, weekdaySet, nextStages, withHypotheticalStage } from './index.js';
 import type { RuleContext } from './index.js';
 
 const AS_OF = '2026-10-21';
@@ -278,6 +279,7 @@ describe('the claims rules engine on the TEST fixture', () => {
       supplier_id: 'SUP-02',
       open_requests: 2,
       wait: { sample: 2, average: 12, longest: 13 },
+      percentiles: { sample: 2, median: 11, p90: 13, median_vs_target: 'over', p90_vs_target: 'over' },
       breaches: 2,
       unverified: 0,
       open_assigned_cases: 2,
@@ -291,6 +293,15 @@ describe('the claims rules engine on the TEST fixture', () => {
     // Below the minimum sample there is no average, but the longest wait and the breaches are still the cases' own facts.
     const strict = rowOf(insights(withClaims({ supplier_min_sample: 3 })), 'SUP-02');
     expect(strict).toMatchObject({ wait: { sample: 2, average: null, longest: 13 }, breaches: 2 });
+
+    // Nearest rank over the waits 11 and 13: the median is the lower value, the 90th percentile the higher. A supplier
+    // below the minimum sample keeps its sample size and has no percentile and no placement; so does the pooled baseline.
+    expect(base.all_suppliers).toEqual({ sample: 2, median: 11, p90: 13, median_vs_target: 'over', p90_vs_target: 'over' });
+    expect(strict?.percentiles).toEqual({ sample: 2, median: null, p90: null, median_vs_target: null, p90_vs_target: null });
+    expect(insights(withClaims({ supplier_min_sample: 3 })).all_suppliers).toMatchObject({ sample: 2, median: null, p90: null });
+    // A raised target puts the median within it and leaves the 90th percentile over.
+    expect(rowOf(insights(withClaims({ supplier_wait_target_business_days: 12 })), 'SUP-02')?.percentiles).toMatchObject({ median_vs_target: 'within', p90_vs_target: 'over' });
+    expect(rowOf(base, 'SUP-01')?.percentiles).toEqual({ sample: 0, median: null, p90: null, median_vs_target: null, p90_vs_target: null });
 
     // A raised target moves the breaches; a request with no time is unverified, not a sample; a completed request is turnaround.
     expect(rowOf(insights(withClaims({ supplier_wait_target_business_days: 12 })), 'SUP-02')).toMatchObject({ breaches: 1 });
@@ -337,6 +348,73 @@ describe('the claims rules engine on the TEST fixture', () => {
     const ofBroker = endpoints.suppliersInsights.response.parse(await get(`${endpoints.suppliersInsights.path}?broker_id=BRK-01`));
     expect(rowOf(ofBroker, 'SUP-02')).toMatchObject({ open_requests: 1, open_assigned_cases: 1, cases: 1 });
     expect(rowOf(ofBroker, 'SUP-01')).toMatchObject({ open_assigned_cases: 1 });
+  });
+
+  it('takes nearest-rank percentiles that are always observed values', () => {
+    const ten = [7, 3, 9, 1, 5, 2, 8, 4, 10, 6];
+    expect(nearestRank([], 50)).toBeNull();
+    expect(nearestRank([4], 90)).toBe(4);
+    expect([nearestRank([3, 7], 50), nearestRank([3, 7], 90)]).toEqual([3, 7]);
+    expect([nearestRank(ten, 50), nearestRank(ten, 90), nearestRank(ten, 100), nearestRank(ten, 1)]).toEqual([5, 9, 10, 1]);
+    expect(nearestRank([...ten, 11], 50)).toBe(6);
+    expect(nearestRank([...ten, 11], 90)).toBe(10);
+    expect(ten).toEqual([7, 3, 9, 1, 5, 2, 8, 4, 10, 6]);
+  });
+
+  it('buckets posted paid by month of paid date so each bucket is the sum of its posted payments and the buckets total the posted paid to date', async () => {
+    const datasets = { TEST: testData, DEMO: loadDataset('DEMO', readFixtureFiles('demo')) };
+    for (const [name, data] of Object.entries(datasets)) {
+      for (const asOf of ['2026-10-21', '2026-10-13', '2026-09-30', '2026-08-01']) {
+        const claims = claimRecords(data, asOf);
+        const trend = paidTrend(claims, asOf);
+        const posted = claims.flatMap((claim) => claim.payments.filter((payment) => payment.status === 'POSTED' && payment.paid_at.slice(0, 10) <= asOf));
+        const label = `${name} as of ${asOf}`;
+
+        // Each bucket is the decimal sum of the posted payments dated in its month; none of them is a float sum.
+        for (const bucket of trend.buckets) {
+          const inMonth = posted.filter((payment) => payment.paid_at.slice(0, 7) === bucket.month);
+          expect(bucket.paid, `${label} ${bucket.month}`).toBe(inMonth.reduce((total, payment) => total.plus(payment.paid_amount), new Decimal(0)).toFixed(2));
+          expect(bucket.payments).toBe(inMonth.length);
+        }
+        expect(trend.payments, label).toBe(posted.length);
+        expect(trend.total, label).toBe(summarizeClaimFacts(computeClaimsFacts(claims, { asOf, config: parseRuleConfig(RULE_CONFIG_JSON) }).items, contextOf(parseRuleConfig(RULE_CONFIG_JSON), asOf)).totals.paid);
+        expect(trend.buckets.reduce((total, bucket) => total.plus(bucket.paid), new Decimal(0)).toFixed(2), label).toBe(trend.total);
+        // Consecutive months, ending at the as-of month, the last one cut at the as-of date.
+        if (trend.buckets.length > 0) {
+          expect(trend.buckets[trend.buckets.length - 1]).toMatchObject({ month: asOf.slice(0, 7), to: asOf });
+        }
+      }
+    }
+
+    // By hand (TEST): P5,000 posted on 22 Sep and P4,000 on 13 Oct, so 9,000.00 to date and nothing before the first payment.
+    expect(paidTrend(records(), AS_OF)).toMatchObject({
+      total: bwp(METRICS.paid_to_date_BWP),
+      payments: 2,
+      buckets: [
+        { month: '2026-09', from: '2026-09-01', to: '2026-09-30', paid: '5000.00', payments: 1, claims: 1 },
+        { month: '2026-10', from: '2026-10-01', to: AS_OF, paid: '4000.00', payments: 1, claims: 1 },
+      ],
+    });
+    expect(paidTrend(records('2026-10-10'), '2026-10-10').buckets).toEqual([
+      { month: '2026-09', from: '2026-09-01', to: '2026-09-30', paid: '5000.00', payments: 1, claims: 1 },
+      { month: '2026-10', from: '2026-10-01', to: '2026-10-10', paid: '0.00', payments: 0, claims: 0 },
+    ]);
+    expect(paidTrend(records('2026-08-01'), '2026-08-01')).toEqual({ total: '0.00', payments: 0, buckets: [] });
+
+    // A payment that is not posted, or that is dated after the as-of date, is in no bucket; the claim filters narrow the payments.
+    const claim = records().find((candidate) => candidate.claim_id === 'CLM-102');
+    if (claim === undefined) throw new Error('TEST claim missing');
+    const payment = claim.payments[0] as ClaimRecord['payments'][number];
+    const odd = { ...claim, payments: [{ ...payment, status: 'PENDING' as const }, { ...payment, claim_payment_id: 'LATER', paid_at: '2026-11-01' }, { ...payment, claim_payment_id: 'GAP', paid_at: '2026-07-31' }] };
+    expect(paidTrend([odd], AS_OF).buckets.map((bucket) => [bucket.month, bucket.paid])).toEqual([['2026-07', '5000.00'], ['2026-08', '0.00'], ['2026-09', '0.00'], ['2026-10', '0.00']]);
+
+    // The API serves the same trend, narrowed by the claim filters and cut at the as-of date it is sent.
+    const api = createMockApi({ fixtures: { TEST: readFixtureFiles('test'), DEMO: readFixtureFiles('demo') }, storage: memoryStore(), ruleConfig: RULE_CONFIG_JSON });
+    const served = async (query: string, asOf = AS_OF) =>
+      endpoints.claimsPaidTrend.response.parse(await (await api.fetch(`${endpoints.claimsPaidTrend.path}${query}`, { headers: { 'X-Tenant-Id': 'TEST', 'X-As-Of': asOf } })).json());
+    expect(await served('')).toMatchObject({ tenant_id: 'TEST', as_of: AS_OF, ...paidTrend(records(), AS_OF) });
+    expect((await served('?broker_id=BRK-02')).total).toBe('5000.00');
+    expect((await served('', '2026-09-30')).buckets).toHaveLength(1);
   });
 
   it('appends one hypothetical stage event that restarts the clock at the as-of date, follows the stage map, and leaves the claim record untouched', () => {

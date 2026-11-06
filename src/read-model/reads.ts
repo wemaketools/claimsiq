@@ -1,7 +1,7 @@
 /**
  * The answers of the read endpoints, as pure functions over a `ReadModel`: the mock API builds the model from the
  * parsed fixtures and the changes kept in the browser, the server from the tenant's database rows, and both answer
- * through these functions, so the two transports cannot drift apart. `claims.facts`, `claims.whatIf` and `suppliers.insights`
+ * through these functions, so the two transports cannot drift apart. `claims.facts`, `claims.paidTrend`, `claims.whatIf` and `suppliers.insights`
  * run the rules engine (`src/rules`) here.
  */
 import type {
@@ -10,6 +10,7 @@ import type {
   ClaimRecord,
   DataIssue,
   InvoicesQuery,
+  PaidTrendQuery,
   SupplierInsightsQuery,
   TaskListItem,
   TaskQuery,
@@ -21,6 +22,7 @@ import {
   computeClaimsFacts,
   isTaskOverdue,
   nextStages,
+  paidTrend,
   summarizeSuppliers,
   withHypotheticalStage,
 } from '../rules/index.js';
@@ -129,6 +131,12 @@ export const reads = {
       },
     };
   },
+
+  claimsPaidTrend: (model: ReadModel, asOf: string, query: PaidTrendQuery) => ({
+    tenant_id: model.tenantId,
+    as_of: asOf,
+    ...paidTrend(narrowedClaims(model, asOf, query).claims, asOf),
+  }),
 
   suppliersInsights: (model: ReadModel, asOf: string, query: SupplierInsightsQuery) => {
     const { items } = computeClaimsFacts(narrowedClaims(model, asOf, query).claims, { asOf, config: model.ruleConfig });
