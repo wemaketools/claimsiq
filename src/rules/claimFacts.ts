@@ -20,6 +20,7 @@ import { isClosedAt, isOpenAt } from './closure.js';
 import type { RuleConfig } from './config.js';
 import { postedPayments } from './payments.js';
 import { inPeriod, periodWindow } from './period.js';
+import { stageEvidenceAt } from './stageEvidence.js';
 
 export interface RuleContext {
   readonly asOf: string;
@@ -217,14 +218,8 @@ export function computeClaimFacts(claim: ClaimRecord, context: RuleContext): Cla
   const weekdays = weekdaySet(config.claims.business_days);
   const comparable = asOf >= config.as_of;
 
-  const events = claim.events.filter((event) => event.event_at === null || onOrBeforeAsOf(event.event_at, asOf));
-  const dated = chronological(
-    events.filter((event) => event.event_at !== null),
-    (event) => event.event_at ?? '',
-    (event) => event.event_id,
-  );
-  const undatedEvents = events.length - dated.length;
-  const latest = dated[dated.length - 1] ?? null;
+  const undatedEvents = claim.events.filter((event) => event.event_at === null).length;
+  const latest = stageEvidenceAt(claim.events, asOf).latest ?? null;
   const currentStage = latest?.to_stage ?? null;
   const stageStartedAt = latest?.event_at ?? null;
   const isOpen = isOpenAt(claim, asOf);

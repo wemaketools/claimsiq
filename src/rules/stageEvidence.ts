@@ -1,4 +1,4 @@
-/** What a claim's stage events say at a moment, as the closure rules read them. */
+/** What a claim's stage events say at a moment: the one place the engine picks among them by date. */
 import { chronological, dateOf } from '../contracts/index.js';
 import type { ClaimEvent } from '../contracts/index.js';
 
