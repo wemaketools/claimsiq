@@ -2,7 +2,7 @@
 /**
  * Backend ESLint flat config.
  *
- * `bun run lint` lints api/, src/server/, src/contracts/, src/mock-api/ and scripts/. The folders that do not exist
+ * `bun run lint` lints api/, src/server/, src/contracts/, src/mock-api/, src/rules/ and scripts/. The folders that do not exist
  * yet are skipped. The SPA has its own config (src/ui/eslint.config.js). The Playwright workspace is type-checked
  * with `bun run --filter @claimsiq/e2e typecheck`.
  *
@@ -13,6 +13,8 @@
  * - src/contracts is pure TypeScript + zod (+ decimal.js for money) shared by the SPA, the mock API and the backend:
  *   no Node or browser APIs, no imports other than those and sibling contract files. Contract tests (*.test.ts) may
  *   use Node APIs.
+ * - src/rules (the claims rules engine) is pure too: only zod, decimal.js, its own files and src/contracts, and no
+ *   Node or browser APIs, so Collections and the SPA can reuse it. Its tests may use Node APIs.
  * - The mock API runs in the browser for Stage A (no Node modules outside its tests and test-support) and is never
  *   reachable from src/server or api/.
  */
@@ -46,6 +48,25 @@ const CONTRACTS_PURITY = {
   message:
     'src/contracts is pure: import only zod, decimal.js and sibling contract files. No Node, browser or server modules.',
 };
+const RULES_PURITY = {
+  regex: '^(?!zod(?:/|$)|decimal\\.js$|\\./|\\.\\./contracts/)',
+  message:
+    'src/rules is pure: import only zod, decimal.js, files of src/rules and src/contracts. No Node, browser, mock API or server modules.',
+};
+const PURE_GLOBALS = [
+  'process',
+  'Buffer',
+  'require',
+  '__dirname',
+  '__filename',
+  'window',
+  'document',
+  'localStorage',
+  'sessionStorage',
+  'navigator',
+  'fetch',
+  'XMLHttpRequest',
+];
 const BROWSER_SAFE = {
   regex: '^(node:|fs$|path$|os$|child_process$)',
   message: 'src/mock-api runs in the browser: no Node modules outside its tests and test-support.',
@@ -97,23 +118,19 @@ export default defineConfig([
       'no-restricted-imports': ['error', { paths: processEnvImportPaths, patterns: [CONTRACTS_PURITY] }],
       'no-restricted-globals': [
         'error',
-        ...[
-          'process',
-          'Buffer',
-          'require',
-          '__dirname',
-          '__filename',
-          'window',
-          'document',
-          'localStorage',
-          'sessionStorage',
-          'navigator',
-          'fetch',
-          'XMLHttpRequest',
-        ].map((name) => ({
-          name,
-          message: 'src/contracts is pure: no Node or browser APIs.',
-        })),
+        ...PURE_GLOBALS.map((name) => ({ name, message: 'src/contracts is pure: no Node or browser APIs.' })),
+      ],
+    },
+  },
+  {
+    name: 'claimsiq/rules-purity',
+    files: ['src/rules/**/*.ts'],
+    ignores: ['src/rules/**/*.test.ts'],
+    rules: {
+      'no-restricted-imports': ['error', { paths: processEnvImportPaths, patterns: [RULES_PURITY] }],
+      'no-restricted-globals': [
+        'error',
+        ...PURE_GLOBALS.map((name) => ({ name, message: 'src/rules is pure: no Node or browser APIs.' })),
       ],
     },
   },

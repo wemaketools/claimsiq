@@ -1,13 +1,14 @@
 /**
  * The typed endpoints of the API, shared by the SPA (which calls them), the mock API (which implements them in the
  * browser for Stage A) and the backend later. Reads return raw records of the active tenant, limited by the as-of date
- * where the mock API says so; metrics and rules are not computed here.
+ * where the mock API says so; the one computed read is `claims.facts`, which runs the rules engine over those records.
  *
  * Request context travels in headers: `X-Tenant-Id`, `X-As-Of` (a date, default 2026-10-21) and, on commands,
  * `X-Persona` (the actor).
  */
 import { z } from 'zod';
 
+import { ClaimFacts, ClaimsSummary } from './facts.js';
 import { PersonaId } from './personas.js';
 import { DateOnly, Id, Instant, Moment, Text } from './primitives.js';
 import {
@@ -149,6 +150,13 @@ export const endpoints = {
     method: 'GET',
     path: `${API}/claims/:claimId`,
     response: z.object({ ...readContext, item: ClaimRecord }),
+  }),
+  /** The rules engine's facts for every claim visible at the as-of date, and the totals over them. */
+  claimsFacts: endpoint({
+    id: 'claims.facts',
+    method: 'GET',
+    path: `${API}/claim-facts`,
+    response: z.object({ ...readContext, items: z.array(ClaimFacts), summary: ClaimsSummary }),
   }),
   policiesList: endpoint({ id: 'policies.list', method: 'GET', path: `${API}/policies`, response: collection(Policy) }),
   clientsList: endpoint({ id: 'clients.list', method: 'GET', path: `${API}/clients`, response: collection(Client) }),

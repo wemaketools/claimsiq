@@ -4,7 +4,7 @@ import { endpoints } from '../contracts/index.js';
 import type { DataSetId, EndpointContract, PersonaId } from '../contracts/index.js';
 import { createMockApi } from './api.js';
 import { memoryStore } from './storage.js';
-import { readFixtureFiles } from './test-support/fixtureFiles.js';
+import { readFixtureFiles, readFixtureJson } from './test-support/fixtureFiles.js';
 
 const FIXTURES = { TEST: readFixtureFiles('test'), DEMO: readFixtureFiles('demo') };
 
@@ -19,7 +19,7 @@ interface CallOptions {
 }
 
 function client(storage = memoryStore(), now = () => new Date('2026-11-06T12:00:00Z')) {
-  const api = createMockApi({ fixtures: FIXTURES, storage, now });
+  const api = createMockApi({ fixtures: FIXTURES, storage, ruleConfig: readFixtureJson('proposed_rule_config.json'), now });
   return {
     storage,
     /** Calls an endpoint and checks the answer against its contract schema. */

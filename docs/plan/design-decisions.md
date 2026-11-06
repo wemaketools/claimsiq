@@ -112,3 +112,42 @@ A task has module (`CLAIMS`, `COLLECTIONS`), subject type (`CLAIM`, `POLICY`, `I
 ### DD-21 Shell controls
 
 The top bar carries the data set switch (TEST, DEMO), the as-of date, "Data issues (n)" (a dialog listing every issue with its file, row, field, problem and fix) and Reset, before the persona switch. Below 1280px the field labels stay for assistive technology only; below 768px the controls wrap onto a second row. Changing the data set clears the screens' filters (the ids differ) and every mounted query reads again.
+
+## Rules engine (Stage A, item 3)
+
+### DD-22 The engine is a pure folder, `src/rules`, and the API serves its facts
+
+`src/rules` holds the claims rules as pure, deterministic functions: `computeClaimFacts` (one claim record, the as-of date, the rule config) and `summarizeClaimFacts` (any list of facts, so a screen can total a filtered subset and never disagree with its list). It imports only `zod`, `decimal.js`, its own files and `src/contracts` (lint-enforced, like the contracts), so Collections and dashboards can reuse it. The shapes of the facts and the summary are contracts (`src/contracts/facts.ts`); the endpoint `claims.facts` (`GET /api/v1/claim-facts`) returns `{ items, summary }` for the as-of view, and the mock API runs the engine on the same records `claims.list` returns. The rule config is validated by a zod schema (`src/rules/config.ts`) when the mock API is created; an invalid config fails there. Every threshold is read from it. Replaces the sentence of DD-16 that said metrics are not computed by the API.
+
+### DD-23 How days are counted
+
+Claim age is calendar days from the reported date to the as-of date. Stage time and supplier waits are business days: the weekdays named in `business_days` (Monday to Friday in the demo config) strictly after the start date up to and including the as-of date, so a stage entered on a Friday has one business day by Monday evening and none over a weekend (CL §8: "count completed business days at snapshot"). Public holidays are not supported; a config with `holidays_excluded: true` is rejected rather than ignored. Timestamps with a time are reduced to their Africa/Gaborone date for these counts. A stage is breached when business days in stage exceed its target (CL §7: "greater than target"), so being exactly at the target is not a breach. Age buckets are `0-7`, `8-30`, `31-60`, `61-90`, `>90`, built from the upper bounds in the config.
+
+### DD-24 Current stage, open or closed, and the check against the record
+
+The current stage is the `to_stage` of the latest event that has a time (ties on time go to the larger event id); events without a time cannot be ordered and are counted in `undated_events`. A claim is closed when that stage is Closed; a Reopened event makes it open again. With no dated event the recorded status decides and the stage is unknown. Claim records keep the stage, status and reserve as imported (DD-18), which are the state at the config's `as_of` (2026-10-21), so the check `stage_check` / `reserve_check` is `MATCHES` or `DIFFERS` only from that date on, `NOT_COMPARABLE` before it and `UNKNOWN` when there is no event to compare. A `DIFFERS` is the discrepancy alert CL §7 asks for.
+
+### DD-25 Money: paid, reserve, incurred
+
+Paid is the sum of `POSTED` payments dated on or before the as-of date; approved, pending, void and rejected never count. The reserve is the `new_amount` of the latest reserve event at the as-of date, never a sum of events; a claim with no reserve event takes the recorded value. Incurred is paid plus that reserve. The CLM-102 "original estimate P15,000" is the first reserve event; its incurred P17,000 is P5,000 paid plus the current P12,000 reserve (the P2,000 difference is not described as a reserve movement). The first reserve event of a claim, from zero, is `INITIAL` and never material (every claim would otherwise be flagged when opened). A later movement is material when it is at least the absolute threshold, or at least the percent threshold of a positive prior amount (the spec's "or"). The material flag is a review cue; the facts say "reserve change", never leakage.
+
+### DD-26 Missing evidence is unknown
+
+A stage SLA is `unknown` (never `within`) when the claim has no dated stage event, when any of its events has no time (the stage start cannot be trusted), or when the stage has no target in the config (Reopened). A supplier request with no request time is `unverified`, not delayed. A claim is waiting on a supplier when it is open and has a request that is not completed on the as-of date, whatever its stage (the spec does not say which stages wait on suppliers); the target is `supplier_wait_target_business_days`. An open claim without a reported date has no age and is counted in `unknown_age`, apart from the buckets. Closed turnaround needs both the reported and the closed date; closed claims without them are counted in `closed_without_turnaround`.
+
+### DD-27 "Approaching" and severity
+
+CL §7 names "approaching target" without a number. A stage SLA is `approaching` when it is not breached and at most `approaching_window_business_days` (default 1) business days remain. The severity rules also name numbers the spec's config file does not carry, so the engine's config has optional fields with the spec's values as defaults: `severity_high_sla_days_late` (2), `severity_high_reserve_change_min_age_days` (30) and `age_bucket_upper_days` ([7, 30, 60, 90]). An open claim's severity is the highest of its reasons, each with the numbers that triggered it:
+
+| Rule | Severity |
+|---|---|
+| `SLA_LATE`: breached by more than 2 business days | High |
+| `RESERVE_CHANGE_AGED`: material reserve change and age over 30 days | High |
+| `HIGH_VALUE_DELAYED`: incurred at or above the high-value threshold and (SLA breached or supplier delayed) | High |
+| `SLA_BREACH`: breached by 2 or fewer | Medium |
+| `SUPPLIER_DELAY`: a pending request beyond its target | Medium |
+| `SLA_APPROACHING` | Low |
+| `RESERVE_CHANGE`: material change on a claim aged 30 days or less | Low |
+| `SLA_UNKNOWN`, `SUPPLIER_UNVERIFIED`: evidence is missing | Low |
+
+The spec's tiers do not place a supplier delay, a lone reserve flag or missing evidence; those placements are ours. High value alone is a flag, not a reason: an open claim nothing was triggered on has no severity. Closed claims have no SLA, supplier waits or severity.

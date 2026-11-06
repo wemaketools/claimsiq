@@ -4,6 +4,7 @@
  */
 import { createMockApi } from '../../../mock-api/index';
 import type { KeyValueStore } from '../../../mock-api/index';
+import ruleConfig from '../../../../fixtures/v1/proposed_rule_config.json';
 import type { ApiTransport } from './client';
 
 const files = import.meta.glob('../../../../fixtures/v1/*/*.csv', {
@@ -31,6 +32,7 @@ export function createMockTransport(storage: KeyValueStore = browserStorage): Ap
   const api = createMockApi({
     fixtures: { TEST: folderFiles('test'), DEMO: folderFiles('demo') },
     storage,
+    ruleConfig,
   });
   return api.fetch;
 }

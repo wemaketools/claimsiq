@@ -2,7 +2,7 @@
  * Root Vitest configuration.
  *
  * Two projects:
- * - `unit`: pure tests in a node environment: src/server/tests/unit, contract tests, mock API tests and script
+ * - `unit`: pure tests in a node environment: src/server/tests/unit, contract tests, mock API tests, rules tests and script
  *   tests. Some platform tests verify REAL Supabase JWTs against the local stack and skip when it is not running.
  * - `integration`: backend tests against the real local Supabase stack, serial, with 180 s timeouts.
  *
@@ -42,6 +42,7 @@ export default defineConfig({
             'src/server/tests/unit/**/*.test.ts',
             'src/contracts/**/*.test.ts',
             'src/mock-api/**/*.test.ts',
+            'src/rules/**/*.test.ts',
             'scripts/**/*.test.ts',
           ],
           testTimeout: 20_000,

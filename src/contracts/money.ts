@@ -33,3 +33,11 @@ export function subtractMoney(a: string, b: string): string {
 export function compareMoney(a: string, b: string): number {
   return new Decimal(a).comparedTo(b);
 }
+
+/** `12345.67` → `P12,345.67`; a negative amount reads `-P1,000.00`. The currency is always BWP. */
+export function formatMoney(amount: string): string {
+  const fixed = new Decimal(amount).toFixed(2);
+  const negative = fixed.startsWith('-');
+  const [whole = '0', cents = '00'] = (negative ? fixed.slice(1) : fixed).split('.');
+  return `${negative ? '-' : ''}P${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}.${cents}`;
+}

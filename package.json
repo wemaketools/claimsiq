@@ -16,7 +16,7 @@
     "dev": "bun run --filter @claimsiq/ui dev",
     "typecheck": "tsc -p tsconfig.server.json",
     "typecheck:ui": "bun run --filter @claimsiq/ui typecheck",
-    "lint": "eslint --no-error-on-unmatched-pattern api src/server src/contracts src/mock-api scripts",
+    "lint": "eslint --no-error-on-unmatched-pattern api src/server src/contracts src/mock-api src/rules scripts",
     "lint:ui": "bun run --filter @claimsiq/ui lint",
     "format:ui": "bun run --filter @claimsiq/ui format",
     "build:ui": "bun run --filter @claimsiq/ui build",
@@ -26,7 +26,7 @@
     "test:ui": "bun run --filter @claimsiq/ui test",
     "ci:security": "bun scripts/ci/scan-secrets.ts && bun scripts/ci/scan-bundle.ts",
     "ci:test:ui": "bun run --filter @claimsiq/ui test --reporter=default --reporter=json --outputFile.json=../../.test-results/vitest-ui.json && bun scripts/ci/assert-test-run.ts --report .test-results/vitest-ui.json --min-tests 43",
-    "ci:test:unit": "vitest run --project unit --reporter=default --reporter=json --outputFile.json=.test-results/vitest-unit.json && bun scripts/ci/assert-test-run.ts --report .test-results/vitest-unit.json --min-tests 18",
+    "ci:test:unit": "vitest run --project unit --reporter=default --reporter=json --outputFile.json=.test-results/vitest-unit.json && bun scripts/ci/assert-test-run.ts --report .test-results/vitest-unit.json --min-tests 23",
     "test:e2e": "bun run --filter @claimsiq/e2e test",
     "verify": "bun run typecheck && bun run typecheck:ui && bun run lint && bun run lint:ui && bun run test && bun run test:ui && bun run build:ui"
   },

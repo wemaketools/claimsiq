@@ -1,12 +1,12 @@
 # Testing and CI
 
-Status: as built (scaffold and data layer). The decisions behind it (CI and checks, Bun) are in `docs/plan/design-decisions.md`.
+Status: as built (scaffold, data layer and rules engine). The decisions behind it (CI and checks, Bun) are in `docs/plan/design-decisions.md`.
 
 ## Test projects
 
 | Project | Where | Runner and environment | Command |
 |---|---|---|---|
-| Root `unit` | `src/server/tests/unit`, `src/contracts/**`, `src/mock-api/**`, `scripts/**/*.test.ts` | Vitest, node environment, 20 s timeout | `bun run test:unit` |
+| Root `unit` | `src/server/tests/unit`, `src/contracts/**`, `src/mock-api/**`, `src/rules/**`, `scripts/**/*.test.ts` | Vitest, node environment, 20 s timeout | `bun run test:unit` |
 | Root `integration` | `src/server/tests/integration` (does not exist yet; `passWithNoTests` is on until it does) | Vitest, serial, 180 s timeouts | `vitest run --project integration` |
 | SPA | colocated `src/ui/src/**/*.test.ts(x)` | Vitest, jsdom, React Testing Library, jest-dom; setup `src/ui/src/test/setup.ts` | `bun run test:ui` |
 | E2E | `e2e_tests/specs` | Playwright + `@axe-core/playwright`, Chromium, 1440×900 | `bun run test:e2e` |
@@ -27,13 +27,17 @@ Conventions: fewer, broader tests. A test sets up once and walks a realistic flo
 
 `src/contracts/contracts.test.ts` (the 17 entities and their keys, endpoint ids, decimal money, times), `src/mock-api/fixtures/load.test.ts` (TEST 6 claims and 6 invoices, DEMO 30 and 36, no mixing, TEST reconciles to `expected_metrics.json`; a fixture with bad rows is quarantined with row, field, problem and fix and the good rows load) and `src/mock-api/api.test.ts` (tenant filtering, as-of reads, create task, refresh over the same storage, Reset). Their helpers are in `src/mock-api/test-support` (they read `fixtures/v1` from disk). The SPA side is `components/shell/dataControls.test.tsx`.
 
+## Rules-engine tests
+
+`src/rules/rules.test.ts` runs the engine on the real TEST fixture through the loader and the as-of view: the figures of `expected_metrics.json`, every worked case of the requirements (CLM-101 to CLM-106, including CLM-106 high value with a supplier delay) and the mock API's `claims.facts` answer; a rule-config test that changes thresholds and sees the results move (and refuses a config it cannot honour); a missing-evidence test (unknown SLA, unverified supplier request, payment statuses, event order and tie-break, reserve fallback, business-day and age-bucket boundaries); and the money format.
+
 ## The local-stack skip
 
 `src/server/tests/unit/platform-auth/verify.local-stack.test.ts` verifies tokens issued by the real local Supabase Auth against its JWKS. It probes `<SUPABASE_URL>/auth/v1/health` once at load and skips the whole file when `.env.local` is missing or the stack does not answer, so `bun run test` passes on a machine without Docker (1 test skipped). CI starts the stack first, so there they run. Because skipped tests hide regressions, CI never runs the unit project through the skip assertion; it relies on the stack step failing first.
 
 ## Count floors
 
-`bun run ci:test:ui` and `ci:test:unit` write a Vitest JSON report and run `scripts/ci/assert-test-run.ts`, which fails when the run did not succeed, when any test failed or was skipped, or when fewer than `--min-tests` tests ran (it catches silently dropped suites). The floors in `package.json` are sized to what exists: SPA 43, unit 18. Raise them in the same change that adds tests. `ci:test:unit` also fails on the skipped local-stack test, so it is only meaningful where the stack is up; CI runs `test:unit` for that reason and `ci:test:ui` for the SPA.
+`bun run ci:test:ui` and `ci:test:unit` write a Vitest JSON report and run `scripts/ci/assert-test-run.ts`, which fails when the run did not succeed, when any test failed or was skipped, or when fewer than `--min-tests` tests ran (it catches silently dropped suites). The floors in `package.json` are sized to what exists: SPA 43, unit 23. Raise them in the same change that adds tests. `ci:test:unit` also fails on the skipped local-stack test, so it is only meaningful where the stack is up; CI runs `test:unit` for that reason and `ci:test:ui` for the SPA.
 
 ## End-to-end
 

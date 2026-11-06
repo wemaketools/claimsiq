@@ -5,8 +5,8 @@
  *
  * Reads return the raw records of the tenant in `X-Tenant-Id`. Claims and their child records, receipts, allocations
  * and payment attempts are limited to those dated on or before `X-As-Of`; master data, invoices and tasks are not.
- * Nothing is rewritten or computed (rules and metrics are not the API's job). Commands change a copy kept in `KeyValueStore`
- * and never the fixture.
+ * Nothing is rewritten; the one computed read is `claims.facts`, which runs the rules engine (`src/rules`) over the same
+ * as-of records. Commands change a copy kept in `KeyValueStore` and never the fixture.
  */
 import type { z } from 'zod';
 
@@ -27,6 +27,7 @@ import type {
   TaskAuditEntry,
   TaskRecord,
 } from '../contracts/index.js';
+import { computeClaimsFacts, parseRuleConfig } from '../rules/index.js';
 import { claimRecords, invoiceRecords } from './asOfViews.js';
 import { changesKey, clearChanges, readChanges, taskIdOf, writeChanges } from './changes.js';
 import type { Changes } from './changes.js';
@@ -39,6 +40,8 @@ import type { KeyValueStore } from './storage.js';
 export interface MockApiOptions {
   readonly fixtures: Readonly<Record<DataSetId, FixtureFiles>>;
   readonly storage: KeyValueStore;
+  /** The rule config as JSON (`fixtures/v1/proposed_rule_config.json`); an invalid one fails when the API is created. */
+  readonly ruleConfig: unknown;
   readonly now?: () => Date;
 }
 
@@ -80,6 +83,7 @@ function compile(path: string): { pattern: RegExp; names: string[] } {
 
 export function createMockApi(options: MockApiOptions): MockApi {
   const clock = options.now ?? (() => new Date());
+  const ruleConfig = parseRuleConfig(options.ruleConfig);
   const loaded = new Map<DataSetId, LoadedDataset>();
   const routes: Route[] = [];
 
@@ -185,6 +189,11 @@ export function createMockApi(options: MockApiOptions): MockApi {
     }
     return { tenant_id: c.data.tenant.tenant_id, as_of: c.asOf, item };
   });
+  route(endpoints.claimsFacts, (c) => ({
+    tenant_id: c.data.tenant.tenant_id,
+    as_of: c.asOf,
+    ...computeClaimsFacts(claimRecords(c.data, c.asOf), { asOf: c.asOf, config: ruleConfig }),
+  }));
   route(endpoints.policiesList, (c) => read(c, c.data.records.policy));
   route(endpoints.clientsList, (c) => read(c, c.data.records.client));
   route(endpoints.brokersList, (c) => read(c, c.data.records.broker));
