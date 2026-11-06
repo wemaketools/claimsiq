@@ -1,6 +1,3 @@
-/**
- * Test fixtures: a signed-in session state for `renderWithProviders({ state: { session: signedInSession() } })`.
- */
 import type { SessionState, SessionUser } from '../app/slices/session';
 
 export function makeUser(overrides: Partial<SessionUser> = {}): SessionUser {

@@ -1,7 +1,4 @@
-/**
- * Restores run after the current test: `restoreAfterEach(configureApiClient(...))` undoes a global setting a test
- * installed, even when the test fails.
- */
+/** Restores run after the current test even when it fails. */
 import { afterEach } from 'vitest';
 
 const pending: Array<() => void> = [];

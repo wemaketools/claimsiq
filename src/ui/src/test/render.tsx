@@ -1,7 +1,3 @@
-/**
- * Render helpers: a component inside the store, a stub AuthContext, toasts and a memory DATA router (so
- * `useBlocker`, links and navigation work), with the API client adapters wired to the store.
- */
 import { render } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { Provider } from 'react-redux';
@@ -33,7 +29,6 @@ export interface RenderOptions {
   readonly state?: Partial<RootState>;
   readonly store?: AppStore;
   readonly route?: string;
-  /** Extra routes next to the element (for navigation assertions). */
   readonly routes?: RouteObject[];
   /** The path pattern the element is mounted at (default `*`). */
   readonly path?: string;
@@ -41,10 +36,7 @@ export interface RenderOptions {
   readonly onUnauthorized?: () => void;
 }
 
-/**
- * Renders a route tree in the application's providers so a test can reach any page. It also wires the API client
- * adapters to the store, and restores them after the test.
- */
+/** Also points the API client's adapters at this test's store and restores them afterwards. */
 export function renderRouteTree(routes: RouteObject[], options: RenderOptions = {}) {
   const store = options.store ?? createAppStore(options.state);
   const auth = options.auth ?? stubAuth();
@@ -75,7 +67,6 @@ export function renderWithProviders(element: ReactElement, options: RenderOption
   );
 }
 
-/** A route element that shows the current location (for redirect assertions). */
 export function LocationProbe({ label }: { readonly label: string }) {
   return <p data-testid="location-probe">{label}</p>;
 }

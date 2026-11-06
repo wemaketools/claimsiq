@@ -1,10 +1,4 @@
-/**
- * Vitest setup for the SPA (jsdom + React Testing Library + jest-dom).
- * - jest-dom matchers; DOM cleanup after each test.
- * - Browser APIs jsdom lacks: matchMedia (desktop width), ResizeObserver (Recharts), scrollTo (ScrollRestoration).
- *   WebCrypto comes from the runtime.
- * - localStorage and the theme attribute are cleared after each test.
- */
+/** jsdom lacks matchMedia, ResizeObserver (Recharts) and scrollTo (ScrollRestoration); they are stubbed here. */
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { afterEach } from 'vitest';
