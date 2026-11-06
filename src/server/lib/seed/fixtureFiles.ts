@@ -20,10 +20,18 @@ export function readFixtureJson(name: string): unknown {
   return JSON.parse(readFileSync(`${FIXTURE_ROOT}${name}`, 'utf8')) as unknown;
 }
 
+let specRuleConfig: unknown;
+
+/** The spec's rule config (`proposed_rule_config.json`), read from disk once: the defaults of every tenant and data set. */
+export function committedRuleConfig(): unknown {
+  specRuleConfig ??= readFixtureJson('proposed_rule_config.json');
+  return specRuleConfig;
+}
+
 /** The committed fixture files and rule configuration of a data set. */
 export function committedFixture(dataSet: DataSetId): { readonly files: FixtureFiles; readonly ruleConfig: unknown } {
   return {
     files: readFixtureFiles(dataSet === 'TEST' ? 'test' : 'demo'),
-    ruleConfig: readFixtureJson('proposed_rule_config.json'),
+    ruleConfig: committedRuleConfig(),
   };
 }

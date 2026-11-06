@@ -12,23 +12,13 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
-import { expectNoAxeViolations, expectNoHorizontalScroll, resetData } from './support';
-
-const DESTINATIONS = [
-  'Overview',
-  'Stages & Aging',
-  'Exceptions & SLA',
-  'Claims',
-  'Suppliers',
-  'Action Queue',
-  'Rules',
-];
-
-/** Every screen but Rules has a filter bar; the Action Queue's is its own. */
-const FILTERS = (name: string): string | null => {
-  if (name === 'Rules') return null;
-  return name === 'Action Queue' ? 'Task filters' : 'Claim filters';
-};
+import {
+  DESTINATIONS,
+  FILTERS,
+  expectNoAxeViolations,
+  expectNoHorizontalScroll,
+  resetData,
+} from './support';
 
 /** A click on a demo role: the browser sends the email to the server, which signs the account in (no password in the page). */
 async function signInAsRole(page: Page, role: string, localPart: string): Promise<void> {

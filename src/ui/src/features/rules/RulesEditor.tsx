@@ -77,7 +77,7 @@ export function RulesEditor({ data, onConflict, onSaved }: RulesEditorProps) {
   const restore = useApiMutation(endpoints.ruleConfigRestore);
 
   const check = checkDraft(draft);
-  const changed = changedFields(saved, draft);
+  const changed = changedFields(saved, draft, check);
   const saving = check.valid ? draftOf(check.claims) : null;
   const changes = changed.map((field) => {
     const info = ruleFieldInfo(field);
@@ -107,7 +107,9 @@ export function RulesEditor({ data, onConflict, onSaved }: RulesEditorProps) {
       onSaved();
       toast.show(t(done, { version: next.version }), 'success');
     } catch (error) {
-      if (isApiError(error) && error.kind === 'conflict') {
+      if (!isApiError(error)) throw error;
+      // Any other refusal stays in the dialog, shown from the mutation's `error`.
+      if (error.kind === 'conflict') {
         invalidateApiQueries();
         close();
         onConflict();

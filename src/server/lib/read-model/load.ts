@@ -11,7 +11,7 @@ import { DATA_SETS, ENTITIES, ENTITY_NAMES, PersonaId, RuleConfigAuditEntry, Tas
 import type { DataIssue, EntityName, TaskRecord } from '../../../contracts/index.js';
 import { parseRuleConfig } from '../../../rules/index.js';
 import type { DatasetRecords, ReadModel, RuleConfigHistory } from '../../../read-model/index.js';
-import { readFixtureJson } from '../seed/fixtureFiles.js';
+import { committedRuleConfig } from '../seed/fixtureFiles.js';
 import { ENTITY_TABLES, tenantPredicate } from '../db/index.js';
 import type { TenantScope } from '../db/index.js';
 
@@ -72,7 +72,7 @@ export async function loadRuleConfig(scope: TenantScope): Promise<{ ruleConfig: 
   return {
     ruleConfig: parseRuleConfig(row.config),
     ruleHistory: {
-      defaults: parseRuleConfig(readFixtureJson('proposed_rule_config.json')),
+      defaults: parseRuleConfig(committedRuleConfig()),
       version: row.version,
       // A save always names its persona; a row without one is the config as seeded or restored by Reset.
       saved_at: row.updated_by === null ? null : instantOf(row.updated_at),

@@ -178,7 +178,7 @@ export const RuleConfigAuditEntry = z.object({
   at: Instant,
   actor: PersonaId,
   action: z.enum(['CHANGED', 'RESTORED']),
-  /** `high_value_incurred_BWP`, or `stage_sla_business_days.<stage>`. */
+  /** The editable rule value changed: its name in `EditableClaimsRules`, with a stage target as `stage_sla_business_days.<stage>` (`stageField`). */
   field: Text,
   /** Null where the value did not exist (a stage target added) or no longer does. */
   from: z.string().nullable(),

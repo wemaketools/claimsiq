@@ -1,7 +1,13 @@
 /** The editor's draft: every value as the text typed, turned into the claims rules the API takes, with the same checks the API makes. */
 import type { z } from 'zod';
 
-import { EditableClaimsRules, ruleFieldValues } from '../../../../contracts/index';
+import {
+  ClaimStage,
+  EditableClaimsRules,
+  ruleFieldValues,
+  stageField,
+  stageOfField,
+} from '../../../../contracts/index';
 import { t } from '../../lib/i18n';
 import { ruleFieldInfo } from './fields';
 
@@ -9,8 +15,6 @@ export type Draft = Readonly<Record<string, string>>;
 
 export const draftOf = (claims: EditableClaimsRules): Draft =>
   Object.fromEntries(ruleFieldValues(claims).map(({ field, value }) => [field, value]));
-
-const STAGE_PREFIX = 'stage_sla_business_days.';
 
 const NUMBER = /^-?\d+(\.\d+)?$/;
 
@@ -22,21 +26,22 @@ function numberOf(text: string): number {
 
 /** The draft as the API takes it; a value that is not a number or a list of numbers becomes `NaN`, which the checks refuse. */
 function claimsOf(draft: Draft): unknown {
-  const stages = Object.entries(draft).filter(([field]) => field.startsWith(STAGE_PREFIX));
-  const entries = Object.entries(draft)
-    .filter(([field]) => !field.startsWith(STAGE_PREFIX))
-    .map(([field, text]) => [
-      field,
-      ruleFieldInfo(field).kind === 'buckets'
-        ? text.split(',').map((part) => numberOf(part))
-        : numberOf(text),
-    ]);
-  return {
-    stage_sla_business_days: Object.fromEntries(
-      stages.map(([field, text]) => [field.slice(STAGE_PREFIX.length), numberOf(text)]),
-    ),
-    ...Object.fromEntries(entries),
-  };
+  const stages: [ClaimStage, number][] = [];
+  const others: [string, number | number[]][] = [];
+  for (const [field, text] of Object.entries(draft)) {
+    const stage = stageOfField(field);
+    if (stage !== null) {
+      stages.push([stage, numberOf(text)]);
+    } else {
+      others.push([
+        field,
+        ruleFieldInfo(field).kind === 'buckets'
+          ? text.split(',').map((part) => numberOf(part))
+          : numberOf(text),
+      ]);
+    }
+  }
+  return { stage_sla_business_days: Object.fromEntries(stages), ...Object.fromEntries(others) };
 }
 
 export type DraftCheck =
@@ -73,18 +78,16 @@ export function checkDraft(draft: Draft): DraftCheck {
   const errors: Record<string, string> = {};
   for (const issue of checked.error.issues) {
     const [first, second] = issue.path;
+    const stage = ClaimStage.safeParse(second);
     const field =
-      first === 'stage_sla_business_days' && second !== undefined
-        ? `${STAGE_PREFIX}${String(second)}`
-        : String(first);
+      first === 'stage_sla_business_days' && stage.success ? stageField(stage.data) : String(first);
     errors[field] ??= messageOf(issue, field);
   }
   return { valid: false, errors };
 }
 
-/** The values of the draft that differ from the saved ones, in the editor's order; `25000.00` typed over `25000` is no change. */
-export function changedFields(saved: Draft, draft: Draft): string[] {
-  const checked = checkDraft(draft);
+/** The values of the draft that differ from the saved ones, in the editor's order; `25000.00` typed over `25000` is no change. `checked` is `checkDraft(draft)`, passed so the draft is parsed once. */
+export function changedFields(saved: Draft, draft: Draft, checked: DraftCheck): string[] {
   const typed = checked.valid ? draftOf(checked.claims) : draft;
   return Object.keys(typed).filter((field) => typed[field] !== saved[field]);
 }

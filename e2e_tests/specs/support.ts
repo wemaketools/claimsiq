@@ -35,3 +35,20 @@ export async function resetData(page: Page, dataSet: string): Promise<void> {
   await page.getByRole('dialog').getByRole('button', { name: 'Reset', exact: true }).click();
   await expect(page.getByText(`The ${dataSet} fixture is back as loaded.`)).toBeVisible();
 }
+
+/** The sidebar's destinations, in order. */
+export const DESTINATIONS = [
+  'Overview',
+  'Stages & Aging',
+  'Exceptions & SLA',
+  'Claims',
+  'Suppliers',
+  'Action Queue',
+  'Rules',
+];
+
+/** The name of the filter bar a destination shows, or null: every screen but Rules has one, and the Action Queue's is its own. */
+export const FILTERS = (name: string): string | null => {
+  if (name === 'Rules') return null;
+  return name === 'Action Queue' ? 'Task filters' : 'Claim filters';
+};

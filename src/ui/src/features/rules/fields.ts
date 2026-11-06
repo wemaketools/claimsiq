@@ -1,6 +1,6 @@
 /** How each rule value reads and is entered: its label, unit and group. A new editable rule is a type error until it is described here. */
-import { CLAIM_STAGES, formatMoney, ruleFieldValues } from '../../../../contracts/index';
-import type { ClaimStage, EditableClaimsRules } from '../../../../contracts/index';
+import { formatMoney, ruleFieldValues, stageOfField } from '../../../../contracts/index';
+import type { EditableClaimsRules } from '../../../../contracts/index';
 import { t } from '../../lib/i18n';
 import { stageLabel } from '../claim-scope';
 
@@ -26,8 +26,6 @@ const DESCRIBED: Readonly<
   age_bucket_upper_days: { kind: 'buckets', group: 'severity' },
 };
 
-const STAGE_PREFIX = 'stage_sla_business_days.';
-
 export interface RuleFieldInfo {
   readonly field: string;
   readonly label: string;
@@ -40,15 +38,8 @@ function isDescribed(field: string): field is Described {
   return field in DESCRIBED;
 }
 
-function stageOf(field: string): ClaimStage | null {
-  const name = field.slice(STAGE_PREFIX.length);
-  return field.startsWith(STAGE_PREFIX)
-    ? (CLAIM_STAGES.find((stage) => stage === name) ?? null)
-    : null;
-}
-
 export function ruleFieldInfo(field: string): RuleFieldInfo {
-  const stage = stageOf(field);
+  const stage = stageOfField(field);
   if (stage !== null) {
     return {
       field,

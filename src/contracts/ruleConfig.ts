@@ -60,9 +60,20 @@ export type RuleConfig = z.infer<typeof RuleConfig>;
 export const EditableClaimsRules = z.object(editableValues);
 export type EditableClaimsRules = z.infer<typeof EditableClaimsRules>;
 
+const STAGE_FIELD_PREFIX = 'stage_sla_business_days.';
+
+/** The name of one stage's target among the rule values, as the audit trail and the editor use it. */
+export const stageField = (stage: ClaimStage): string => `${STAGE_FIELD_PREFIX}${stage}`;
+
+/** The stage a rule value name is the target of, or null for any other value. */
+export function stageOfField(field: string): ClaimStage | null {
+  const parsed = ClaimStage.safeParse(field.slice(STAGE_FIELD_PREFIX.length));
+  return field.startsWith(STAGE_FIELD_PREFIX) && parsed.success ? parsed.data : null;
+}
+
 /** A value of the rule config as text, under the path the audit trail and the editor name it by. */
 export interface RuleFieldValue {
-  /** `high_value_incurred_BWP`, or `stage_sla_business_days.<stage>` for one stage's target. */
+  /** A key of `EditableClaimsRules`, or `stageField(stage)` for one stage's target. */
   readonly field: string;
   /** Numbers as written (`25000`), the age buckets as `7, 30, 60, 90`. */
   readonly value: string;
@@ -76,7 +87,7 @@ export interface RuleFieldValue {
 export function ruleFieldValues(claims: EditableClaimsRules): RuleFieldValue[] {
   const stages = CLAIM_STAGES.flatMap((stage) => {
     const days = claims.stage_sla_business_days[stage];
-    return days === undefined ? [] : [{ field: `stage_sla_business_days.${stage}`, value: String(days) }];
+    return days === undefined ? [] : [{ field: stageField(stage), value: String(days) }];
   });
   const others = (Object.keys(editableValues) as (keyof EditableClaimsRules)[])
     .filter((field) => field !== 'stage_sla_business_days')

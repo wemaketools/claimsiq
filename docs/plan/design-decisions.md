@@ -36,7 +36,7 @@ Left out: every tender-specific feature, route, contract, fixture and shared wid
 
 ### DD-06 Navigation: six destinations (a seventh, Rules, came with DD-61)
 
-The sidebar has, in this order: Overview (`/overview`), Stages & Aging (`/stages`), Exceptions & SLA (`/exceptions`), Claims (`/claims`), Suppliers (`/suppliers`), Action Queue (`/actions`). They map to CLM-01, CLM-02, CLM-03, the claims list with CLM-04 (Claim Detail) under it, CLM-05 and CLM-06 of the requirements. `/` goes to the first destination. The sidebar is a flat list (no collapsible sections, no badges, no section actions): six items do not need them.
+The sidebar has, in this order: Overview (`/overview`), Stages & Aging (`/stages`), Exceptions & SLA (`/exceptions`), Claims (`/claims`), Suppliers (`/suppliers`), Action Queue (`/actions`), and from DD-61 Rules (`/rules`) as a seventh. They map to CLM-01, CLM-02, CLM-03, the claims list with CLM-04 (Claim Detail) under it, CLM-05 and CLM-06 of the requirements. `/` goes to the first destination. The sidebar is a flat list (no collapsible sections, no badges, no section actions): six items (seven with Rules) do not need them.
 
 Each destination is a feature module (`src/ui/src/features/<feature>`). Until the data layer exists, a page shows its title and one of three states through `useScreenStatus` and `ScreenStates`: loading, then an empty state, or an error state with retry when its loader fails. The screens that follow replace the page body with real content and drop the placeholder. Replaced in part by DD-44: the last placeholder screens were built and `useScreenStatus`, `ScreenStates` and `configureScreenLoader` are deleted; every screen now shows its states through `useApiQuery`, `DataTable` and `QueryView`.
 
@@ -103,7 +103,7 @@ Every read takes the as-of date (default 2026-10-21, switchable in the shell and
 
 ### DD-19 Changes in browser storage; Reset
 
-What the user changes (tasks and their audit trail) is kept in `localStorage` under `ciq.mock.v1.<data set>.<tenant>`, apart from the fixture, and is merged over it on every read, so a refresh keeps it and the fixture itself is never modified. Reset (a confirm dialog, then `POST /api/v1/demo/reset`) removes the key of the selected data set: the fixture shows exactly as loaded. The data set and the as-of date are views and stay. The mock reads storage on every call, so a second client over the same storage sees the same state (the refresh test relies on it); a failed write answers 507 and the change is not shown as done.
+What the user changes (tasks and their audit trail, and from DD-61 the saved rule config and its audit) is kept in `localStorage` under `ciq.mock.v1.<data set>.<tenant>`, apart from the fixture, and is merged over it on every read, so a refresh keeps it and the fixture itself is never modified. Reset (a confirm dialog, then `POST /api/v1/demo/reset`) removes the key of the selected data set: the fixture shows exactly as loaded. The data set and the as-of date are views and stay. The mock reads storage on every call, so a second client over the same storage sees the same state (the refresh test relies on it); a failed write answers 507 and the change is not shown as done.
 
 ### DD-20 Tasks: shape, actor and audit trail
 

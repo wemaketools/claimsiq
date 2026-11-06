@@ -8,23 +8,13 @@
  */
 import { expect, test } from '@playwright/test';
 
-import { expectNoAxeViolations, expectNoHorizontalScroll, resetData } from './support';
-
-const DESTINATIONS = [
-  'Overview',
-  'Stages & Aging',
-  'Exceptions & SLA',
-  'Claims',
-  'Suppliers',
-  'Action Queue',
-  'Rules',
-];
-
-/** Every screen but Rules has a filter bar; the Action Queue's is its own. */
-const FILTERS = (name: string): string | null => {
-  if (name === 'Rules') return null;
-  return name === 'Action Queue' ? 'Task filters' : 'Claim filters';
-};
+import {
+  DESTINATIONS,
+  FILTERS,
+  expectNoAxeViolations,
+  expectNoHorizontalScroll,
+  resetData,
+} from './support';
 
 test.describe('prototype build', () => {
   test('a role click signs in with no password, every screen works, the session survives a reload, and nothing leaves the origin', async ({
