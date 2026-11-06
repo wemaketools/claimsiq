@@ -1,8 +1,8 @@
 /**
  * The API against the local stack: real Supabase tokens, a scratch database seeded with TEST and DEMO (skipped without
  * the stack, as the other database tests). One walk: refused callers, the TEST figures from the database equal
- * `expected_metrics.json`, a task is created, assigned and moved on with its audit trail, nothing leaks into DEMO, and
- * Reset restores the fixture (and is refused outside local and dev).
+ * `expected_metrics.json`, a task is created, assigned and moved on with its audit trail, the rule config is saved,
+ * refused and restored with its audit, nothing leaks into DEMO, and Reset restores the fixture (and is refused outside local and dev).
  */
 import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -146,15 +146,45 @@ describe.skipIf(!stackUp)('the API against the local stack', () => {
     expect((await request('/api/v1/claims', { ...as(handlerToken, 'TEST'), headers: { 'X-As-Of': '2026-13-45' } })).status).toBe(400);
     expect((await request('/api/v1/claims/CLM-999', as(handlerToken, 'TEST'))).status).toBe(404);
 
+    // The rule config: a persona that may not edit is refused by the server, a stale version is a 409, a save is audited
+    // with the signed-in account and applies to the engine at once, and another tenant keeps the spec's config.
+    const rules = await request('/api/v1/rule-config', as(handlerToken, 'TEST'));
+    expect(rules.json).toMatchObject({ version: 1, saved_at: null, saved_by: null, audit: [] });
+    const editable = { ...(rules.json.config as { claims: Record<string, unknown> }).claims };
+    delete editable.business_days;
+    delete editable.holidays_excluded;
+    const raised = { version: 1, claims: { ...editable, high_value_incurred_BWP: 40000 } };
+    const highValue = async (tenant: string) => ((await request('/api/v1/claim-facts', as(handlerToken, tenant))).json.items as { claim_id: string; high_value: boolean }[]).filter((fact) => fact.high_value).map((fact) => fact.claim_id);
+    expect(await highValue('TEST')).toEqual(['CLM-106']);
+    expect((await request('/api/v1/rule-config', { ...as(handlerToken, 'TEST', 'claims-handler'), method: 'POST', body: raised })).status).toBe(403);
+    expect((await request('/api/v1/rule-config/restore', { ...as(handlerToken, 'TEST', 'supplier-coordinator'), method: 'POST', body: { version: 1 } })).status).toBe(403);
+    expect((await request('/api/v1/rule-config', { token: handlerToken, tenant: 'TEST', method: 'POST', body: raised })).status).toBe(400);
+    expect((await request('/api/v1/rule-config', { ...as(handlerToken, 'TEST', 'finance'), method: 'POST', body: { ...raised, version: 5 } })).status).toBe(409);
+    expect((await request('/api/v1/rule-config', { ...as(handlerToken, 'TEST', 'finance'), method: 'POST', body: { version: 1, claims: { ...editable, high_value_incurred_BWP: -5 } } })).status).toBe(422);
+    const savedRules = await request('/api/v1/rule-config', { ...as(handlerToken, 'TEST', 'finance'), method: 'POST', body: raised });
+    expect(savedRules).toMatchObject({ status: 200, json: { version: 2, saved_by: 'finance', audit: [{ version: 2, actor: 'finance', action: 'CHANGED', field: 'high_value_incurred_BWP', from: '25000', to: '40000' }] } });
+    expect(await highValue('TEST')).toEqual([]);
+    expect(await highValue('DEMO')).not.toEqual([]);
+    expect((await request('/api/v1/rule-config', as(handlerToken, 'DEMO'))).json).toMatchObject({ version: 1, audit: [] });
+    const ruleAudit = await sql<{ actor_user_id: string }>`select actor_user_id::text from rule_config_audit_entries where tenant_id = 'TEST'`.execute(scratch.db);
+    expect(ruleAudit.rows.map((row) => row.actor_user_id)).toEqual([signedIn.ok ? signedIn.token.authUserId : 'not signed in']);
+    const restoredRules = await request('/api/v1/rule-config/restore', { ...as(handlerToken, 'TEST', 'head-of-claims'), method: 'POST', body: { version: 2 } });
+    expect(restoredRules.json).toMatchObject({ version: 3, audit: [{ action: 'CHANGED' }, { version: 3, action: 'RESTORED', field: 'high_value_incurred_BWP', from: '40000', to: '25000' }] });
+    expect(await highValue('TEST')).toEqual(['CLM-106']);
+    await request('/api/v1/rule-config', { ...as(handlerToken, 'TEST', 'finance'), method: 'POST', body: { ...raised, version: 3 } });
+
     // Reset is refused outside local and dev, and leaves the data alone; in local it restores TEST and only TEST.
     const production = buildApp({ config: { ...config, appEnv: 'production' }, db: scratch.db, verify: verifyAccessToken });
     const blocked = await production.request('/api/v1/demo/reset', { method: 'POST', headers: { Authorization: `Bearer ${handlerToken}`, 'X-Tenant-Id': 'TEST' } });
     expect(blocked.status).toBe(403);
     expect((await request('/api/v1/tasks', as(handlerToken, 'TEST'))).json.items).toHaveLength(1);
+    expect((await request('/api/v1/rule-config', as(handlerToken, 'TEST'))).json).toMatchObject({ version: 4 });
 
     const reset = await request('/api/v1/demo/reset', { ...as(handlerToken, 'TEST'), method: 'POST' });
     expect(reset).toMatchObject({ status: 200, json: { tenant_id: 'TEST', reset: true } });
     expect((await request('/api/v1/tasks', as(handlerToken, 'TEST'))).json.items).toEqual([]);
+    expect((await request('/api/v1/rule-config', as(handlerToken, 'TEST'))).json).toMatchObject({ version: 1, saved_at: null, audit: [] });
+    expect(await highValue('TEST')).toEqual(['CLM-106']);
     expect((await request('/api/v1/tasks', as(handlerToken, 'DEMO'))).json.items).toHaveLength(1);
     expect((await request('/api/v1/claim-facts', as(handlerToken, 'TEST'))).json).toEqual(facts.json);
     const next = await request('/api/v1/tasks', { ...as(handlerToken, 'TEST'), method: 'POST', body: draft });

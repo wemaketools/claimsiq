@@ -2,7 +2,7 @@
  * The typed endpoints of the API, shared by the SPA (which calls them), the mock API (which implements them in the
  * browser for the prototype build) and the server (`/api/v1`, from the database). Reads return raw records of the active tenant, limited by the as-of date
  * where the read model (`src/read-model`, which the mock API and the server share) says so; the computed reads are `claims.facts`, `claims.whatIf` and `suppliers.insights`, which run the rules engine over those records, and
- * the `overdue` flag of `tasks.list`.
+ * the `overdue` flag of `tasks.list`; every one of them runs on the rule config `rules.config` shows.
  *
  * Request context travels in headers: `X-Tenant-Id`, `X-As-Of` (a date, default 2026-10-21) and, on commands,
  * `X-Persona` (the actor).
@@ -12,6 +12,7 @@ import { z } from 'zod';
 import { ClaimBreakdowns, ClaimFacts, ClaimsSummary, PeriodOption } from './facts.js';
 import { PersonaId } from './personas.js';
 import { DateOnly, Id, Instant, Moment, Text } from './primitives.js';
+import { EditableClaimsRules, RuleConfig } from './ruleConfig.js';
 import { SupplierInsights } from './suppliers.js';
 import {
   Broker,
@@ -170,6 +171,44 @@ export type InvoicesQuery = z.infer<typeof InvoicesQuery>;
 export const AssignTaskBody = z.object({ assigned_to: Id });
 export type AssignTaskBody = z.infer<typeof AssignTaskBody>;
 
+/** One changed value of one save of the rule config. */
+export const RuleConfigAuditEntry = z.object({
+  /** The version the change produced: all the entries of one save share it. */
+  version: z.number().int().min(2),
+  at: Instant,
+  actor: PersonaId,
+  action: z.enum(['CHANGED', 'RESTORED']),
+  /** `high_value_incurred_BWP`, or `stage_sla_business_days.<stage>`. */
+  field: Text,
+  /** Null where the value did not exist (a stage target added) or no longer does. */
+  from: z.string().nullable(),
+  to: z.string().nullable(),
+});
+export type RuleConfigAuditEntry = z.infer<typeof RuleConfigAuditEntry>;
+
+/** The rule config as one tenant and data set runs on it, beside the spec's defaults and the audited history of its changes. */
+export const RuleConfigState = z.object({
+  tenant_id: Id,
+  /** The config the engine reads now. */
+  config: RuleConfig,
+  /** The spec's config (`proposed_rule_config.json`): what Restore defaults brings back. */
+  defaults: RuleConfig,
+  /** Counts the saves, from 1; a save must name the version it started from. */
+  version: z.number().int().min(1),
+  /** When and by whom it was last saved; null while it is the spec's config as seeded. */
+  saved_at: Instant.nullable(),
+  saved_by: PersonaId.nullable(),
+  /** Oldest first. */
+  audit: z.array(RuleConfigAuditEntry),
+});
+export type RuleConfigState = z.infer<typeof RuleConfigState>;
+
+export const SaveRuleConfigBody = z.object({ version: z.number().int().min(1), claims: EditableClaimsRules });
+export type SaveRuleConfigBody = z.infer<typeof SaveRuleConfigBody>;
+
+export const RestoreRuleConfigBody = SaveRuleConfigBody.pick({ version: true });
+export type RestoreRuleConfigBody = z.infer<typeof RestoreRuleConfigBody>;
+
 export const SetTaskStatusBody = z.object({
   status: TaskStatus,
   note: z.string().trim().min(1).nullable().default(null),
@@ -271,13 +310,34 @@ export const endpoints = {
     body: SetTaskStatusBody,
     response: TaskRecord,
   }),
+  /** The rule config the engine runs on, the spec's defaults and the audit of every change. */
+  ruleConfigGet: endpoint({ id: 'rules.config', method: 'GET', path: `${API}/rule-config`, response: RuleConfigState }),
+  /**
+   * Saves the editable values (Head of Claims and Finance only: 403 for another persona), audited per changed field.
+   * A version other than the current one is a 409; invalid values are a 422.
+   */
+  ruleConfigSave: endpoint({
+    id: 'rules.save',
+    method: 'POST',
+    path: `${API}/rule-config`,
+    body: SaveRuleConfigBody,
+    response: RuleConfigState,
+  }),
+  /** Puts the spec's config back, audited like a save, with the same persona and version rules. */
+  ruleConfigRestore: endpoint({
+    id: 'rules.restore',
+    method: 'POST',
+    path: `${API}/rule-config/restore`,
+    body: RestoreRuleConfigBody,
+    response: RuleConfigState,
+  }),
   dataIssues: endpoint({
     id: 'data.issues',
     method: 'GET',
     path: `${API}/data/issues`,
     response: z.object({ tenant_id: Id, quarantined_rows: z.number().int().min(0), issues: z.array(DataIssue) }),
   }),
-  /** Throws away the changes made on top of the active tenant's fixture. */
+  /** Throws away the changes made on top of the active tenant's fixture: tasks, and the rule config and its audit. */
   demoReset: endpoint({
     id: 'demo.reset',
     method: 'POST',

@@ -1,7 +1,7 @@
 /**
  * Shell journeys: real sign-in against local Supabase Auth (a click on a demo role signs in through the server's demo
- * sign-in endpoint; an e-mail off the list is refused), the six destinations (the claim screens show the shared
- * filter bar, the Action Queue its task filters), a supplier's figures, a task created, assigned and moved on in the Action
+ * sign-in endpoint; an e-mail off the list is refused), the seven destinations (the claim screens show the shared
+ * filter bar, the Action Queue its task filters, Rules none), a supplier's figures, a task created, assigned and moved on in the Action
  * Queue and kept across a reload (in the database, through the real API), the persona switch and the theme toggle (both survive a reload), sign-out,
  * and axe accessibility checks.
  *
@@ -21,10 +21,14 @@ const DESTINATIONS = [
   'Claims',
   'Suppliers',
   'Action Queue',
+  'Rules',
 ];
 
-/** Every screen has a filter bar; the Action Queue's is its own. */
-const FILTERS = (name: string): string => (name === 'Action Queue' ? 'Task filters' : 'Claim filters');
+/** Every screen but Rules has a filter bar; the Action Queue's is its own. */
+const FILTERS = (name: string): string | null => {
+  if (name === 'Rules') return null;
+  return name === 'Action Queue' ? 'Task filters' : 'Claim filters';
+};
 
 /** A click on a demo role: the browser sends the email to the server, which signs the account in (no password in the page). */
 async function signInAsRole(page: Page, role: string, localPart: string): Promise<void> {
@@ -60,7 +64,7 @@ test.describe('shell', () => {
     await expect(page).toHaveURL(/\/signin$/);
   });
 
-  test('a demo account signs in to Overview, walks the six destinations, keeps persona and theme across a reload, and signs out', async ({
+  test('a demo account signs in to Overview, walks the seven destinations, keeps persona and theme across a reload, and signs out', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1366, height: 768 });
@@ -75,7 +79,8 @@ test.describe('shell', () => {
     for (const name of DESTINATIONS) {
       await nav.getByRole('link', { name }).click();
       await expect(page.getByRole('heading', { name, level: 1 })).toBeVisible();
-      await expect(page.getByRole('region', { name: FILTERS(name) })).toBeVisible();
+      const filters = FILTERS(name);
+      if (filters !== null) await expect(page.getByRole('region', { name: filters })).toBeVisible();
     }
     await expectNoAxeViolations(page);
 

@@ -7,10 +7,11 @@
  */
 import { sql } from 'kysely';
 
-import { DATA_SETS, ENTITIES, ENTITY_NAMES, PersonaId, Task, TaskAuditEntry, instantOf, isDataSetId } from '../../../contracts/index.js';
+import { DATA_SETS, ENTITIES, ENTITY_NAMES, PersonaId, RuleConfigAuditEntry, Task, TaskAuditEntry, instantOf, isDataSetId } from '../../../contracts/index.js';
 import type { DataIssue, EntityName, TaskRecord } from '../../../contracts/index.js';
 import { parseRuleConfig } from '../../../rules/index.js';
-import type { DatasetRecords, ReadModel } from '../../../read-model/index.js';
+import type { DatasetRecords, ReadModel, RuleConfigHistory } from '../../../read-model/index.js';
+import { readFixtureJson } from '../seed/fixtureFiles.js';
 import { ENTITY_TABLES, tenantPredicate } from '../db/index.js';
 import type { TenantScope } from '../db/index.js';
 
@@ -50,6 +51,37 @@ export async function loadAuditRows(scope: TenantScope, taskId?: string): Promis
   return result.rows;
 }
 
+/** The tenant's rule config as the engine reads it, with the spec's defaults, the version and the audit of the saves. */
+export async function loadRuleConfig(scope: TenantScope): Promise<{ ruleConfig: ReadModel['ruleConfig']; ruleHistory: RuleConfigHistory }> {
+  const row = await scope.selectFrom('rule_configs').selectAll().executeTakeFirst();
+  if (row === undefined) {
+    throw new Error(`Tenant ${scope.tenantId} has no rule configuration.`);
+  }
+  const auditRows = await scope.selectFrom('rule_config_audit_entries').selectAll().orderBy('audit_id').execute();
+  const audit = auditRows.map((entry) =>
+    RuleConfigAuditEntry.parse({
+      version: entry.version,
+      at: instantOf(entry.at),
+      actor: entry.actor,
+      action: entry.action,
+      field: entry.field,
+      from: entry.from_value,
+      to: entry.to_value,
+    }),
+  );
+  return {
+    ruleConfig: parseRuleConfig(row.config),
+    ruleHistory: {
+      defaults: parseRuleConfig(readFixtureJson('proposed_rule_config.json')),
+      version: row.version,
+      // A save always names its persona; a row without one is the config as seeded or restored by Reset.
+      saved_at: row.updated_by === null ? null : instantOf(row.updated_at),
+      saved_by: row.updated_by === null ? null : PersonaId.parse(row.updated_by),
+      audit,
+    },
+  };
+}
+
 export async function loadReadModel(scope: TenantScope): Promise<ReadModel> {
   const entityRows = await Promise.all(ENTITY_NAMES.map(async (name) => [name, await rowsOf(scope, name)] as const));
   const rows = new Map<EntityName, Row[]>(entityRows);
@@ -70,14 +102,6 @@ export async function loadReadModel(scope: TenantScope): Promise<ReadModel> {
   }
   const tasks = (rows.get('task') ?? []).map((row) => taskRecord(row, auditByTask.get(String(row.task_id)) ?? []));
 
-  const configRow = await scope
-    .selectFrom('rule_configs')
-    .select('config')
-    .where('data_set', '=', tenant.dataset_tag)
-    .executeTakeFirst();
-  if (configRow === undefined) {
-    throw new Error(`Tenant ${scope.tenantId} has no rule configuration.`);
-  }
   const issueRows = await scope.selectFrom('data_issues').selectAll().orderBy('issue_no').execute();
   const issues: DataIssue[] = issueRows.map(({ tenant_id: _tenant, source_row, ...issue }) => ({
     ...issue,
@@ -85,5 +109,5 @@ export async function loadReadModel(scope: TenantScope): Promise<ReadModel> {
     row: source_row,
   }));
 
-  return { tenantId: scope.tenantId, records, tasks, ruleConfig: parseRuleConfig(configRow.config), issues };
+  return { tenantId: scope.tenantId, records, tasks, ...(await loadRuleConfig(scope)), issues };
 }

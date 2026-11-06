@@ -2,13 +2,13 @@
  * The static demo (a production build in prototype mode served by `vite preview`, no Supabase stack): a deep link
  * meets the sign-in page with the roles card and the banner, a role click signs in and returns to the link, every
  * screen works on the in-browser mock API, the session survives a reload, the persona and theme switch, sign-out
- * returns to sign-in, nothing leaves the page's own origin, and every screen passes axe in both themes.
+ * returns to sign-in, the rules are edited, restored and reset, nothing leaves the page's own origin, and every screen passes axe in both themes.
  *
  * Prerequisites: none beyond the browser. Playwright builds and serves the app (playwright.config.ts).
  */
 import { expect, test } from '@playwright/test';
 
-import { expectNoAxeViolations, expectNoHorizontalScroll } from './support';
+import { expectNoAxeViolations, expectNoHorizontalScroll, resetData } from './support';
 
 const DESTINATIONS = [
   'Overview',
@@ -17,10 +17,14 @@ const DESTINATIONS = [
   'Claims',
   'Suppliers',
   'Action Queue',
+  'Rules',
 ];
 
-/** Every screen has a filter bar; the Action Queue's is its own. */
-const FILTERS = (name: string): string => (name === 'Action Queue' ? 'Task filters' : 'Claim filters');
+/** Every screen but Rules has a filter bar; the Action Queue's is its own. */
+const FILTERS = (name: string): string | null => {
+  if (name === 'Rules') return null;
+  return name === 'Action Queue' ? 'Task filters' : 'Claim filters';
+};
 
 test.describe('prototype build', () => {
   test('a role click signs in with no password, every screen works, the session survives a reload, and nothing leaves the origin', async ({
@@ -78,7 +82,8 @@ test.describe('prototype build', () => {
     for (const name of DESTINATIONS) {
       await nav.getByRole('link', { name }).click();
       await expect(page.getByRole('heading', { name, level: 1 })).toBeVisible();
-      await expect(page.getByRole('region', { name: FILTERS(name) })).toBeVisible();
+      const filters = FILTERS(name);
+      if (filters !== null) await expect(page.getByRole('region', { name: filters })).toBeVisible();
       await expect(page.getByRole('note')).toBeVisible();
       await expectNoHorizontalScroll(page);
     }
@@ -104,6 +109,51 @@ test.describe('prototype build', () => {
     await expectNoAxeViolations(page);
     await page.goto('/exceptions');
     await expect(page.getByRole('heading', { name: 'Exceptions & SLA', level: 1 })).toBeVisible();
+    await expectNoAxeViolations(page);
+
+    // Rules: Finance saves a higher high-value line and CLM-106 stops being high value on Overview (the change is kept
+    // across a reload), Claims Handler only reads the rules, and Restore defaults and Reset bring the spec's numbers back.
+    const card = (name: string) => page.getByRole('region', { name, exact: true });
+    const highValue = page.getByLabel('High-value line');
+    const saveRules = async (line: string) => {
+      await highValue.fill(line);
+      await page.getByRole('button', { name: 'Save changes' }).click();
+      await page.getByRole('dialog').getByRole('button', { name: 'Save changes' }).click();
+    };
+    await page.getByLabel('Data set').selectOption('TEST');
+    await nav.getByRole('link', { name: 'Overview' }).click();
+    await expect(card('High-value claims')).toContainText('1');
+    await nav.getByRole('link', { name: 'Rules' }).click();
+    await expect(highValue).toHaveValue('25000');
+    await expect(page.getByText('Saved P25,000.00 · spec default P25,000.00')).toBeVisible();
+    await expectNoHorizontalScroll(page);
+    await expectNoAxeViolations(page);
+    await saveRules('40000');
+    await expect(page.getByText('The rules were saved (version 2).')).toBeVisible();
+    await page.reload();
+    await expect(highValue).toHaveValue('40000');
+    await expect(page.getByRole('table', { name: 'History of changes to the rules' })).toContainText('Finance');
+    await nav.getByRole('link', { name: 'Overview' }).click();
+    await expect(card('High-value claims')).toContainText('0');
+    await nav.getByRole('link', { name: 'Rules' }).click();
+    await page.getByRole('combobox', { name: 'Viewing as' }).selectOption('claims-handler');
+    await expect(page.getByText('Read-only for this persona')).toBeVisible();
+    await expect(highValue).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Save changes' })).toHaveCount(0);
+    await expectNoAxeViolations(page);
+    await page.getByRole('combobox', { name: 'Viewing as' }).selectOption('finance');
+    await page.getByRole('button', { name: 'Restore defaults' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Restore defaults' }).click();
+    await expect(page.getByText('The spec’s rules are back (version 3).')).toBeVisible();
+    await expect(highValue).toHaveValue('25000');
+    await nav.getByRole('link', { name: 'Overview' }).click();
+    await expect(card('High-value claims')).toContainText('1');
+    await nav.getByRole('link', { name: 'Rules' }).click();
+    await saveRules('40000');
+    await expect(page.getByText('The rules were saved (version 4).')).toBeVisible();
+    await resetData(page, 'TEST');
+    await expect(highValue).toHaveValue('25000');
+    await expect(page.getByText('No changes yet')).toBeVisible();
     await expectNoAxeViolations(page);
 
     // Sign out returns to sign-in, and a reload stays there.

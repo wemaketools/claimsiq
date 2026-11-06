@@ -3,4 +3,5 @@ export * from './asOfViews.js';
 export * from './fixtures/index.js';
 export * from './problems.js';
 export * from './reads.js';
+export * from './ruleConfigEdits.js';
 export * from './taskRules.js';

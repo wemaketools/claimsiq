@@ -32,10 +32,12 @@ import {
   fieldProblems,
   loadDataset,
   reads,
+  restoredRuleConfig,
+  savedRuleConfig,
   taskIdOf,
   taskWithStatus,
 } from '../read-model/index.js';
-import type { FixtureFiles, LoadedDataset, ReadModel } from '../read-model/index.js';
+import type { FixtureFiles, LoadedDataset, ReadModel, RuleEditOutcome, RuleEditRequest } from '../read-model/index.js';
 import { changesKey, clearChanges, readChanges, writeChanges } from './changes.js';
 import type { Changes } from './changes.js';
 import { HttpProblem, jsonResponse, problemResponse } from './problem.js';
@@ -44,7 +46,7 @@ import type { KeyValueStore } from './storage.js';
 export interface MockApiOptions {
   readonly fixtures: Readonly<Record<DataSetId, FixtureFiles>>;
   readonly storage: KeyValueStore;
-  /** The rule config as JSON (`fixtures/v1/proposed_rule_config.json`); an invalid one fails when the API is created. */
+  /** The spec's rule config as JSON (`fixtures/v1/proposed_rule_config.json`), the defaults a saved one is kept over; an invalid one fails when the API is created. */
   readonly ruleConfig: unknown;
   readonly now?: () => Date;
 }
@@ -83,7 +85,7 @@ function compile(path: string): { pattern: RegExp; names: string[] } {
 
 export function createMockApi(options: MockApiOptions): MockApi {
   const clock = options.now ?? (() => new Date());
-  const ruleConfig = parseRuleConfig(options.ruleConfig);
+  const defaultRuleConfig = parseRuleConfig(options.ruleConfig);
   const loaded = new Map<DataSetId, LoadedDataset>();
   const routes: Route[] = [];
 
@@ -121,13 +123,45 @@ export function createMockApi(options: MockApiOptions): MockApi {
     }
   };
 
-  const readModel = (data: LoadedDataset): ReadModel => ({
-    tenantId: data.tenant.tenant_id,
-    records: data.records,
-    tasks: allTasks(data, readAll(data)),
-    ruleConfig,
-    issues: data.issues,
-  });
+  const readModel = (data: LoadedDataset): ReadModel => {
+    const changes = readAll(data);
+    const saved = changes.rule_config;
+    return {
+      tenantId: data.tenant.tenant_id,
+      records: data.records,
+      tasks: allTasks(data, changes),
+      ruleConfig: saved === null ? defaultRuleConfig : { ...defaultRuleConfig, claims: saved.claims },
+      ruleHistory: {
+        defaults: defaultRuleConfig,
+        version: saved?.version ?? 1,
+        saved_at: saved?.saved_at ?? null,
+        saved_by: saved?.saved_by ?? null,
+        audit: saved?.audit ?? [],
+      },
+      issues: data.issues,
+    };
+  };
+
+  /** Applies a rule edit to the saved config in browser storage, or refuses it with the status the shared rules gave. */
+  function ruleEdit(c: Context<unknown, unknown>, edit: (model: ReadModel, request: RuleEditRequest) => RuleEditOutcome, version: number) {
+    const model = readModel(c.data);
+    const outcome = edit(model, { actor: c.actor, version, at: instantOf(c.now) });
+    if (outcome.kind === 'refused') {
+      throw new HttpProblem(outcome.status, outcome.message);
+    }
+    if (outcome.kind === 'saved') {
+      const changes = readAll(c.data);
+      changes.rule_config = {
+        claims: outcome.config.claims,
+        version: outcome.version,
+        saved_at: instantOf(c.now),
+        saved_by: outcome.actor,
+        audit: [...model.ruleHistory.audit, ...outcome.entries],
+      };
+      save(c.data, changes);
+    }
+    return reads.ruleConfig(readModel(c.data));
+  }
 
   function allTasks(data: LoadedDataset, changes: Changes): TaskRecord[] {
     const changed = new Set(changes.tasks.map((task) => task.task_id));
@@ -272,6 +306,13 @@ export function createMockApi(options: MockApiOptions): MockApi {
   );
 
   route(endpoints.dataIssues, (c) => reads.dataIssues(readModel(c.data)));
+  route(endpoints.ruleConfigGet, (c) => reads.ruleConfig(readModel(c.data)));
+  route(endpoints.ruleConfigSave, (c) =>
+    ruleEdit(c, (model, request) => savedRuleConfig(model, c.body.claims, request), c.body.version),
+  );
+  route(endpoints.ruleConfigRestore, (c) =>
+    ruleEdit(c, (model, request) => restoredRuleConfig(model, request), c.body.version),
+  );
 
   route(endpoints.demoReset, (c) => {
     clearChanges(options.storage, storeKey(c.data));

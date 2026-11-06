@@ -153,6 +153,20 @@ export interface ReserveEventsTable {
   row_no: ColumnType<number, never, never>;
 }
 
+export interface RuleConfigAuditEntriesTable {
+  tenant_id: string;
+  audit_id: ColumnType<number, never, never>;
+  data_set: string;
+  version: number;
+  at: ColumnType<Date, Date | string, Date | string>;
+  actor: string;
+  action: string;
+  field: string;
+  from_value: string | null;
+  to_value: string | null;
+  actor_user_id: string | null;
+}
+
 export interface RuleConfigsTable {
   tenant_id: string;
   data_set: string;
@@ -251,6 +265,7 @@ export interface Database {
   products: ProductsTable;
   receipts: ReceiptsTable;
   reserve_events: ReserveEventsTable;
+  rule_config_audit_entries: RuleConfigAuditEntriesTable;
   rule_configs: RuleConfigsTable;
   supplier_requests: SupplierRequestsTable;
   suppliers: SuppliersTable;
@@ -277,6 +292,7 @@ export const TENANT_TABLES = [
   'products',
   'receipts',
   'reserve_events',
+  'rule_config_audit_entries',
   'rule_configs',
   'supplier_requests',
   'suppliers',

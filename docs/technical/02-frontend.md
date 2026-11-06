@@ -17,6 +17,7 @@ Status: as built (scaffold, data layer, the claim screens: Overview, Stages & Ag
 | `features/claim-scope/` | No route: what the claim screens share (see Claim screens) |
 | `features/claim-tasks/` | No route: what every screen that shows a task shares: the create (claim given or chosen), assign-owner and change-status dialogs, the status chip, the audit trail and the labels |
 | `features/suppliers/`, `features/actions/` | Supplier Insights (`suppliers.insights`, rows and CSV in `rows.ts`) and the Action Queue (`tasks.list` joined to the claim's flags and the owner's name; queue order, filters and CSV in `rows.ts`) |
+| `features/rules/` | The rule editor (`rules.config`, `rules.save`, `rules.restore`; DD-61): `RulesEditor` (a draft per value, checked with `EditableClaimsRules`, Save and Restore defaults confirmed, keyed on the version so a newer version starts a fresh draft), `RulesValues` (the read-only view of a persona that may not edit), `AuditCard`, `fields.ts` (label, unit and group of each value: a new editable rule is a type error until described) and `draft.ts` |
 | `features/claim-detail/`, `features/invoices/` | Routes without a nav item: `/claims/:claimId` and `/policies/:policyId/invoices` (the stand-in for Premium Collections) |
 | `lib/` | `i18n.ts` (`t()`), `format.ts`, `csv.ts` (CSV text and download), `zonedTime.ts`, `storage.ts` (persona, theme, data set, as-of date, screen filters, the prototype session's role), `useMediaQuery.ts`, `useNow.ts` |
 | `i18n/en.ts` | The shell catalog (namespaces `shell`, `auth`, `ui`, `format`, `charts`, `pages`) |
@@ -27,7 +28,7 @@ Tokens and classes are the suite's, with the prefix `ciq`. Components use tokens
 
 ## Shell
 
-Dark sidebar (tenant label, wordmark, sub-brand, the six destinations, the user card), a sticky top bar of at least 64px (page title, the data controls, **Viewing as** persona switch, theme toggle; below 768px the data controls wrap onto a second row) and the main region. Below 1280px the sidebar is an icon rail by CSS; below 768px it is a drawer (closed: hidden from focus; open: focus moves to the first link; Escape or the scrim closes it). Pages put their title in the top bar through `PageHeader`, and their own actions in the page head.
+Dark sidebar (tenant label, wordmark, sub-brand, the seven destinations, the user card), a sticky top bar of at least 64px (page title, the data controls, **Viewing as** persona switch, theme toggle; below 768px the data controls wrap onto a second row) and the main region. Below 1280px the sidebar is an icon rail by CSS; below 768px it is a drawer (closed: hidden from focus; open: focus moves to the first link; Escape or the scrim closes it). Pages put their title in the top bar through `PageHeader`, and their own actions in the page head.
 
 The persona is `session.persona`, written by `choosePersona` (which also stores it) and read once when the store is created. The user card shows the name of the account and the active persona.
 

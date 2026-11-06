@@ -18,6 +18,7 @@ import { demoHandlers } from '../../domains/demo/handlers.js';
 import { demoSignInHandlers, signInWithSupabase } from '../../domains/demo-sign-in/handlers.js';
 import type { PasswordSignIn } from '../../domains/demo-sign-in/handlers.js';
 import { readHandlers } from '../../domains/reads/handlers.js';
+import { ruleHandlers } from '../../domains/rules/handlers.js';
 import { taskHandlers } from '../../domains/tasks/handlers.js';
 import { INVALID_VALUES_TITLE, InvalidValues } from '../../../read-model/index.js';
 import { requireSession } from '../auth/middleware.js';
@@ -58,7 +59,7 @@ const SECURITY_HEADERS: ReadonlyArray<readonly [string, string]> = [
   ['Cache-Control', 'no-store'],
 ];
 
-const handlers: Handlers = { ...readHandlers, ...taskHandlers, ...demoHandlers };
+const handlers: Handlers = { ...readHandlers, ...ruleHandlers, ...taskHandlers, ...demoHandlers };
 
 export function buildApp(deps: AppDeps): ApiApp {
   const app = new Hono<ApiEnv>();

@@ -28,12 +28,15 @@ import type { RuleConfig } from '../rules/index.js';
 import { claimRecords, invoiceRecords } from './asOfViews.js';
 import type { RecordSet } from './asOfViews.js';
 import { InvalidValues } from './problems.js';
+import type { RuleConfigHistory } from './ruleConfigEdits.js';
 
 export interface ReadModel extends RecordSet {
   readonly tenantId: string;
   /** Every task of the tenant with its audit trail, whatever its source. */
   readonly tasks: readonly TaskRecord[];
+  /** The config the engine reads: the spec's, or the one saved over it. */
   readonly ruleConfig: RuleConfig;
+  readonly ruleHistory: RuleConfigHistory;
   readonly issues: readonly DataIssue[];
 }
 
@@ -160,6 +163,16 @@ export const reads = {
       .map((task) => ({ ...task, overdue: isTaskOverdue(task, asOf) }));
     return collection(model, asOf, tasks);
   },
+
+  ruleConfig: (model: Pick<ReadModel, 'tenantId' | 'ruleConfig' | 'ruleHistory'>) => ({
+    tenant_id: model.tenantId,
+    config: model.ruleConfig,
+    defaults: model.ruleHistory.defaults,
+    version: model.ruleHistory.version,
+    saved_at: model.ruleHistory.saved_at,
+    saved_by: model.ruleHistory.saved_by,
+    audit: [...model.ruleHistory.audit],
+  }),
 
   dataIssues: (model: ReadModel) => ({
     tenant_id: model.tenantId,

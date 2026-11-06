@@ -210,4 +210,74 @@ describe('the mock API', () => {
     expect((await refreshed.call(endpoints.claimsList)).body).toEqual(claimsBefore);
     expect((await refreshed.call(endpoints.tasksCreate, { ...create, key: 'create-2' })).body.task_id).toBe('TASK-0001');
   });
+
+  it('runs every read on the saved rule config, audits each change, refuses a persona that may not edit and a stale version, keeps the config across a refresh, and Reset restores the spec’s', async () => {
+    const first = client();
+    const editor = { persona: 'head-of-claims', tenant: 'TEST' } as const;
+    const highValue = async (api = first) =>
+      (await api.call(endpoints.claimsFacts)).body.items.filter((fact) => fact.high_value).map((fact) => fact.claim_id);
+    const spec = readFixtureJson('proposed_rule_config.json') as { claims: Record<string, unknown> };
+
+    // The spec's config as seeded: nothing saved, defaults equal what is in force. CLM-106 (P30,000) is above the P25,000 line.
+    const seeded = (await first.call(endpoints.ruleConfigGet)).body;
+    expect(seeded).toMatchObject({ tenant_id: 'TEST', version: 1, saved_at: null, saved_by: null, audit: [] });
+    expect(seeded.config).toEqual(seeded.defaults);
+    expect(seeded.defaults.claims).toMatchObject({ high_value_incurred_BWP: 25000, supplier_wait_target_business_days: 5 });
+    expect(await highValue()).toEqual(['CLM-106']);
+
+    const edit = { ...seeded.config.claims, high_value_incurred_BWP: 40000 };
+    const { business_days: _days, holidays_excluded: _holidays, ...editable } = edit;
+
+    // Only the Head of Claims and Finance save; a missing persona, a stale version and bad values change nothing.
+    expect((await first.call(endpoints.ruleConfigSave, { tenant: 'TEST', persona: 'claims-handler', body: { version: 1, claims: editable } })).status).toBe(403);
+    expect((await first.call(endpoints.ruleConfigSave, { tenant: 'TEST', body: { version: 1, claims: editable } })).status).toBe(400);
+    expect((await first.call(endpoints.ruleConfigSave, { ...editor, body: { version: 7, claims: editable } })).status).toBe(409);
+    const invalid = await first.call(endpoints.ruleConfigSave, { ...editor, body: { version: 1, claims: { ...editable, high_value_incurred_BWP: -1 } } });
+    expect(invalid.status).toBe(422);
+    expect(invalid.body).toMatchObject({ errors: [{ field: 'claims.high_value_incurred_BWP' }] });
+    expect((await first.call(endpoints.ruleConfigRestore, { tenant: 'TEST', persona: 'supplier-coordinator', body: { version: 1 } })).status).toBe(403);
+    expect((await first.call(endpoints.ruleConfigGet)).body.version).toBe(1);
+
+    // Saving applies at once to the engine's reads, with one audit entry for the one value that changed.
+    const saved = await first.call(endpoints.ruleConfigSave, { ...editor, body: { version: 1, claims: editable } });
+    expect(saved.status).toBe(200);
+    expect(saved.body).toMatchObject({ version: 2, saved_at: '2026-11-06T14:00:00+02:00', saved_by: 'head-of-claims' });
+    expect(saved.body.audit).toEqual([
+      { version: 2, at: '2026-11-06T14:00:00+02:00', actor: 'head-of-claims', action: 'CHANGED', field: 'high_value_incurred_BWP', from: '25000', to: '40000' },
+    ]);
+    expect(await highValue()).toEqual([]);
+    expect(await highValue(client(first.storage))).toEqual([]);
+    // The stage targets are saved and audited per stage; the age buckets as a list.
+    const retargeted = await first.call(endpoints.ruleConfigSave, {
+      tenant: 'TEST',
+      persona: 'finance',
+      body: { version: 2, claims: { ...editable, stage_sla_business_days: { ...editable.stage_sla_business_days, Assessment: 3 }, age_bucket_upper_days: [10, 30] } },
+    });
+    expect(retargeted.body.audit.slice(1).map((entry) => [entry.version, entry.actor, entry.field, entry.from, entry.to])).toEqual([
+      [3, 'finance', 'stage_sla_business_days.Assessment', '5', '3'],
+      [3, 'finance', 'age_bucket_upper_days', '7, 30, 60, 90', '10, 30'],
+    ]);
+    // A save that changes nothing makes no version and no audit entry.
+    const same = await first.call(endpoints.ruleConfigSave, { ...editor, body: { version: 3, claims: retargeted.body.config.claims } });
+    expect(same.body).toEqual(retargeted.body);
+    // The other data set keeps the spec's config.
+    expect((await first.call(endpoints.ruleConfigGet, { tenant: 'DEMO' })).body).toMatchObject({ tenant_id: 'DEMO', version: 1, audit: [] });
+
+    // Restore defaults is an audited change, and brings the spec's numbers back.
+    const restored = await first.call(endpoints.ruleConfigRestore, { ...editor, body: { version: 3 } });
+    expect(restored.body.version).toBe(4);
+    expect(restored.body.config.claims).toMatchObject(spec.claims);
+    expect(restored.body.audit.slice(3).map((entry) => [entry.action, entry.field, entry.from, entry.to])).toEqual([
+      ['RESTORED', 'stage_sla_business_days.Assessment', '3', '5'],
+      ['RESTORED', 'high_value_incurred_BWP', '40000', '25000'],
+      ['RESTORED', 'age_bucket_upper_days', '10, 30', '7, 30, 60, 90'],
+    ]);
+    expect(await highValue()).toEqual(['CLM-106']);
+
+    // Reset restores the spec's config and clears the audit.
+    await first.call(endpoints.ruleConfigSave, { ...editor, body: { version: 4, claims: editable } });
+    expect((await first.call(endpoints.demoReset)).status).toBe(200);
+    expect((await first.call(endpoints.ruleConfigGet)).body).toMatchObject({ version: 1, saved_at: null, audit: [] });
+    expect(await highValue()).toEqual(['CLM-106']);
+  });
 });

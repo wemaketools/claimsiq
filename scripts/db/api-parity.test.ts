@@ -3,7 +3,7 @@
  * one seeded into a scratch database behind the real Hono app and one parsed by the mock API, answer every read
  * endpoint alike for both tenants, at two as-of dates and with filters, with rejected rows in TEST (so the data issues
  * list has content), with every claim's what-if to each stage, legal or not, and keep alike through a task created,
- * assigned and moved on, with a fixed clock.
+ * assigned and moved on and through rule config saves, refused (403, 409, 422) and restored, with a fixed clock.
  */
 import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -63,8 +63,8 @@ describe.skipIf(serverUrl === null)('the API and the mock API', () => {
     });
     const mock = createMockApi({ fixtures, storage: memoryStore(), ruleConfig, now: () => NOW });
 
-    const ask = async (via: 'server' | 'mock', tenant: string, path: string, init: { method?: string; body?: unknown; asOf?: string } = {}) => {
-      const headers: Record<string, string> = { 'X-Tenant-Id': tenant, 'X-As-Of': init.asOf ?? '2026-10-21', 'X-Persona': 'head-of-claims', Authorization: 'Bearer test' };
+    const ask = async (via: 'server' | 'mock', tenant: string, path: string, init: { method?: string; body?: unknown; asOf?: string; persona?: string } = {}) => {
+      const headers: Record<string, string> = { 'X-Tenant-Id': tenant, 'X-As-Of': init.asOf ?? '2026-10-21', 'X-Persona': init.persona ?? 'head-of-claims', Authorization: 'Bearer test' };
       if (init.body !== undefined) headers['Content-Type'] = 'application/json';
       const request = { method: init.method ?? 'GET', headers, ...(init.body === undefined ? {} : { body: JSON.stringify(init.body) }) };
       const response = via === 'server' ? await app.request(path, request) : await mock.fetch(path, request);
@@ -72,7 +72,7 @@ describe.skipIf(serverUrl === null)('the API and the mock API', () => {
       const { correlationId: _id, ...body } = (await response.json()) as Record<string, unknown>;
       return { status: response.status, body };
     };
-    const same = async (tenant: string, path: string, init: { method?: string; body?: unknown; asOf?: string } = {}) => {
+    const same = async (tenant: string, path: string, init: { method?: string; body?: unknown; asOf?: string; persona?: string } = {}) => {
       const [server, mocked] = [await ask('server', tenant, path, init), await ask('mock', tenant, path, init)];
       expect(server, `${tenant} ${init.method ?? 'GET'} ${path} ${init.asOf ?? ''}`).toEqual(mocked);
       return server;
@@ -123,6 +123,28 @@ describe.skipIf(serverUrl === null)('the API and the mock API', () => {
       await same(tenant, '/api/v1/tasks?status=DONE');
       await same(tenant, endpoints.tasksList.path);
       await same(tenant, endpoints.suppliersInsights.path);
+    }
+
+    for (const tenant of DATA_SET_IDS) {
+      const { config } = (await same(tenant, endpoints.ruleConfigGet.path)).body as unknown as { config: { claims: Record<string, unknown> } };
+      const { business_days: _days, holidays_excluded: _holidays, ...editable } = config.claims;
+      const save = { method: 'POST', body: { version: 1, claims: { ...editable, high_value_incurred_BWP: 40000, stage_sla_business_days: { New: 2, Assessment: 3 }, age_bucket_upper_days: [10, 30] } } };
+      await same(tenant, endpoints.ruleConfigSave.path, { ...save, persona: 'claims-handler' });
+      await same(tenant, endpoints.ruleConfigSave.path, { ...save, persona: 'supplier-coordinator' });
+      await same(tenant, endpoints.ruleConfigSave.path, { ...save, body: { ...save.body, version: 9 } });
+      await same(tenant, endpoints.ruleConfigSave.path, { ...save, body: { version: 1, claims: { ...editable, supplier_min_sample: 0 } } });
+      await same(tenant, endpoints.ruleConfigSave.path, { ...save, body: { version: 1 } });
+      await same(tenant, endpoints.ruleConfigSave.path, save);
+      await same(tenant, endpoints.ruleConfigSave.path, { ...save, body: { version: 2, claims: { ...save.body.claims, supplier_min_sample: 3 } }, persona: 'finance' });
+      await same(tenant, endpoints.ruleConfigGet.path);
+      await same(tenant, endpoints.claimsFacts.path);
+      await same(tenant, endpoints.suppliersInsights.path);
+      await same(tenant, endpoints.ruleConfigRestore.path, { method: 'POST', body: { version: 3 }, persona: 'claims-handler' });
+      await same(tenant, endpoints.ruleConfigRestore.path, { method: 'POST', body: { version: 2 } });
+      await same(tenant, endpoints.ruleConfigRestore.path, { method: 'POST', body: { version: 3 } });
+      await same(tenant, endpoints.ruleConfigRestore.path, { method: 'POST', body: { version: 4 } });
+      await same(tenant, endpoints.ruleConfigGet.path);
+      await same(tenant, endpoints.claimsFacts.path);
     }
   });
 });

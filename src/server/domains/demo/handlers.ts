@@ -1,8 +1,8 @@
 /**
  * Reset: puts the active tenant's data set back as the fixture loaded it (tasks and their audit trail gone, rows and
- * rule configuration restored). It rewrites a tenant's data, so it answers 403 anywhere but `APP_ENV` local or dev, and
- * it runs as the owner, because the application role may delete neither tasks nor their audit trail. The caller is
- * already a verified member of the tenant.
+ * rule configuration restored, its audit gone). It rewrites a tenant's data, so it answers 403 anywhere but
+ * `APP_ENV` local or dev, and it runs as the owner, because the application role may delete neither audit trail nor
+ * tasks. The caller is already a verified member of the tenant.
  */
 import { isDataSetId } from '../../../contracts/index.js';
 import { loadDataset } from '../../../read-model/index.js';

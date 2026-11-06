@@ -50,7 +50,7 @@ describe('feature registry', () => {
     error.mockRestore();
   });
 
-  it('registers the six ClaimsIQ destinations, each with a translated label', () => {
+  it('registers the seven ClaimsIQ destinations, each with a translated label', () => {
     const items = navItemsFor(features);
 
     expect(items.map((item) => item.to)).toEqual([
@@ -60,6 +60,7 @@ describe('feature registry', () => {
       '/claims',
       '/suppliers',
       '/actions',
+      '/rules',
     ]);
     for (const item of items) {
       expect(hasTranslation(item.label), item.label).toBe(true);

@@ -18,10 +18,11 @@ const PAGES = [
   ['Claims', 'Showing 1–6 of 6'],
   ['Suppliers', 'Mma-Motor Repairs (fictional)'],
   ['Action Queue', 'No actions in the queue'],
+  ['Rules', 'Change history'],
 ] as const;
 
 describe('the application routes', () => {
-  it('lands a signed-in user on Overview and walks the six pages through the sidebar, then an unknown address', async () => {
+  it('lands a signed-in user on Overview and walks the seven pages through the sidebar, then an unknown address', async () => {
     expect(() => buildRoutes([])).toThrow('No navigation destination is registered');
     const { router } = renderRouteTree(buildRoutes(features), {
       state: { session: signedInSession(), dataContext: { dataSet: 'TEST', asOf: '2026-10-21' } },

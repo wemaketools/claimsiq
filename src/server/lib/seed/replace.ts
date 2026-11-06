@@ -17,7 +17,7 @@ import { ENTITY_TABLES } from '../db/entityTables.js';
 import type { DbTransaction } from '../db/index.js';
 
 /** The tables a tenant's data owns beyond the 17 entities, in the order their rows can be deleted. */
-const DATA_TABLES = ['rule_configs', 'data_issues', 'task_audit_entries', 'task_counters'] as const;
+const DATA_TABLES = ['rule_config_audit_entries', 'rule_configs', 'data_issues', 'task_audit_entries', 'task_counters'] as const;
 
 const ROWS_PER_STATEMENT = 500;
 

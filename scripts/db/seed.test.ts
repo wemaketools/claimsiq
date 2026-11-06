@@ -9,7 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DEMO_ACCOUNTS } from '../../src/contracts/demoAccounts.js';
 import { z } from 'zod';
 
-import { ENTITIES, ENTITY_NAMES, PERSONA_IDS, TaskAuditEntry } from '../../src/contracts/index.js';
+import { ENTITIES, ENTITY_NAMES, PERSONA_IDS, RuleConfigAuditEntry, TaskAuditEntry } from '../../src/contracts/index.js';
 import { withEdit } from '../../src/read-model/test-support/fixtureFiles.js';
 import { readFixtureFiles, readFixtureJson } from '../../src/server/lib/seed/fixtureFiles.js';
 import { renderSchema, SCHEMA_FILE } from './generate-types.js';
@@ -47,7 +47,7 @@ describe.skipIf(serverUrl === null)('the Stage B database', () => {
     expect(tables.rows.map((row) => row.relname)).toEqual(
       expect.arrayContaining(ENTITY_NAMES.map((name) => ENTITY_TABLES[name])),
     );
-    expect(tables.rows).toHaveLength(ENTITY_NAMES.length + 5);
+    expect(tables.rows).toHaveLength(ENTITY_NAMES.length + 6);
     for (const row of tables.rows) {
       expect(row, row.relname).toMatchObject({ relrowsecurity: true, policies: '1', anon_reads: false, authenticated_reads: false });
     }
@@ -58,6 +58,8 @@ describe.skipIf(serverUrl === null)('the Stage B database', () => {
     const columns: [table: string, column: string, values: readonly string[]][] = [
       ['tenant_memberships', 'persona', PERSONA_IDS],
       ['rule_configs', 'updated_by', PERSONA_IDS],
+      ['rule_config_audit_entries', 'actor', PERSONA_IDS],
+      ['rule_config_audit_entries', 'action', RuleConfigAuditEntry.shape.action.options],
       ['task_audit_entries', 'actor', PERSONA_IDS],
       ['task_audit_entries', 'action', TaskAuditEntry.shape.action.options],
     ];
