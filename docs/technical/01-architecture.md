@@ -1,6 +1,6 @@
 # Architecture and stack
 
-Status: as built (scaffold). Decisions behind it: `docs/plan/design-decisions.md` DD-01 to DD-12. Product behaviour: `ai/specs/`.
+Status: as built (scaffold). The decisions behind it are in `docs/plan/design-decisions.md`. Product behaviour: `ai/specs/`.
 
 ## Repository layout
 

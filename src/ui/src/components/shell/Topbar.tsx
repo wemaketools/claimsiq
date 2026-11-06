@@ -6,10 +6,11 @@
 import type { Ref } from 'react';
 
 import { PERSONA_IDS, isPersonaId } from '../../app/personas';
-import { useAppDispatch, useAppSelector, usePersona } from '../../app/hooks';
-import { chooseTheme, choosePersona } from '../../app/sessionActions';
+import { useAppDispatch, usePersona } from '../../app/hooks';
+import { choosePersona } from '../../app/sessionActions';
 import { t } from '../../lib/i18n';
 import { IconButton } from '../ui/Button';
+import { useThemeToggle } from './useThemeToggle';
 
 export interface TopbarProps {
   /** Receives the title slot element (PageHeader portals the page title into it). */
@@ -27,8 +28,7 @@ const SWITCH_ID = 'ciq-persona-switch';
 export function Topbar({ titleRef, onOpenMenu, menuOpen, sidebarId, menuButtonRef }: TopbarProps) {
   const dispatch = useAppDispatch();
   const persona = usePersona();
-  const theme = useAppSelector((state) => state.session.theme);
-  const nextTheme = theme === 'dark' ? 'light' : 'dark';
+  const themeToggle = useThemeToggle();
 
   return (
     <header className="ciq-topbar">
@@ -65,9 +65,9 @@ export function Topbar({ titleRef, onOpenMenu, menuOpen, sidebarId, menuButtonRe
       </div>
       <div className="ciq-topbar-actions">
         <IconButton
-          icon={nextTheme === 'dark' ? 'moon' : 'sun'}
-          label={nextTheme === 'dark' ? t('shell.theme.useDark') : t('shell.theme.useLight')}
-          onClick={() => dispatch(chooseTheme(nextTheme))}
+          icon={themeToggle.icon}
+          label={themeToggle.label}
+          onClick={themeToggle.toggle}
         />
       </div>
     </header>

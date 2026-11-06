@@ -9,8 +9,8 @@ import { isRouteErrorResponse, useRouteError } from 'react-router';
 
 import { Button, ButtonLink } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
-import { PageHeader } from '../components/ui/PageHeader';
 import { t } from '../lib/i18n';
+import { StatusPageFrame } from './StatusPageFrame';
 import { NotFoundPage } from './NotFoundPage';
 import { isChunkLoadError } from './chunkLoadError';
 
@@ -52,18 +52,9 @@ export function RouteErrorPage({
       />
     </div>
   );
-  if (inShell) {
-    return (
-      <div className="ciq-page">
-        <PageHeader title={title} />
-        {body}
-      </div>
-    );
-  }
   return (
-    <main className="ciq-auth-page">
-      <PageHeader title={title} />
-      <div className="ciq-auth-card ciq-auth-card--wide">{body}</div>
-    </main>
+    <StatusPageFrame inShell={inShell} title={title}>
+      {body}
+    </StatusPageFrame>
   );
 }

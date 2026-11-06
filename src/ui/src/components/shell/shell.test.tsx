@@ -8,6 +8,7 @@ import { createAppStore } from '../../app/store';
 import { signedInSession } from '../../test/fixtures';
 import { renderWithProviders, stubAuth } from '../../test/render';
 import { PageHeader } from '../ui/PageHeader';
+import { PageSlotsContext } from '../ui/pageSlots';
 import { AppShell } from './AppShell';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
@@ -76,6 +77,18 @@ describe('Sidebar', () => {
       '/suppliers',
       '/actions',
     ]);
+  });
+});
+
+describe('PageHeader in the shell', () => {
+  it('renders no second heading in the page while the shell has not set its title slot yet', () => {
+    renderWithProviders(
+      <PageSlotsContext.Provider value={{ title: null }}>
+        <PageHeader title="Claims" />
+      </PageSlotsContext.Provider>,
+    );
+
+    expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
   });
 });
 

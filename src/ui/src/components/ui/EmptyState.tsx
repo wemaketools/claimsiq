@@ -39,7 +39,7 @@ export function EmptyState({
 
 export interface RestrictedStateProps {
   readonly title?: ReactNode;
-  /** Why access is restricted, in business terms (for example "Sealed until the opening session"). */
+  /** Why access is restricted, in business terms (for example "Finance figures are not shown to this persona"). */
   readonly description?: ReactNode;
   readonly action?: ReactNode;
   readonly compact?: boolean;

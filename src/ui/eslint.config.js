@@ -16,6 +16,8 @@ import { defineConfig, globalIgnores } from 'eslint/config';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
+import { sharedRules } from '../../eslint.shared.js';
+
 const SERVER_BOUNDARY = {
   group: ['**/server', '**/server/**'],
   message: 'The SPA never imports backend code. Call the API through src/api/client.ts.',
@@ -44,21 +46,15 @@ export default defineConfig([
     },
     linterOptions: { reportUnusedDisableDirectives: 'error' },
     rules: {
-      '@typescript-eslint/no-explicit-any': 'error',
-      '@typescript-eslint/consistent-type-imports': [
-        'error',
-        { prefer: 'type-imports', fixStyle: 'separate-type-imports' },
-      ],
-      '@typescript-eslint/no-unused-vars': [
+      ...sharedRules,
+      'no-restricted-syntax': [
         'error',
         {
-          argsIgnorePattern: '^_',
-          varsIgnorePattern: '^_',
-          caughtErrorsIgnorePattern: '^_',
-          destructuredArrayIgnorePattern: '^_',
+          selector:
+            "NewExpression[callee.name='ApiError'] > ObjectExpression > Property[key.name='title'] > :matches(Literal, TemplateLiteral)",
+          message: 'An ApiError title is shown to the user: take it from the catalog with t().',
         },
       ],
-      'no-console': ['error', { allow: ['warn', 'error'] }],
       'no-restricted-imports': 'off',
       '@typescript-eslint/no-restricted-imports': [
         'error',
@@ -78,6 +74,7 @@ export default defineConfig([
     files: ['**/*.test.{ts,tsx}', 'src/test/**/*.{ts,tsx}', 'src/main.tsx'],
     rules: {
       'react-refresh/only-export-components': 'off',
+      'no-restricted-syntax': 'off',
     },
   },
   {

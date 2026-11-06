@@ -6,10 +6,12 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 import { readSourceFile } from '../test/readSourceFile';
 
-let css = '';
+/** The stylesheet without comments, whitespace-normalised once for all `rule()` lookups. */
+let normalised = '';
 
 beforeAll(async () => {
-  css = await readSourceFile('./components.css', import.meta.url);
+  const css = await readSourceFile('./components.css', import.meta.url);
+  normalised = css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ');
 });
 
 /**
@@ -17,7 +19,6 @@ beforeAll(async () => {
  * (whitespace-normalised), joined.
  */
 function rule(selector: string): string {
-  const normalised = css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ');
   const wanted = selector.replace(/\s+/g, ' ').trim();
   const bodies: string[] = [];
   for (const match of normalised.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {

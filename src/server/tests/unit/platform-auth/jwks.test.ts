@@ -9,7 +9,7 @@ function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 }
 
-function setup(responses: Array<Response | Error>) {
+function setup(responses: Array<Response | Error>, retryBackoffMs = 0) {
   let clock = 1_000_000;
   const fetchMock = vi.fn(async () => {
     const next = responses.shift();
@@ -27,6 +27,7 @@ function setup(responses: Array<Response | Error>) {
     now: () => clock,
     ttlMs: 1000,
     maxStaleMs: 5000,
+    retryBackoffMs,
   });
   return { cache, fetchMock, advance: (ms: number) => (clock += ms) };
 }
@@ -85,6 +86,37 @@ describe('createJwksCache', () => {
 
     // Assert
     expect(key).toMatchObject({ kid: 'k1' });
+  });
+
+  it('does not retry the network on every lookup during an outage while the stale set is usable', async () => {
+    // Arrange
+    const { cache, fetchMock, advance } = setup(
+      [jsonResponse({ keys: [EC_KEY] }), new Error('network down'), new Error('still down')],
+      1000,
+    );
+    await cache.getKey('k1');
+    advance(1500);
+
+    // Act: the first lookup after expiry fails once; the ones inside the back-off do not fetch.
+    await cache.getKey('k1');
+    advance(100);
+    await cache.getKey('k1');
+    await cache.getKey('k1');
+    const callsInBackoff = fetchMock.mock.calls.length;
+    advance(1000);
+    const key = await cache.getKey('k1');
+
+    // Assert
+    expect(callsInBackoff).toBe(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(key).toMatchObject({ kid: 'k1' });
+  });
+
+  it('still fails fast with nothing usable cached, back-off or not', async () => {
+    const { cache, fetchMock } = setup([new Error('down'), new Error('down')], 60_000);
+    await expect(cache.getKey('k1')).rejects.toBeInstanceOf(JwksUnavailableError);
+    await expect(cache.getKey('k1')).rejects.toBeInstanceOf(JwksUnavailableError);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('throws JwksUnavailableError when nothing usable is cached', async () => {

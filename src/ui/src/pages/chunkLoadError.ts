@@ -2,7 +2,6 @@
  * Recognizes a lazy page module (a dynamic import) that could not be fetched or evaluated, across browsers. Such a
  * failure is cached by the module loader until the document reloads, so the route error page asks for a reload.
  */
-/** Messages browsers use for a dynamic import (lazy page chunk) that could not be fetched or evaluated. */
 const CHUNK_LOAD_PATTERNS: readonly RegExp[] = [
   /failed to fetch dynamically imported module/i,
   /error loading dynamically imported module/i,

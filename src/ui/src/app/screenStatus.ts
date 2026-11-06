@@ -7,7 +7,8 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 
-import { ApiError, isApiError } from '../api/client';
+import { toApiError } from '../api/client';
+import type { ApiError } from '../api/client';
 
 export type ScreenLoader = (screen: string, signal: AbortSignal) => Promise<void>;
 
@@ -30,18 +31,6 @@ export type ScreenStatus =
 export interface ScreenStatusResult {
   readonly status: ScreenStatus;
   readonly reload: () => void;
-}
-
-function toApiError(screen: string, error: unknown): ApiError {
-  if (isApiError(error)) {
-    return error;
-  }
-  return new ApiError({
-    kind: 'network',
-    status: 0,
-    title: error instanceof Error ? error.message : 'The screen could not be loaded.',
-    endpointId: screen,
-  });
 }
 
 export function useScreenStatus(screen: string): ScreenStatusResult {

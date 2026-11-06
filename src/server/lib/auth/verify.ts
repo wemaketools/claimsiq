@@ -10,11 +10,9 @@
  * and then the claims this API relies on: `sub` present and `role = authenticated` (an anon or service-role
  * token is never a user session).
  *
- * The result never throws for a bad token: it returns `{ ok: false, reason }`. The reason is for the SERVER LOG
- * only; the HTTP layer always answers the same 401. Infrastructure failures (JWKS unreachable) are
- * reported as `jwks_unavailable`, which the caller may log at a higher level.
- *
- * Used by the API's auth middleware to turn a bearer token into a verified user.
+ * The result never throws for a bad token: it returns `{ ok: false, reason }`. The reason says why, for a log
+ * only, and must not be shown to the client. Infrastructure failures (JWKS unreachable) are reported as
+ * `jwks_unavailable`, which a caller may treat as more serious than a bad token.
  */
 import type { JWK, SupabaseClient } from '@supabase/supabase-js';
 

@@ -106,6 +106,11 @@ export const shellCatalog = {
       description: 'This view is not available to you. Nothing about it is shown.',
     },
     error: {
+      title: {
+        network: 'The service could not be reached.',
+        contract: 'The response did not match the API contract.',
+        failed: 'The request failed.',
+      },
       loadTitle: 'This could not be loaded',
       network: 'The service could not be reached. Check your connection and try again.',
       server: 'An unexpected error occurred. Quote the correlation id when you contact support.',
@@ -190,6 +195,7 @@ export const shellCatalog = {
       minutes: '{minutes} min',
     },
     remaining: {
+      now: 'now',
       left: '{span} left',
       ago: 'passed {span} ago',
     },

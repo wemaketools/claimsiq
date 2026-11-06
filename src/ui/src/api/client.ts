@@ -12,6 +12,7 @@
  *
  * The client never imports supabase-js or the store: AuthProvider installs the adapters (`configureApiClient`).
  */
+import { t } from '../lib/i18n';
 import { buildPath, buildQuery } from './endpoint';
 import type { ApiEndpoint, EndpointRequest } from './endpoint';
 import { PROBLEM_CONTENT_TYPE, Problem } from './problem';
@@ -102,6 +103,19 @@ export class ApiError extends Error {
 
 export function isApiError(value: unknown): value is ApiError {
   return value instanceof ApiError;
+}
+
+/** An `ApiError` as is, or any other failure of a call or a screen load wrapped as one. */
+export function toApiError(endpointId: string, error: unknown): ApiError {
+  if (isApiError(error)) {
+    return error;
+  }
+  return new ApiError({
+    kind: 'network',
+    status: 0,
+    title: error instanceof Error ? error.message : t('ui.error.title.failed'),
+    endpointId,
+  });
 }
 
 /** Options of one call. */
@@ -199,7 +213,7 @@ export async function call<R>(
     throw new ApiError({
       kind: 'network',
       status: 0,
-      title: 'The service could not be reached.',
+      title: t('ui.error.title.network'),
       endpointId: endpoint.id,
     });
   }
@@ -225,7 +239,7 @@ export async function call<R>(
       throw new ApiError({
         kind: 'contract',
         status: response.status,
-        title: 'The response did not match the API contract.',
+        title: t('ui.error.title.contract'),
         detail: checked.error.issues
           .slice(0, 5)
           .map((issue) => `${issue.path.join('.') || '(root)'}: ${issue.message}`)

@@ -1,6 +1,5 @@
 /**
- * Timeline (`.ciq-timeline`): a vertical sequence of events with a toned marker, title, meta line and detail. Used by
- * the audit history, approval routes and amendment histories.
+ * Timeline (`.ciq-timeline`): a vertical sequence of events with a toned marker, title, meta line and detail.
  */
 import type { ReactNode } from 'react';
 

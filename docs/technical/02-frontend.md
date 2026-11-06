@@ -1,6 +1,6 @@
 # Frontend (SPA)
 
-Status: as built (scaffold). Decisions: `docs/plan/design-decisions.md` DD-03 to DD-07, DD-10.
+Status: as built (scaffold). The decisions behind it (prefix and palette, brand, navigation, persona switch, tenant) are in `docs/plan/design-decisions.md`.
 
 ## Layout of `src/ui/src`
 

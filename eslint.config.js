@@ -19,6 +19,8 @@ import { defineConfig, globalIgnores } from 'eslint/config';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
+import { sharedRules } from './eslint.shared.js';
+
 const CONFIG_ONLY =
   'Only src/server/lib/config/index.ts may read process.env. Use getConfig()/loadConfig() from src/server/lib/config.';
 
@@ -66,21 +68,7 @@ export default defineConfig([
     },
     linterOptions: { reportUnusedDisableDirectives: 'error' },
     rules: {
-      '@typescript-eslint/no-explicit-any': 'error',
-      '@typescript-eslint/consistent-type-imports': [
-        'error',
-        { prefer: 'type-imports', fixStyle: 'separate-type-imports' },
-      ],
-      '@typescript-eslint/no-unused-vars': [
-        'error',
-        {
-          argsIgnorePattern: '^_',
-          varsIgnorePattern: '^_',
-          caughtErrorsIgnorePattern: '^_',
-          destructuredArrayIgnorePattern: '^_',
-        },
-      ],
-      'no-console': ['error', { allow: ['warn', 'error'] }],
+      ...sharedRules,
       'no-restricted-properties': ['error', { object: 'process', property: 'env', message: CONFIG_ONLY }],
       'no-restricted-imports': ['error', { paths: processEnvImportPaths }],
     },

@@ -37,7 +37,7 @@ function pageWindow(page: number, pageCount: number): Array<number | null> {
 }
 
 export function Pagination({
-  page,
+  page: requestedPage,
   pageSize,
   total,
   onPageChange,
@@ -45,6 +45,7 @@ export function Pagination({
   pageSizes = [10, 25, 50, 100],
 }: PaginationProps) {
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  const page = Math.min(Math.max(1, requestedPage), pageCount);
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(total, page * pageSize);
   return (

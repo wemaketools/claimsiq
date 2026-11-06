@@ -2,25 +2,23 @@
  * The user card at the bottom of the sidebar: initials, name and the active persona, and a menu with the theme
  * toggle and sign out.
  */
-import { useAppDispatch, useAppSelector, usePersona } from '../../app/hooks';
-import { chooseTheme } from '../../app/sessionActions';
+import { useAppSelector, usePersona } from '../../app/hooks';
 import { useAuth } from '../../auth/authContext';
 import { initialsOf } from '../../lib/format';
 import { t } from '../../lib/i18n';
 import { Icon } from '../ui/Icon';
 import { Menu } from '../ui/Menu';
+import { useThemeToggle } from './useThemeToggle';
 
 export function UserCard() {
   const user = useAppSelector((state) => state.session.user);
-  const theme = useAppSelector((state) => state.session.theme);
   const persona = usePersona();
-  const dispatch = useAppDispatch();
+  const themeToggle = useThemeToggle();
   const auth = useAuth();
 
   if (user === null) {
     return null;
   }
-  const nextTheme = theme === 'dark' ? 'light' : 'dark';
   const personaLabel = t(`shell.persona.${persona}`);
 
   return (
@@ -37,9 +35,9 @@ export function UserCard() {
           },
           {
             id: 'theme',
-            label: nextTheme === 'dark' ? t('shell.theme.useDark') : t('shell.theme.useLight'),
-            icon: nextTheme === 'dark' ? 'moon' : 'sun',
-            onSelect: () => dispatch(chooseTheme(nextTheme)),
+            label: themeToggle.label,
+            icon: themeToggle.icon,
+            onSelect: themeToggle.toggle,
           },
           { kind: 'separator', id: 'sep' },
           {

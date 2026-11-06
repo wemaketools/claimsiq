@@ -33,6 +33,8 @@ export interface JwksCacheOptions {
   readonly now?: () => number;
   readonly ttlMs?: number;
   readonly maxStaleMs?: number;
+  /** After a failed refresh, how long a still-usable stale set is served without trying the network again. */
+  readonly retryBackoffMs?: number;
   /** Per-request timeout of the JWKS fetch. */
   readonly timeoutMs?: number;
 }
@@ -47,6 +49,7 @@ export interface JwksCache {
 const DEFAULT_TTL_MS = 10 * 60 * 1000;
 const DEFAULT_MAX_STALE_MS = 60 * 60 * 1000;
 const DEFAULT_TIMEOUT_MS = 5000;
+const DEFAULT_RETRY_BACKOFF_MS = 30 * 1000;
 const PRIVATE_MEMBERS = ['d', 'p', 'q', 'dp', 'dq', 'qi', 'k'];
 
 function isPublicAsymmetricKey(value: unknown): value is JWK {
@@ -69,10 +72,12 @@ export function createJwksCache(options: JwksCacheOptions): JwksCache {
   const ttlMs = options.ttlMs ?? DEFAULT_TTL_MS;
   const maxStaleMs = options.maxStaleMs ?? DEFAULT_MAX_STALE_MS;
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const retryBackoffMs = options.retryBackoffMs ?? DEFAULT_RETRY_BACKOFF_MS;
 
   let keys: Map<string, JWK> | null = null;
   let fetchedAt = 0;
   let inFlight: Promise<void> | null = null;
+  let lastFailedAt: number | null = null;
 
   async function load(): Promise<void> {
     const response = await fetchImpl(options.url, {
@@ -99,21 +104,37 @@ export function createJwksCache(options: JwksCacheOptions): JwksCache {
 
   function refresh(): Promise<void> {
     if (inFlight === null) {
-      inFlight = load().finally(() => {
-        inFlight = null;
-      });
+      inFlight = load()
+        .then(
+          () => {
+            lastFailedAt = null;
+          },
+          (error: unknown) => {
+            lastFailedAt = now();
+            throw error;
+          },
+        )
+        .finally(() => {
+          inFlight = null;
+        });
     }
     return inFlight;
+  }
+
+  function hasUsableSet(): boolean {
+    return keys !== null && keys.size > 0 && now() - fetchedAt < maxStaleMs;
   }
 
   async function getKey(kid: string): Promise<JWK | null> {
     const age = now() - fetchedAt;
     if (keys === null || keys.size === 0 || age >= ttlMs) {
+      const backingOff = lastFailedAt !== null && now() - lastFailedAt < retryBackoffMs && hasUsableSet();
       try {
-        await refresh();
+        if (!backingOff) {
+          await refresh();
+        }
       } catch (error) {
-        const stillUsable = keys !== null && keys.size > 0 && now() - fetchedAt < maxStaleMs;
-        if (!stillUsable) {
+        if (!hasUsableSet()) {
           throw error instanceof JwksUnavailableError
             ? error
             : new JwksUnavailableError('JWKS could not be fetched.', { cause: error });

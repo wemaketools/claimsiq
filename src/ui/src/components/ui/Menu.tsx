@@ -159,7 +159,7 @@ export function Menu({ entries, trigger, label, placement = 'floating', classNam
                     to={entry.to}
                     className="ciq-menu-item"
                     tabIndex={-1}
-                    onClick={() => setOpen(false)}
+                    onClick={() => close(true)}
                   >
                     {entry.icon !== undefined && <Icon name={entry.icon} />}
                     {entry.label}

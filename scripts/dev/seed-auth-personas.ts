@@ -8,8 +8,8 @@
  * - Refuses to run unless SUPABASE_URL points at this machine (127.0.0.1, localhost or ::1) and APP_ENV is local.
  * - Prints progress only; never prints keys or tokens.
  *
- * The same list is shown in the sign-in quick-pick of development builds (src/ui/src/auth/demoAccountList.ts); a
- * unit test keeps the two in step.
+ * The list and the password come from src/ui/src/auth/demoAccountList.ts, the one place that also feeds the sign-in
+ * quick-pick of development builds.
  *
  * Usage: bun run auth:personas
  */
@@ -17,11 +17,11 @@ import { pathToFileURL } from 'node:url';
 
 import type { SupabaseClient, User } from '@supabase/supabase-js';
 
+import { DEMO_ACCOUNTS, DEMO_PASSWORD } from '../../src/ui/src/auth/demoAccountList.js';
+import type { DemoAccount } from '../../src/ui/src/auth/demoAccountList.js';
 import { ConfigurationError, getConfig } from '../../src/server/lib/config/index.js';
 import type { AppConfig } from '../../src/server/lib/config/index.js';
 import { getAdminClient } from '../../src/server/lib/supabase/index.js';
-
-export const DEMO_PASSWORD = 'test1234';
 
 const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]', '::1']);
 
@@ -34,19 +34,6 @@ export function isLocalTarget(config: Pick<AppConfig, 'appEnv' | 'supabase'>): b
   }
   return config.appEnv === 'local' && LOCAL_HOSTS.has(host);
 }
-
-export interface SeedAccount {
-  readonly email: string;
-  readonly fullName: string;
-}
-
-/** Every account the script provisions: one per persona of the persona switch. */
-export const SEED_ACCOUNTS: readonly SeedAccount[] = [
-  { email: 'head.of.claims@claimsiq.local', fullName: 'Head of Claims' },
-  { email: 'claims.handler@claimsiq.local', fullName: 'Claims Handler' },
-  { email: 'supplier.coordinator@claimsiq.local', fullName: 'Supplier Coordinator' },
-  { email: 'finance@claimsiq.local', fullName: 'Finance' },
-];
 
 async function existingUsers(admin: SupabaseClient): Promise<Map<string, User>> {
   const byEmail = new Map<string, User>();
@@ -75,7 +62,7 @@ export interface SeedSummary {
 /** Creates or updates every account. */
 export async function seedAuthPersonas(
   admin: SupabaseClient,
-  accounts: readonly SeedAccount[],
+  accounts: readonly DemoAccount[],
 ): Promise<SeedSummary> {
   const users = await existingUsers(admin);
   let created = 0;
@@ -125,9 +112,9 @@ async function main(): Promise<void> {
     return;
   }
   process.stdout.write(
-    `Provisioning ${SEED_ACCOUNTS.length} demo accounts in local Supabase Auth (${config.supabase.url})...\n`,
+    `Provisioning ${DEMO_ACCOUNTS.length} demo accounts in local Supabase Auth (${config.supabase.url})...\n`,
   );
-  const summary = await seedAuthPersonas(getAdminClient(config), SEED_ACCOUNTS);
+  const summary = await seedAuthPersonas(getAdminClient(config), DEMO_ACCOUNTS);
   process.stdout.write(
     `Done: ${summary.created} created, ${summary.updated} updated. Password for every account: ${DEMO_PASSWORD} (local only).\n`,
   );

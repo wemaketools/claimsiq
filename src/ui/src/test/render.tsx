@@ -7,7 +7,7 @@ import type { ReactElement } from 'react';
 import { Provider } from 'react-redux';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import type { RouteObject } from 'react-router';
-import { vi } from 'vitest';
+import { afterEach, vi } from 'vitest';
 
 import { configureApiClient } from '../api/client';
 import { createAppStore } from '../app/store';
@@ -16,6 +16,12 @@ import { TENANT } from '../app/tenant';
 import { AuthContext } from '../auth/authContext';
 import type { AuthActions } from '../auth/authContext';
 import { ToastProvider } from '../components/ui/ToastProvider';
+
+/** Restores of the API client adapters installed by `renderWithProviders`, run after each test. */
+const adapterRestores: Array<() => void> = [];
+afterEach(() => {
+  while (adapterRestores.length > 0) adapterRestores.pop()?.();
+});
 
 export function stubAuth(overrides: Partial<AuthActions> = {}): AuthActions {
   return {
@@ -48,6 +54,7 @@ export function renderWithProviders(element: ReactElement, options: RenderOption
     getTenantId: () => (store.getState().session.authStatus === 'signedIn' ? TENANT.id : null),
     onUnauthorized: options.onUnauthorized ?? (() => undefined),
   });
+  adapterRestores.push(restore);
   const router = createMemoryRouter(
     [{ path: options.path ?? '*', element }, ...(options.routes ?? [])],
     { initialEntries: [options.route ?? '/'] },
@@ -61,7 +68,7 @@ export function renderWithProviders(element: ReactElement, options: RenderOption
       </AuthContext.Provider>
     </Provider>,
   );
-  return { ...result, store, router, auth, restore };
+  return { ...result, store, router, auth };
 }
 
 /** A route element that shows the current location (for redirect assertions). */

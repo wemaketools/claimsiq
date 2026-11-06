@@ -178,6 +178,41 @@ describe('ConfirmActionDialog', () => {
   });
 });
 
+describe('ConfirmActionDialog reopening', () => {
+  it('starts with an empty reason and an unticked acknowledgement each time it opens', async () => {
+    function Harness() {
+      const [open, setOpen] = useState(true);
+      return (
+        <>
+          <button type="button" onClick={() => setOpen((current) => !current)}>
+            toggle
+          </button>
+          <ConfirmActionDialog
+            open={open}
+            title="Close task"
+            scope="CLM-0003"
+            consequence="Closed"
+            confirmLabel="Close task"
+            reason={{ label: 'Reason', required: false }}
+            acknowledgement="I have read the evidence."
+            onConfirm={() => undefined}
+            onCancel={() => undefined}
+          />
+        </>
+      );
+    }
+    renderWithProviders(<Harness />, { state: { session: signedInSession() } });
+    await userEvent.type(screen.getByLabelText(/Reason/), 'Customer reached');
+    await userEvent.click(screen.getByRole('checkbox'));
+
+    await userEvent.click(screen.getByRole('button', { name: 'toggle' }));
+    await userEvent.click(screen.getByRole('button', { name: 'toggle' }));
+
+    expect(screen.getByLabelText(/Reason/)).toHaveValue('');
+    expect(screen.getByRole('checkbox')).not.toBeChecked();
+  });
+});
+
 describe('Tabs', () => {
   it('moves between tabs with the arrow keys', async () => {
     function Harness() {
@@ -298,6 +333,13 @@ describe('Pagination', () => {
     await userEvent.selectOptions(screen.getByRole('combobox'), '50');
     expect(onPageSizeChange).toHaveBeenCalledWith(50);
   });
+
+  it('clamps a page past the end to the last page instead of an inverted range', () => {
+    render(<Pagination page={9} pageSize={25} total={60} onPageChange={() => undefined} />);
+
+    expect(screen.getByText('Showing 51–60 of 60')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Page 3' })).toHaveAttribute('aria-current', 'page');
+  });
 });
 
 describe('Menu', () => {
@@ -333,6 +375,28 @@ describe('Menu', () => {
     expect(onSelect).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
     expect(trigger).toHaveFocus();
+  });
+
+  it('returns the focus to the trigger when a link entry is chosen', async () => {
+    render(
+      <MemoryRouter>
+        <Menu
+          label="Account"
+          entries={[{ kind: 'link', id: 'p', label: 'Profile', to: '/me/profile' }]}
+          trigger={(props) => (
+            <button type="button" {...props}>
+              account
+            </button>
+          )}
+        />
+      </MemoryRouter>,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'account' }));
+
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Profile' }));
+
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'account' })).toHaveFocus();
   });
 });
 

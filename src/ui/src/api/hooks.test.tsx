@@ -1,4 +1,4 @@
-import { act, screen } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
@@ -92,7 +92,43 @@ function CloseButton() {
   );
 }
 
+function Overlapping() {
+  const mutation = useApiMutation(closeAll);
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => void mutation.mutate({ body: {} }).catch(() => undefined)}
+      >
+        close
+      </button>
+      <p>{mutation.pending ? 'pending' : 'idle'}</p>
+      {mutation.data !== undefined && <p>closed {mutation.data.closed}</p>}
+    </>
+  );
+}
+
 describe('useApiMutation', () => {
+  it('stays pending until the last of two overlapping commands has finished', async () => {
+    const releases: Array<() => void> = [];
+    installFetch({
+      'POST /api/v1/claims/close-all': async () => {
+        await new Promise<void>((resolve) => releases.push(resolve));
+        return { body: { closed: releases.length } };
+      },
+    });
+    renderWithProviders(<Overlapping />, { state: { session: signedInSession() } });
+    await userEvent.click(screen.getByRole('button', { name: 'close' }));
+    await userEvent.click(screen.getByRole('button', { name: 'close' }));
+    await waitFor(() => expect(releases).toHaveLength(2));
+
+    await act(async () => releases[0]?.());
+    expect(screen.getByText('pending')).toBeInTheDocument();
+
+    await act(async () => releases[1]?.());
+    expect(await screen.findByText('idle')).toBeInTheDocument();
+  });
+
   it('keeps the response of a command', async () => {
     installFetch({ 'POST /api/v1/claims/close-all': () => ({ body: { closed: 3 } }) });
     renderWithProviders(<CloseButton />, { state: { session: signedInSession() } });

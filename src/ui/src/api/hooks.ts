@@ -11,10 +11,11 @@
  * `invalidateApiQueries(match)` re-runs every mounted query whose endpoint id matches (for example after a command
  * changed what a list shows).
  */
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 
 import { useAppSelector } from '../app/hooks';
-import { ApiError, call, isApiError } from './client';
+import { call, toApiError } from './client';
+import type { ApiError } from './client';
 import type { CallOptions } from './client';
 import type { ApiEndpoint, EndpointRequest } from './endpoint';
 
@@ -91,18 +92,6 @@ interface Settled<T> {
   readonly scope: string;
   readonly data: T | undefined;
   readonly error: ApiError | null;
-}
-
-function toApiError(endpointId: string, error: unknown): ApiError {
-  if (isApiError(error)) {
-    return error;
-  }
-  return new ApiError({
-    kind: 'network',
-    status: 0,
-    title: error instanceof Error ? error.message : 'The request failed.',
-    endpointId,
-  });
 }
 
 export function useApiQuery<R>(
@@ -186,24 +175,31 @@ export interface MutationResult<R> {
 }
 
 export function useApiMutation<R>(endpoint: ApiEndpoint<R>): MutationResult<R> {
-  const [pending, setPending] = useState(false);
+  const [inFlight, setInFlight] = useState(0);
   const [error, setError] = useState<ApiError | null>(null);
   const [data, setData] = useState<R | undefined>(undefined);
+  const latestCall = useRef(0);
 
   const mutate = useCallback(
     async (request: EndpointRequest, options?: CallOptions): Promise<R> => {
-      setPending(true);
+      latestCall.current += 1;
+      const thisCall = latestCall.current;
+      setInFlight((count) => count + 1);
       setError(null);
       try {
         const response = await call(endpoint, request, options);
-        setData(response);
+        if (thisCall === latestCall.current) {
+          setData(response);
+        }
         return response;
       } catch (caught) {
         const apiError = toApiError(endpoint.id, caught);
-        setError(apiError);
+        if (thisCall === latestCall.current) {
+          setError(apiError);
+        }
         throw apiError;
       } finally {
-        setPending(false);
+        setInFlight((count) => count - 1);
       }
     },
     [endpoint],
@@ -214,5 +210,5 @@ export function useApiMutation<R>(endpoint: ApiEndpoint<R>): MutationResult<R> {
     setData(undefined);
   }, []);
 
-  return { mutate, pending, error, data, reset };
+  return { mutate, pending: inFlight > 0, error, data, reset };
 }

@@ -2,7 +2,7 @@
  * Tabs.
  * - `Tabs`: an ARIA tablist with keyboard navigation (arrow keys, Home, End) and one visible panel.
  * - `LinkTabs`: route tabs for record workspaces (each tab is a URL, `aria-current` on the active one).
- * - `VerticalTabs`: the settings sub-navigation of `settings.png` (`.ciq-vtabs`), beside the page content.
+ * - `VerticalTabs`: a vertical list of link tabs (`.ciq-vtabs`) beside the page content.
  */
 import { useId, useRef } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';

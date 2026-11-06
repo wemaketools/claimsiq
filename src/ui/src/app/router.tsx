@@ -1,7 +1,7 @@
 /**
  * The route tree, built from the feature registry:
  *
- * - `/` goes to the first sidebar destination.
+ * - `/` goes to the first sidebar destination; with none registered the router cannot be built.
  * - `/signin`, `/forgot-password`, `/reset-password`: auth pages outside any shell.
  * - Every feature route: signed in, inside AppShell.
  * - Anything else: Not found.
@@ -54,7 +54,12 @@ function featureRoutes(modules: readonly FeatureModule[]): RouteObject[] {
 
 /** The route objects for a set of feature modules (exported for tests). */
 export function buildRoutes(modules: readonly FeatureModule[]): RouteObject[] {
-  const home = navItemsFor(modules)[0]?.to ?? '/signin';
+  const home = navItemsFor(modules)[0]?.to;
+  if (home === undefined) {
+    throw new Error(
+      'No navigation destination is registered: add a features/<feature>/routes.tsx with a nav item.',
+    );
+  }
   return [
     {
       element: <RootLayout />,

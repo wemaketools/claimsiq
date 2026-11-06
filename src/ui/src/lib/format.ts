@@ -2,7 +2,7 @@
  * Display formatting. Pure functions, no date library.
  *
  * - Official times render as `14 Oct 2026, 12:00 (UTC+02:00) Africa/Gaborone`: the IANA zone plus the numeric
- *   offset from Intl. A short abbreviation (CAT) is returned separately, only when Intl provides a real one.
+ *   offset from Intl.
  * - Month names come from the `format.month.*` catalog keys, so the output does not depend on the ICU locale data
  *   (en-GB, for example, writes "Sept").
  * - Functions that depend on the current time take `now` as a parameter: components get it from `useNow()`.
@@ -32,13 +32,10 @@ interface ZonedParts {
   readonly minute: string;
   /** `UTC+02:00`, `UTC-05:30`, `UTC+00:00`. */
   readonly offset: string;
-  /** `CAT`, or `null` when Intl only offers a GMT-style name. */
-  readonly abbreviation: string | null;
 }
 
 const partsFormatters = new Map<string, Intl.DateTimeFormat>();
 const offsetFormatters = new Map<string, Intl.DateTimeFormat>();
-const abbreviationFormatters = new Map<string, Intl.DateTimeFormat>();
 
 function cached(
   cache: Map<string, Intl.DateTimeFormat>,
@@ -83,12 +80,6 @@ function zonedParts(at: Date, timeZone: string): ZonedParts {
     cached(offsetFormatters, timeZone, { timeZoneName: 'longOffset' }).formatToParts(at),
     'timeZoneName',
   );
-  const shortName = partValue(
-    cached(abbreviationFormatters, timeZone, { timeZoneName: 'short' }).formatToParts(at),
-    'timeZoneName',
-  );
-  const abbreviation =
-    /^[A-Z]{2,5}$/.test(shortName) && !/^(GMT|UTC)$/.test(shortName) ? shortName : null;
   return {
     year: partValue(parts, 'year'),
     month: Number(partValue(parts, 'month')),
@@ -96,7 +87,6 @@ function zonedParts(at: Date, timeZone: string): ZonedParts {
     hour: partValue(parts, 'hour'),
     minute: partValue(parts, 'minute'),
     offset: normalizeOffset(offsetRaw),
-    abbreviation,
   };
 }
 
@@ -120,8 +110,6 @@ export interface OfficialTimeParts {
   readonly offset: string;
   /** `Africa/Gaborone` */
   readonly timeZone: string;
-  /** `CAT` when Intl provides a real abbreviation, else `null`. */
-  readonly abbreviation: string | null;
   /** `14 Oct 2026, 12:00 (UTC+02:00) Africa/Gaborone` */
   readonly text: string;
 }
@@ -134,7 +122,6 @@ export function officialTimeParts(at: string | Date, timeZone: string): Official
     dateTime,
     offset: parts.offset,
     timeZone,
-    abbreviation: parts.abbreviation,
     text: `${dateTime} (${parts.offset}) ${timeZone}`,
   };
 }
@@ -178,7 +165,7 @@ const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
 
-/** Age since an instant, as in the reference tables: `38d`, `5h`, `12m`, or `now`. */
+/** Age since an instant: `38d`, `5h`, `12m`, or `now`. */
 export function formatAge(from: string | Date, now: number): string {
   const elapsed = now - toDate(from).getTime();
   if (elapsed < MINUTE) {
@@ -194,12 +181,15 @@ export function formatAge(from: string | Date, now: number): string {
 }
 
 /**
- * A time remaining (or elapsed) in words: `2 days 4 hours left`, `3 hours 5 minutes left`, `closed 2 days ago`.
- * Used only NEXT TO an official time, never on its own.
+ * A time remaining (or elapsed): `2 d 4 h left`, `3 h 5 min left`, `passed 2 d 0 h ago`, or `now` within a minute
+ * either way. Used only NEXT TO an official time, never on its own.
  */
 export function formatTimeRemaining(until: string | Date, now: number): string {
   const delta = toDate(until).getTime() - now;
   const magnitude = Math.abs(delta);
+  if (magnitude < MINUTE) {
+    return t('format.remaining.now');
+  }
   const days = Math.floor(magnitude / DAY);
   const hours = Math.floor((magnitude % DAY) / HOUR);
   const minutes = Math.floor((magnitude % HOUR) / MINUTE);
@@ -209,32 +199,31 @@ export function formatTimeRemaining(until: string | Date, now: number): string {
   } else if (hours > 0) {
     span = t('format.span.hoursMinutes', { hours, minutes });
   } else {
-    span = t('format.span.minutes', { minutes: Math.max(minutes, delta >= 0 ? 1 : 0) });
+    span = t('format.span.minutes', { minutes });
   }
   return delta >= 0 ? t('format.remaining.left', { span }) : t('format.remaining.ago', { span });
 }
 
-/** `1.2 MB`, `830 KB`, `12 B`. */
+function roundedSize(value: number): string {
+  return value >= 100 ? Math.round(value).toString() : value.toFixed(1).replace(/\.0$/, '');
+}
+
+/** `1.2 MB`, `830 KB`, `12 B`. The unit is chosen after rounding, so a size never reads `1024 KB`. */
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) {
     return t('format.bytes.b', { value: bytes });
   }
   const units = ['kb', 'mb', 'gb'] as const;
   let value = bytes / 1024;
-  let unit: (typeof units)[number] = 'kb';
-  for (const candidate of units) {
-    unit = candidate;
-    if (value < 1024 || candidate === 'gb') {
-      break;
-    }
+  let index = 0;
+  while (Number(roundedSize(value)) >= 1024 && index < units.length - 1) {
     value /= 1024;
+    index += 1;
   }
-  const rounded =
-    value >= 100 ? Math.round(value).toString() : value.toFixed(1).replace(/\.0$/, '');
-  return t(`format.bytes.${unit}`, { value: rounded });
+  return t(`format.bytes.${units[index] ?? 'gb'}`, { value: roundedSize(value) });
 }
 
-/** Initials for an avatar: `Kagiso Dube` → `TM`. */
+/** Initials for an avatar: `Kagiso Dube` → `KD`. */
 export function initialsOf(fullName: string): string {
   const words = fullName
     .trim()

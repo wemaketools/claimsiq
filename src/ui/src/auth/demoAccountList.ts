@@ -5,8 +5,8 @@
  * `import.meta.env.DEV`, so Vite drops it from production builds. `scan-bundle` fails the build if
  * `DEMO_ACCOUNTS_MARKER` appears in `src/ui/dist`.
  *
- * The accounts are created in LOCAL Supabase Auth by `bun run auth:personas` (scripts/dev/seed-auth-personas.ts keeps
- * the same list) with the password `test1234`. This list only fills the sign-in form: signing in is real
+ * The accounts are created in LOCAL Supabase Auth by `bun run auth:personas`, which imports this module (so it has no
+ * imports of its own) with the password below. The list only fills the sign-in form: signing in is real
  * (supabase-js). An account does not decide the persona view; the persona switch does.
  */
 

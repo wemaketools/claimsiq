@@ -44,14 +44,14 @@ export function PageHeader({
     document.title = t('shell.documentTitle', { title });
   }, [title]);
 
-  const inShell = slots !== null && slots.title !== null;
+  const inShell = slots !== null;
   const hasActions = actions !== undefined || primaryAction !== undefined;
   const hasHeadRow =
     !inShell || hasActions || subtitle !== undefined || meta !== undefined || back !== undefined;
 
   return (
     <>
-      {inShell && slots.title !== null && createPortal(title, slots.title)}
+      {slots?.title != null && createPortal(title, slots.title)}
       {hasHeadRow && (
         <div className="ciq-page-head">
           <div className="ciq-page-head-main">

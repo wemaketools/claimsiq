@@ -45,8 +45,15 @@ export interface ConfirmActionDialogProps {
   readonly returnFocusRef?: RefObject<HTMLElement | null>;
 }
 
-export function ConfirmActionDialog({
-  open,
+/**
+ * The form state (reason, acknowledgement) lives in `OpenConfirmActionDialog`, which exists only while the dialog is
+ * open, so every opening starts empty.
+ */
+export function ConfirmActionDialog(props: ConfirmActionDialogProps) {
+  return props.open ? <OpenConfirmActionDialog {...props} /> : null;
+}
+
+function OpenConfirmActionDialog({
   title,
   scope,
   consequence,
@@ -70,23 +77,17 @@ export function ConfirmActionDialog({
   const reasonMissing = reason?.required === true && reasonText.trim() === '';
   const blocked = reasonMissing || (acknowledgement !== undefined && !acknowledged);
 
-  const close = (): void => {
-    setReasonText('');
-    setAcknowledged(false);
-    onCancel();
-  };
-
   return (
     <Dialog
-      open={open}
+      open
       size={size}
       title={title}
-      onClose={close}
+      onClose={onCancel}
       dismissible={!pending}
       returnFocusRef={returnFocusRef}
       footer={
         <>
-          <Button onClick={close} disabled={pending}>
+          <Button onClick={onCancel} disabled={pending}>
             {t('ui.action.cancel')}
           </Button>
           <Button

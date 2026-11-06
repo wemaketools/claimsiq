@@ -46,6 +46,23 @@ function FieldShell({ id, label, required, hint, error, className, children }: F
         )}
       </label>
       {children}
+      <FieldMessages id={id} hint={hint} error={error} />
+    </div>
+  );
+}
+
+/** The hint and error lines under a field; `describedBy` names the same ids. */
+function FieldMessages({
+  id,
+  hint,
+  error,
+}: {
+  readonly id: string;
+  readonly hint: ReactNode | undefined;
+  readonly error: string | undefined;
+}) {
+  return (
+    <>
       {hint !== undefined && (
         <p className="ciq-field-hint" id={`${id}-hint`}>
           {hint}
@@ -56,7 +73,7 @@ function FieldShell({ id, label, required, hint, error, className, children }: F
           {error}
         </p>
       )}
-    </div>
+    </>
   );
 }
 
@@ -291,16 +308,7 @@ export function MultiSelect({
           </label>
         ))}
       </div>
-      {hint !== undefined && (
-        <p className="ciq-field-hint" id={`${id}-hint`}>
-          {hint}
-        </p>
-      )}
-      {error !== undefined && (
-        <p className="ciq-field-error" id={`${id}-error`}>
-          {error}
-        </p>
-      )}
+      <FieldMessages id={id} hint={hint} error={error} />
     </div>
   );
 }
@@ -343,16 +351,7 @@ export function Checkbox({
         />
         <span className={hideLabel ? 'ciq-visually-hidden' : undefined}>{label}</span>
       </label>
-      {hint !== undefined && (
-        <p className="ciq-field-hint" id={`${id}-hint`}>
-          {hint}
-        </p>
-      )}
-      {error !== undefined && (
-        <p className="ciq-field-error" id={`${id}-error`}>
-          {error}
-        </p>
-      )}
+      <FieldMessages id={id} hint={hint} error={error} />
     </div>
   );
 }
@@ -425,16 +424,7 @@ export function RadioGroup({
           </label>
         ))}
       </div>
-      {hint !== undefined && (
-        <p className="ciq-field-hint" id={`${id}-hint`}>
-          {hint}
-        </p>
-      )}
-      {error !== undefined && (
-        <p className="ciq-field-error" id={`${id}-error`}>
-          {error}
-        </p>
-      )}
+      <FieldMessages id={id} hint={hint} error={error} />
     </fieldset>
   );
 }
@@ -548,16 +538,7 @@ export function DateTimeInput({
           {zoneLabel}
         </span>
       </div>
-      {hint !== undefined && (
-        <p className="ciq-field-hint" id={`${id}-hint`}>
-          {hint}
-        </p>
-      )}
-      {error !== undefined && (
-        <p className="ciq-field-error" id={`${id}-error`}>
-          {error}
-        </p>
-      )}
+      <FieldMessages id={id} hint={hint} error={error} />
     </div>
   );
 }
