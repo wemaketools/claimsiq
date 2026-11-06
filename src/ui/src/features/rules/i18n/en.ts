@@ -26,7 +26,7 @@ const en = {
     suppliers: {
       title: 'Supplier waits',
       subtitle:
-        'When a supplier request counts as held up, and how much evidence an average needs.',
+        'When a supplier request counts as held up, and how much evidence an average or percentile needs.',
     },
     money: {
       title: 'Money thresholds',

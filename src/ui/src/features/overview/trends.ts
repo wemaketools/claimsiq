@@ -4,7 +4,8 @@ import type { PaidTrend } from '../../../../contracts/index';
 import { useApiQuery } from '../../api/hooks';
 import type { TrendPoint } from '../../components/charts';
 import { t } from '../../lib/i18n';
-import type { ClaimFilters } from '../claim-scope';
+import { claimFilterQuery } from '../claim-scope/useClaimScope';
+import type { ClaimFilters } from '../claim-scope/useClaimScope';
 
 /** `2026-10` as `Oct 2026`. */
 export const monthLabel = (month: string): string => {
@@ -12,20 +13,12 @@ export const monthLabel = (month: string): string => {
   return `${t(`format.month.${Number(number)}`)} ${year}`;
 };
 
-export function usePaidTrend(filters: ClaimFilters) {
-  const { policy_id, broker_id, product_id, handler_id } = filters;
-  return useApiQuery(
+export const usePaidTrend = (filters: ClaimFilters) =>
+  useApiQuery(
     endpoints.claimsPaidTrend,
-    {
-      query: Object.fromEntries(
-        Object.entries({ policy_id, broker_id, product_id, handler_id }).filter(
-          ([, value]) => value !== null,
-        ),
-      ),
-    },
+    { query: claimFilterQuery(filters) },
     { keepPrevious: true },
   );
-}
 
 export const trendPoints = (trend: PaidTrend): TrendPoint[] =>
   trend.buckets.map((bucket) => ({

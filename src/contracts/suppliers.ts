@@ -52,7 +52,7 @@ export const SupplierInsight = z.object({
 export type SupplierInsight = z.infer<typeof SupplierInsight>;
 
 export const SupplierInsights = z.object({
-  /** An average is shown only from this many requests. */
+  /** An average or percentile is shown only from this many requests. */
   min_sample: Count,
   /** The baseline a wait is held against. */
   target_business_days: Count,

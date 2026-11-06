@@ -25,7 +25,9 @@ export function paidTrend(claims: readonly ClaimRecord[], asOf: string): PaidTre
   const byMonth = new Map<string, typeof payments>();
   for (const entry of payments) {
     const month = monthOf(dateOf(entry.payment.paid_at));
-    byMonth.set(month, [...(byMonth.get(month) ?? []), entry]);
+    const inMonth = byMonth.get(month);
+    if (inMonth === undefined) byMonth.set(month, [entry]);
+    else inMonth.push(entry);
   }
   const first = [...byMonth.keys()].sort()[0];
   const buckets: PaidBucket[] = [];

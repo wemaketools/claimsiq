@@ -17,8 +17,8 @@ import {
 
 import { t } from '../../lib/i18n';
 import { EmptyState } from '../ui/EmptyState';
-import { ChartFrame } from './ChartFrame';
 import { AXIS_STYLE, GRID_STROKE, TOOLTIP_STYLE, chartColor } from './chartTheme';
+import { SeriesChartFrame } from './SeriesChartFrame';
 import type { ChartTone } from './chartTheme';
 
 export interface TrendSeries {
@@ -76,19 +76,12 @@ export function TrendChart({
     </>
   );
   return (
-    <ChartFrame
+    <SeriesChartFrame
       label={label}
-      columns={[t('charts.period'), ...series.map((item) => item.label)]}
-      rows={points.map((point) => ({
-        key: point.x,
-        cells: [
-          point.x,
-          ...series.map((item) => {
-            const value = point.values[item.key];
-            return value === null || value === undefined ? '—' : formatValue(value);
-          }),
-        ],
-      }))}
+      categoryLabel={t('charts.period')}
+      series={series}
+      points={points}
+      formatValue={formatValue}
     >
       <div style={{ width: '100%', height }}>
         <ResponsiveContainer width="100%" height="100%">
@@ -137,17 +130,6 @@ export function TrendChart({
           )}
         </ResponsiveContainer>
       </div>
-      <ul className="ciq-chart-legend ciq-chart-legend--inline">
-        {series.map((item, index) => (
-          <li key={item.key}>
-            <span
-              className="ciq-chart-swatch"
-              style={{ background: chartColor(item.tone, index) }}
-            />
-            <span>{item.label}</span>
-          </li>
-        ))}
-      </ul>
-    </ChartFrame>
+    </SeriesChartFrame>
   );
 }

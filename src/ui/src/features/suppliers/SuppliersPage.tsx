@@ -7,7 +7,13 @@ import { Card, Chip, DataTable, EmptyState, PageHeader, SkeletonBlock } from '..
 import type { DataTableColumn } from '../../components/ui';
 import { EMPTY_VALUE, formatCount } from '../../lib/format';
 import { t } from '../../lib/i18n';
-import { ClaimFilterBar, ExportCsvButton, claimsLink, useClaimScope } from '../claim-scope';
+import {
+  ClaimFilterBar,
+  ExportCsvButton,
+  claimFilterQuery,
+  claimsLink,
+  useClaimScope,
+} from '../claim-scope';
 import { oneDecimal, supplierRows, suppliersTable } from './rows';
 import type { SupplierRow } from './rows';
 import { WaitPercentilesCard } from './WaitPercentiles';
@@ -149,16 +155,9 @@ function columns(minimum: number): DataTableColumn<SupplierRow>[] {
 
 export default function SuppliersPage() {
   const scope = useClaimScope();
-  const { policy_id, broker_id, product_id, handler_id } = scope.filters;
   const insights = useApiQuery(
     endpoints.suppliersInsights,
-    {
-      query: Object.fromEntries(
-        Object.entries({ policy_id, broker_id, product_id, handler_id }).filter(
-          ([, value]) => value !== null,
-        ),
-      ),
-    },
+    { query: claimFilterQuery(scope.filters) },
     { keepPrevious: true },
   );
   const suppliers = useApiQuery(endpoints.suppliersList, {});

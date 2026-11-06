@@ -8,7 +8,7 @@ Status: as built (scaffold, data layer, the claim screens: Overview, Stages & Ag
 |---|---|
 | `theme/` | `tokens.css` (the `--ciq-*` custom properties for light and dark), `components.css` (the `.ciq-*` classes), `index.css` (self-hosted Inter and JetBrains Mono from `public/fonts`, imports) |
 | `components/ui/` | The design-system components (Button, Card, Chip, DataTable, Dialog, forms, KpiCard, Menu, Tabs, Timeline, EmptyState/ErrorState/RestrictedState, …). Features import from `components/ui` |
-| `components/charts/` | Recharts wrappers on token colours (including `GroupedBarChart`, side-by-side bars with an optional reference line); every chart has a table alternative for assistive technology |
+| `components/charts/` | Recharts wrappers on token colours (including `GroupedBarChart`, side-by-side bars with an optional reference line; the three series charts share `SeriesChartFrame` for the data table and legend); every chart has a table alternative for assistive technology |
 | `components/shell/` | `AppShell`, `Sidebar`, `Topbar`, `UserCard`, `PrototypeBanner` |
 | `app/` | Store and slices (`session`, `dataContext`, `filters`), `dataContextActions.ts`, `router.tsx`, `RouteGuard`, the feature registry, `personas.ts`, `tenant.ts` |
 | `api/` | `client.ts` (`call(endpoint)`), `hooks.ts` (`useApiQuery`, `useApiMutation`, `invalidateApiQueries`), `endpoint.ts`, `problem.ts`, `mockTransport.ts` (the in-browser mock API as the transport; imported only by prototype builds) |

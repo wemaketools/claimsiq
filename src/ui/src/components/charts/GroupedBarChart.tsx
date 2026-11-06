@@ -17,8 +17,8 @@ import {
 import { formatCount } from '../../lib/format';
 import { t } from '../../lib/i18n';
 import { EmptyState } from '../ui/EmptyState';
-import { ChartFrame } from './ChartFrame';
 import { AXIS_STYLE, GRID_STROKE, TOOLTIP_STYLE, chartColor } from './chartTheme';
+import { SeriesChartFrame } from './SeriesChartFrame';
 import type { TrendPoint, TrendSeries } from './TrendChart';
 
 export interface ChartReference {
@@ -57,19 +57,15 @@ export function GroupedBarChart({
   const data = points.map((point) => ({ x: point.x, ...point.values }));
   const referenceColor = 'var(--ciq-chart-axis)';
   return (
-    <ChartFrame
+    <SeriesChartFrame
       label={label}
-      columns={[categoryLabel ?? t('charts.category'), ...series.map((item) => item.label)]}
-      rows={points.map((point) => ({
-        key: point.x,
-        cells: [
-          point.x,
-          ...series.map((item) => {
-            const value = point.values[item.key];
-            return value === null || value === undefined ? '—' : formatValue(value);
-          }),
-        ],
-      }))}
+      categoryLabel={categoryLabel ?? t('charts.category')}
+      series={series}
+      points={points}
+      formatValue={formatValue}
+      extraLegend={
+        reference === undefined ? undefined : { label: reference.label, color: referenceColor }
+      }
     >
       <div style={{ width: '100%', height }}>
         <ResponsiveContainer width="100%" height="100%">
@@ -109,23 +105,6 @@ export function GroupedBarChart({
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <ul className="ciq-chart-legend ciq-chart-legend--inline">
-        {series.map((item, index) => (
-          <li key={item.key}>
-            <span
-              className="ciq-chart-swatch"
-              style={{ background: chartColor(item.tone, index) }}
-            />
-            <span>{item.label}</span>
-          </li>
-        ))}
-        {reference !== undefined && (
-          <li>
-            <span className="ciq-chart-swatch" style={{ background: referenceColor }} />
-            <span>{reference.label}</span>
-          </li>
-        )}
-      </ul>
-    </ChartFrame>
+    </SeriesChartFrame>
   );
 }
