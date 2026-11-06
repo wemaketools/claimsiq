@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import type { Catalog } from './i18n';
 import {
   RESERVED_NAMESPACES,
   featureNamespaceOf,
@@ -42,5 +43,36 @@ describe('translation', () => {
       }
     }
     expect(missing).toEqual([]);
+  });
+
+  it('has a reader for every string a feature catalog defines', () => {
+    const catalogs = import.meta.glob<{ default: Catalog }>('../features/*/i18n/en.ts', {
+      eager: true,
+    });
+    const sources = import.meta.glob<string>(
+      ['../**/*.{ts,tsx}', '!../**/*.test.{ts,tsx}', '!../features/*/i18n/en.ts'],
+      { query: '?raw', import: 'default', eager: true },
+    );
+    const text = Object.values(sources).join('\n');
+    // A key is read when it appears as a literal, or as the start of a template such as `ns.group.${name}`.
+    const literals = new Set(
+      [...text.matchAll(/['"]([a-z][\w-]*(?:\.[\w-]+)+)['"]/g)].map((m) => m[1]),
+    );
+    const prefixes = [...text.matchAll(/`([a-z][\w-]*\.[\w.-]*)\$\{/g)].map((m) => m[1] ?? '');
+    const unread: string[] = [];
+    const walk = (prefix: string, catalog: Catalog): void => {
+      for (const [name, value] of Object.entries(catalog)) {
+        const key = `${prefix}.${name}`.replace(/_(one|other)$/, '');
+        if (typeof value !== 'string') walk(key, value);
+        else if (!literals.has(key) && !prefixes.some((start) => key.startsWith(start))) {
+          unread.push(key);
+        }
+      }
+    };
+    for (const [path, module] of Object.entries(catalogs)) {
+      const namespace = featureNamespaceOf(path);
+      if (namespace !== null) walk(namespace, module.default);
+    }
+    expect(unread).toEqual([]);
   });
 });

@@ -2,8 +2,10 @@
  * Data hooks over `call()` for pages and shared widgets.
  *
  * `useApiQuery(endpoint, request)` fetches on mount and whenever the request, the signed-in user, the data set or the
- * as-of date changes. While a new request runs, the previous data of the SAME endpoint, user, data set and as-of date
- * stays visible (`isFetching`), which avoids flicker when paging or filtering. Pass `null` as the request to skip the call.
+ * as-of date changes. Running the SAME request again (reload, invalidation) keeps its data visible (`isFetching`). A
+ * different request shows no data until it answers, so a page about one record never shows another record's data;
+ * `keepPrevious` opts a list that is filtered or paged in place out of that, and then `isFetching` tells the screen
+ * the figures are not yet those of the new request. Pass `null` as the request to skip the call.
  *
  * `useApiMutation(endpoint)` runs commands: `pending` disables submit buttons while a request is in flight, and
  * `error` keeps the normalized problem for field errors and banners.
@@ -87,9 +89,15 @@ export interface QueryResult<T> {
   readonly reload: () => void;
 }
 
+export interface QueryOptions {
+  /** While a different request of the same endpoint runs, keep showing the data of the previous one. */
+  readonly keepPrevious?: boolean;
+}
+
 interface Settled<T> {
   readonly key: string;
   readonly scope: string;
+  readonly requestKey: string;
   readonly data: T | undefined;
   readonly error: ApiError | null;
 }
@@ -97,6 +105,7 @@ interface Settled<T> {
 export function useApiQuery<R>(
   endpoint: ApiEndpoint<R>,
   request: EndpointRequest | null,
+  { keepPrevious = false }: QueryOptions = {},
 ): QueryResult<R> {
   const userId = useAppSelector((state) => state.session.user?.id ?? null);
   const dataSet = useAppSelector((state) => state.dataContext.dataSet);
@@ -122,7 +131,7 @@ export function useApiQuery<R>(
     call(endpoint, parsedRequest, { signal: controller.signal }).then(
       (data) => {
         if (!controller.signal.aborted) {
-          setSettled({ key, scope, data, error: null });
+          setSettled({ key, scope, requestKey, data, error: null });
         }
       },
       (error: unknown) => {
@@ -132,7 +141,11 @@ export function useApiQuery<R>(
         setSettled((previous) => ({
           key,
           scope,
-          data: previous?.scope === scope ? previous.data : undefined,
+          requestKey,
+          data:
+            previous?.scope === scope && (keepPrevious || previous.requestKey === requestKey)
+              ? previous.data
+              : undefined,
           error: toApiError(endpoint.id, error),
         }));
       },
@@ -147,15 +160,18 @@ export function useApiQuery<R>(
   if (key === null) {
     return { status: 'loading', data: undefined, error: null, isFetching: false, reload };
   }
-  const sameScope = settled !== null && settled.scope === scope;
+  const usable =
+    settled !== null &&
+    settled.scope === scope &&
+    (keepPrevious || settled.requestKey === requestKey);
   const current = settled !== null && settled.key === key;
-  const data = sameScope ? settled.data : undefined;
+  const data = usable ? settled.data : undefined;
   const error = current ? settled.error : null;
   const isFetching = !current;
   let status: QueryStatus;
   if (error !== null) {
     status = 'error';
-  } else if (data !== undefined && (current || sameScope)) {
+  } else if (data !== undefined) {
     status = 'success';
   } else {
     status = 'loading';

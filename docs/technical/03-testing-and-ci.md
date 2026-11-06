@@ -43,7 +43,7 @@ Exceptions, Claim Detail and the policy invoices have one flow each: `features/e
 
 ## Count floors
 
-`bun run ci:test:ui` and `ci:test:unit` write a Vitest JSON report and run `scripts/ci/assert-test-run.ts`, which fails when the run did not succeed, when any test failed or was skipped, or when fewer than `--min-tests` tests ran (it catches silently dropped suites). The floors in `package.json` are sized to what exists: SPA 56, unit 24 (the number of unit tests that run with the stack up). Raise them in the same change that adds tests. `ci:test:unit` also fails on the skipped local-stack test, so it is only meaningful where the stack is up; CI runs `test:unit` for that reason and `ci:test:ui` for the SPA.
+`bun run ci:test:ui` and `ci:test:unit` write a Vitest JSON report and run `scripts/ci/assert-test-run.ts`, which fails when the run did not succeed, when any test failed or was skipped, or when fewer than `--min-tests` tests ran (it catches silently dropped suites). The floors in `package.json` are sized to what exists: SPA 57, unit 24 (the number of unit tests that run with the stack up). Raise them in the same change that adds tests. `ci:test:unit` also fails on the skipped local-stack test, so it is only meaningful where the stack is up; CI runs `test:unit` for that reason and `ci:test:ui` for the SPA.
 
 ## End-to-end
 

@@ -32,7 +32,7 @@ The persona is `session.persona`, written by `choosePersona` (which also stores 
 
 ## Data controls and context
 
-`session` holds who is signed in; `dataContext` holds the data set (TEST or DEMO, default DEMO) and the as-of date (default 2026-10-21). Both are remembered under `ciq.dataSet` and `ciq.asOf` and read once when the store is created. The tenant is `tenantOf(dataSet)` (`useTenant()`), and the sidebar label and `X-Tenant-Id` follow it. `chooseDataSet` and `chooseAsOf` store the value, update the slice and make every mounted query read again; `useApiQuery` keys its cached data on data set and as-of date too, so a query never shows the other data set's records while it loads.
+`session` holds who is signed in; `dataContext` holds the data set (TEST or DEMO, default DEMO) and the as-of date (default 2026-10-21). Both are remembered under `ciq.dataSet` and `ciq.asOf` and read once when the store is created. The tenant is `tenantOf(dataSet)` (`useTenant()`), and the sidebar label and `X-Tenant-Id` follow it. `chooseDataSet` and `chooseAsOf` store the value, update the slice and make every mounted query read again; `useApiQuery` keys its cached data on data set and as-of date too, so a query never shows the other data set's records while it loads, and a different request (another claim, another policy) shows no data until it answers; only a list filtered in place opts into keeping the previous answer (`keepPrevious`).
 
 `DataControls` (top bar): the data set select, the as-of date, "Data issues (n)" (`DataIssuesDialog`, from `data.issues`) and Reset (`ConfirmActionDialog`, then `demo.reset`; the data set and the as-of date stay). Below 1280px their labels are visually hidden, below 768px they wrap onto a second row.
 

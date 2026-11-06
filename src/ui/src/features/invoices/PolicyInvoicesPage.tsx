@@ -17,7 +17,7 @@ import {
   SkeletonBlock,
 } from '../../components/ui';
 import type { DataTableColumn } from '../../components/ui';
-import { t } from '../../lib/i18n';
+import { hasTranslation, t } from '../../lib/i18n';
 import { CLAIMS_PATH, claimPath, formatMoment } from '../claim-scope';
 
 interface InvoiceRow {
@@ -45,7 +45,11 @@ function invoiceRow(invoice: InvoiceRecord): InvoiceRow {
   };
 }
 
-const sentenceCase = (text: string): string => text.charAt(0) + text.slice(1).toLowerCase();
+/** A status the catalog names, else the status as recorded: an unfamiliar one is shown as it is, not guessed at. */
+function statusText(group: 'status' | 'policyStatus', recorded: string): string {
+  const key = `invoices.${group}.${recorded}`;
+  return hasTranslation(key) ? t(key) : recorded;
+}
 
 const COLUMNS: DataTableColumn<InvoiceRow>[] = [
   {
@@ -82,7 +86,7 @@ const COLUMNS: DataTableColumn<InvoiceRow>[] = [
     header: t('invoices.column.status'),
     cell: (row) => (
       <Chip tone="neutral-outlined" size="sm">
-        {sentenceCase(row.status)}
+        {statusText('status', row.status)}
       </Chip>
     ),
   },
@@ -181,7 +185,7 @@ export default function PolicyInvoicesPage() {
               {
                 key: 'status',
                 label: t('invoices.policy.status'),
-                value: sentenceCase(policy.status),
+                value: statusText('policyStatus', policy.status),
               },
             ]}
           />

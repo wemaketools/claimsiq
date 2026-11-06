@@ -15,7 +15,6 @@ const en = {
   },
   namesFailed: 'Some names could not be loaded, so identifiers are shown instead.',
   loadFailed: 'The claim could not be loaded',
-  unknown: 'Unknown',
   none: 'None assigned',
   slaUnknown: {
     title: 'SLA unknown',
@@ -96,7 +95,6 @@ const en = {
     initial: 'Opening reserve',
     material: 'Review: material change',
     notMaterial: 'Not material',
-    why: '{basis}',
     increase: '+{amount}',
     decrease: '-{amount}',
     percent: '{percent}%',

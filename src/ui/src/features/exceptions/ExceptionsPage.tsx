@@ -4,7 +4,15 @@ import { SEVERITIES, endpoints, formatMoney } from '../../../../contracts/index'
 import type { Severity } from '../../../../contracts/index';
 import { useApiQuery } from '../../api/hooks';
 import { useScreenFilters } from '../../app/hooks';
-import { Button, DataTable, EmptyState, PageHeader, Reference, Select } from '../../components/ui';
+import {
+  Button,
+  DataTable,
+  EmptyState,
+  ErrorState,
+  PageHeader,
+  Reference,
+  Select,
+} from '../../components/ui';
 import type { DataTableColumn, DataTableSort } from '../../components/ui';
 import { EMPTY_VALUE, formatCount } from '../../lib/format';
 import { t } from '../../lib/i18n';
@@ -15,6 +23,7 @@ import {
   SeverityChip,
   claimPath,
   reasonLabel,
+  severityLabel,
   stageLabel,
   useClaimScope,
 } from '../claim-scope';
@@ -168,7 +177,7 @@ export default function ExceptionsPage() {
                 value={severity ?? ''}
                 options={SEVERITIES.map((value) => ({
                   value,
-                  label: t(`claim-scope.severity.${value}`),
+                  label: severityLabel(value),
                 }))}
                 onChange={(value) => {
                   setStored({ severity: value === '' ? null : value });
@@ -203,10 +212,12 @@ export default function ExceptionsPage() {
           {unranked > 0 && ` ${t('exceptions.summaryOther', { count: unranked })}`}
         </p>
       )}
-      {tasks.status === 'error' && tasks.data === undefined && (
-        <p className="ciq-text-muted" role="status">
-          {t('exceptions.tasksUnknown')}
-        </p>
+      {tasks.error !== null && tasks.data === undefined && (
+        <ErrorState
+          error={tasks.error}
+          onRetry={tasks.reload}
+          title={t('exceptions.tasksUnknown')}
+        />
       )}
       <DataTable
         caption={t('exceptions.caption')}

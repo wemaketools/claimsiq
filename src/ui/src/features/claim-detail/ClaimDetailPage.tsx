@@ -128,7 +128,7 @@ export default function ClaimDetailPage() {
   const detail = useClaimDetail(claimId);
   const { claim, facts } = detail;
 
-  const loaded = claim.data?.item.claim_id === claimId ? claim.data.item : undefined;
+  const loaded = claim.data?.item;
   const error = claim.error ?? facts.error;
   if (error !== null && loaded === undefined) {
     return (
@@ -153,7 +153,7 @@ export default function ClaimDetailPage() {
       </div>
     );
   }
-  const fact = facts.data?.items.find((item) => item.claim_id === claimId);
+  const fact = facts.data?.items[0];
   if (loaded === undefined || fact === undefined) {
     return (
       <div className="ciq-page">

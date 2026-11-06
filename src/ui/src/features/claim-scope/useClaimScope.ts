@@ -49,7 +49,11 @@ export function useClaimScope(): ClaimScope {
     CLAIM_FILTER_KEYS.map((key) => [key, typeof stored[key] === 'string' ? stored[key] : null]),
   ) as ClaimFilters;
   const period = PERIOD_OPTIONS.find((option) => option === stored.period) ?? DEFAULT_PERIOD;
-  const facts = useApiQuery(endpoints.claimsFacts, { query: { ...filters, period } });
+  const facts = useApiQuery(
+    endpoints.claimsFacts,
+    { query: { ...filters, period } },
+    { keepPrevious: true },
+  );
   const lookups = useClaimLookups();
   return {
     filters,

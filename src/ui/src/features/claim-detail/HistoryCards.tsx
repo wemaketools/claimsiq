@@ -1,5 +1,5 @@
 /** The history of a claim: stage timeline, reserve movements, payments and supplier requests. */
-import { formatMoney, momentMs } from '../../../../contracts/index';
+import { chronological, formatMoney } from '../../../../contracts/index';
 import type {
   ClaimEvent,
   ClaimFacts,
@@ -16,11 +16,13 @@ import type { ClaimNames } from './names';
 
 const byEventId = (a: ClaimEvent, b: ClaimEvent): number => a.event_id.localeCompare(b.event_id);
 
-/** Dated events oldest first (ties by event id, as the engine breaks them), then the events with no time. */
+/** Dated events oldest first (the engine's order), then the events with no time. */
 function orderedEvents(events: readonly ClaimEvent[]): ClaimEvent[] {
-  const dated = events
-    .filter((event) => event.event_at !== null)
-    .sort((a, b) => momentMs(a.event_at ?? '') - momentMs(b.event_at ?? '') || byEventId(a, b));
+  const dated = chronological(
+    events.filter((event) => event.event_at !== null),
+    (event) => event.event_at ?? '',
+    (event) => event.event_id,
+  );
   return [...dated, ...events.filter((event) => event.event_at === null).sort(byEventId)];
 }
 
@@ -215,10 +217,10 @@ export function PaymentsCard({
   readonly payments: readonly ClaimPayment[];
   readonly facts: ClaimFacts;
 }) {
-  const byDate = [...payments].sort(
-    (a, b) =>
-      momentMs(a.paid_at) - momentMs(b.paid_at) ||
-      a.claim_payment_id.localeCompare(b.claim_payment_id),
+  const byDate = chronological(
+    payments,
+    (payment) => payment.paid_at,
+    (payment) => payment.claim_payment_id,
   );
   const posted = byDate.filter((payment) => payment.status === 'POSTED');
   const notPosted = byDate.filter((payment) => payment.status !== 'POSTED');

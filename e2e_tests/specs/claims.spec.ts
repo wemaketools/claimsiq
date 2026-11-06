@@ -1,7 +1,8 @@
 /**
  * The claim screens in a real browser at 1366px: a Head of Claims signs in, reads the TEST figures on Overview, opens
  * the claims behind a card with the keyboard, narrows by filter, downloads the CSV and compares it to the table, reads
- * Stages & Aging, resets (the toast passes axe), and everything passes axe in both themes.
+ * Stages & Aging, reads Exceptions & SLA with the filter kept, opens the flagged claim (Claim Detail, with its reserve
+ * flag) and its policy's invoices, resets (the toast passes axe), and everything passes axe in both themes.
  *
  * Prerequisites: as in shell.spec.ts. The 3 second budget on 500 claims is measured in the SPA suite
  * (features/overview/performance.test.tsx), because the browser build bundles only the TEST and DEMO fixtures.

@@ -2,6 +2,8 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
+import type { ApiTransport } from '../../api/client';
+import { createMockTransport } from '../../api/mockTransport';
 import { captureDownloads, parseCsv } from '../../test/csv';
 import { renderApp, tableRows } from '../../test/renderApp';
 
@@ -25,12 +27,32 @@ describe('Exceptions & SLA', () => {
   it('lists the open claims that need review with severity, reasons, owner and days late, sorts and filters them, exports what is on screen, and opens a follow-up task from a row', async () => {
     const user = userEvent.setup();
     const downloads = captureDownloads();
-    renderApp('/exceptions');
+    // The first read of the tasks fails: the queue still lists the claims, says the tasks are unknown, and retries.
+    const mock = createMockTransport();
+    let tasksFailed = false;
+    const transport: ApiTransport = (url, init) => {
+      if (!tasksFailed && url.startsWith('/api/v1/tasks')) {
+        tasksFailed = true;
+        return Promise.resolve(
+          new Response(JSON.stringify({ type: 'about:blank', title: 'Down', status: 500 }), {
+            status: 500,
+            headers: { 'content-type': 'application/problem+json' },
+          }),
+        );
+      }
+      return mock(url, init);
+    };
+    renderApp('/exceptions', { transport });
 
     // CLM-101, 102, 105 and 106 are flagged; 103 is closed and 104 (approved, within target) has nothing to review.
     await screen.findByRole('table', { name: NAME });
     await waitFor(() => expect(listed()).toEqual(['CLM-102', 'CLM-106', 'CLM-101', 'CLM-105']));
     expect(screen.getByText('4 claims need review: 3 High, 0 Medium, 1 Low.')).toBeInTheDocument();
+    expect(await screen.findByText('The open tasks could not be loaded')).toBeInTheDocument();
+    expect(tableRows(NAME).map((row) => row[7])).toEqual(['—', '—', '—', '—']);
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(tableRows(NAME).map((row) => row[7])).toEqual(['0', '0', '0', '0']));
+    expect(screen.queryByText('The open tasks could not be loaded')).not.toBeInTheDocument();
     expect(tableRows(NAME).map((row) => [row[0], row[1], row[3], row[4], row[5], row[6]])).toEqual([
       ['CLM-102', 'High', 'Boitumelo Demo', '31', 'Triage', 'P17,000.00'],
       ['CLM-106', 'High', 'Boitumelo Demo', '10', 'Assessment', 'P30,000.00'],

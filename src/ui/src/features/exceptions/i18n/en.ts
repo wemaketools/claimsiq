@@ -33,7 +33,7 @@ const en = {
   },
   tasksHint: 'Open tasks on the claim.',
   daysLateHint: 'Business days past the stage target or the supplier target, whichever is later.',
-  tasksUnknown: 'Tasks could not be read',
+  tasksUnknown: 'The open tasks could not be loaded',
   empty: {
     title: 'No exceptions to review',
     description:

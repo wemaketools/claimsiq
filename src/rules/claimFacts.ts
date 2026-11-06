@@ -1,7 +1,7 @@
 /** The facts about one claim as of a date. Pure: the same claim record, date and config always give the same facts. */
 import { Decimal } from 'decimal.js';
 
-import { addMoney, compareMoney, momentMs, onOrBeforeAsOf, sumMoney } from '../contracts/index.js';
+import { addMoney, chronological, compareMoney, onOrBeforeAsOf, sumMoney } from '../contracts/index.js';
 import type {
   ClaimFacts,
   ClaimRecord,
@@ -28,11 +28,6 @@ export interface RuleContext {
 }
 
 const SEVERITY_RANK: Readonly<Record<Severity, number>> = { High: 3, Medium: 2, Low: 1 };
-
-/** Oldest first; two events at the same time are ordered by id, so the order never depends on the input order. */
-function chronological<T>(items: readonly T[], at: (item: T) => string, id: (item: T) => string): T[] {
-  return [...items].sort((a, b) => momentMs(at(a)) - momentMs(at(b)) || (id(a) < id(b) ? -1 : id(a) > id(b) ? 1 : 0));
-}
 
 export function ageBucketLabel(bounds: readonly number[], days: number): string {
   const index = bounds.findIndex((upper) => days <= upper);

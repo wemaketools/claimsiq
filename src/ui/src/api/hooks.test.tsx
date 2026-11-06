@@ -1,5 +1,6 @@
-import { act, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
@@ -22,6 +23,27 @@ const closeAll: ApiEndpoint<{ closed: number }> = {
   path: '/api/v1/claims/close-all',
   response: z.object({ closed: z.number() }),
 };
+
+const item: ApiEndpoint<{ name: string }> = {
+  id: 'items.get',
+  method: 'GET',
+  path: '/api/v1/items/:id',
+  response: z.object({ name: z.string() }),
+};
+
+/** Shows the record it asked for; `keepPrevious` is the opt-in for a list that is filtered in place. */
+function Item({ keepPrevious }: { readonly keepPrevious: boolean }) {
+  const [id, setId] = useState('a');
+  const query = useApiQuery(item, { params: { id } }, { keepPrevious });
+  return (
+    <>
+      <p data-testid={`item-${keepPrevious}`}>{query.data?.name ?? 'none'}</p>
+      <button type="button" onClick={() => setId('b')}>
+        {`next ${keepPrevious}`}
+      </button>
+    </>
+  );
+}
 
 function Claims() {
   const query = useApiQuery(summary, {});
@@ -54,7 +76,13 @@ describe('API hooks', () => {
     let queryFails = false;
     let commandFails = false;
     const releases: Array<() => void> = [];
+    const releasesB: Array<() => void> = [];
     installFetch({
+      'GET /api/v1/items/a': () => ({ body: { name: 'record a' } }),
+      'GET /api/v1/items/b': async () => {
+        await new Promise<void>((resolve) => releasesB.push(resolve));
+        return { body: { name: 'record b' } };
+      },
       'GET /api/v1/claims/summary': () =>
         queryFails ? problem(403, 'Forbidden') : { body: { open } },
       'POST /api/v1/claims/close-all': async () => {
@@ -63,6 +91,25 @@ describe('API hooks', () => {
         return { body: { closed: releases.length } };
       },
     });
+    renderWithProviders(
+      <>
+        <Item keepPrevious={false} />
+        <Item keepPrevious />
+      </>,
+      { state: { session: signedInSession() } },
+    );
+    await waitFor(() => expect(screen.getByTestId('item-false')).toHaveTextContent('record a'));
+    await waitFor(() => expect(screen.getByTestId('item-true')).toHaveTextContent('record a'));
+    // A different record shows nothing until it answers; a list that opted in keeps the previous answer meanwhile.
+    fireEvent.click(screen.getByRole('button', { name: 'next false' }));
+    fireEvent.click(screen.getByRole('button', { name: 'next true' }));
+    expect(screen.getByTestId('item-false')).toHaveTextContent('none');
+    expect(screen.getByTestId('item-true')).toHaveTextContent('record a');
+    await waitFor(() => expect(releasesB).toHaveLength(2));
+    await act(async () => releasesB.forEach((release) => release()));
+    await waitFor(() => expect(screen.getByTestId('item-false')).toHaveTextContent('record b'));
+    cleanup();
+
     renderWithProviders(<Claims />, { state: { session: signedInSession() } });
     expect(screen.getByTestId('query')).toHaveTextContent('loading');
     await waitFor(() => expect(screen.getByTestId('query')).toHaveTextContent('open 1'));

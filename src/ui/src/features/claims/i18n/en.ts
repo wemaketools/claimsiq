@@ -40,7 +40,6 @@ const en = {
     reserve: 'Reserve (BWP)',
     incurred: 'Incurred (BWP)',
   },
-  open: 'Open {claim}',
 } satisfies Catalog;
 
 export default en;

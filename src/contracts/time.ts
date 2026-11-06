@@ -11,6 +11,11 @@ export function momentMs(moment: string): number {
   return Date.parse(moment.length === 10 ? `${moment}T00:00:00${GABORONE_OFFSET}` : moment);
 }
 
+/** Oldest first; two events at the same time are ordered by id, so the order never depends on the input order. The one order of events, shared by the rules and the screens. */
+export function chronological<T>(items: readonly T[], at: (item: T) => string, id: (item: T) => string): T[] {
+  return [...items].sort((a, b) => momentMs(at(a)) - momentMs(at(b)) || (id(a) < id(b) ? -1 : id(a) > id(b) ? 1 : 0));
+}
+
 export function instantOf(date: Date): string {
   const wall = new Date(date.getTime() + GABORONE_OFFSET_MS).toISOString();
   return `${wall.slice(0, 19)}${GABORONE_OFFSET}`;

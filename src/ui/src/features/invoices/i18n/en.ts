@@ -38,6 +38,8 @@ const en = {
     status: 'Status',
     receipts: 'Receipts',
   },
+  status: { ISSUED: 'Issued' },
+  policyStatus: { ACTIVE: 'Active' },
   dueUnknown: 'Unknown',
   noReceipts: 'None allocated',
   empty: {

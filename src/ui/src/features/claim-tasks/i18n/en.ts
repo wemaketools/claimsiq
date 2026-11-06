@@ -21,12 +21,6 @@ const en = {
   },
   priority: { LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High' },
   status: { OPEN: 'Open', IN_PROGRESS: 'In progress', DONE: 'Done' },
-  audit: {
-    CREATED: 'Created as {to}',
-    ASSIGNED: 'Assigned',
-    STATUS_CHANGED: 'Status changed from {from} to {to}',
-    by: '{actor}, {time}',
-  },
 } satisfies Catalog;
 
 export default en;
