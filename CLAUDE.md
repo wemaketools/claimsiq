@@ -24,7 +24,7 @@ The work is tracked as GitHub issues of `wemaketools/claimsiq` under the Stage A
 
 ## Delivery stage
 
-**Stage B (current, started):** the real backend, local and in CI, then the P1 features (epic #13). The database and the Hono API with the real-API transport are built (every contract endpoint served from the database, the SPA in Supabase mode on `/api/v1`); the server-side demo sign-in follows. The hosted prototype stays the static Stage A build. Stage A below is the baseline that Stage B must keep identical.
+**Stage B (current, started):** the real backend, local and in CI, then the P1 features (epic #13). The database and the Hono API with the real-API transport are built (every contract endpoint served from the database, the SPA in Supabase mode on `/api/v1`), and a demo role click signs in on the server (DD-48). The hosted prototype stays the static Stage A build. Stage A below is the baseline that Stage B must keep identical.
 
 **Stage A (complete):** the P0 proof of concept on the spec's synthetic fixtures. SPA, typed zod contracts, a mock API over versioned fixtures, a rules engine (`src/rules`, served by `claims.facts`), mutations (tasks, status) kept in browser storage until Reset. Sign-in is real against the local Supabase stack, except in prototype builds (the hosted demo: a role click, no Supabase); the persona switch is a view and not authentication. No AI features, no P1 (CLM-FR-19/20).
 
@@ -56,7 +56,7 @@ The work is tracked as GitHub issues of `wemaketools/claimsiq` under the Stage A
 | Command | What it does |
 |---|---|
 | `bun run supabase:start` / `supabase:stop` / `supabase:status` | Local Supabase stack in Docker (generates the git-ignored ES256 signing key first) |
-| `bun run auth:personas` | Creates or updates the four demo accounts in local Supabase Auth (password `test1234`, local only) |
+| `bun run auth:personas` | Creates or updates the four demo accounts in local Supabase Auth (password `DEMO_SEED_PASSWORD`, else `test1234` locally) |
 | `bun run db:migrate` / `db:reset` / `db:seed` / `db:types` | Apply the migrations / rebuild the local database (migrations, demo accounts, seed) / reseed TEST and DEMO from `fixtures/v1` / regenerate the Kysely types after a migration |
 | `bun run dev` | The API (http://127.0.0.1:5274, `API_PORT`) and the SPA (http://localhost:5273, proxying `/api` to it) together (needs `.env.local` and the built database; `run.ps1` does both) |
 | `bun run dev:api` / `dev:ui` | The API server alone / the SPA alone |
