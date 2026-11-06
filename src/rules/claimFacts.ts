@@ -1,7 +1,7 @@
 /** The facts about one claim as of a date. Pure: the same claim record, date and config always give the same facts. */
 import { Decimal } from 'decimal.js';
 
-import { addMoney, chronological, compareMoney, dateOf, onOrBeforeAsOf, sumMoney } from '../contracts/index.js';
+import { addMoney, chronological, compareMoney, onOrBeforeAsOf, sumMoney } from '../contracts/index.js';
 import type {
   ClaimFacts,
   ClaimRecord,
@@ -16,6 +16,7 @@ import type {
   SupplierWaitFact,
 } from '../contracts/index.js';
 import { businessDaysBetween, calendarDaysBetween, weekdaySet } from './calendar.js';
+import { isClosedAt } from './closure.js';
 import type { RuleConfig } from './config.js';
 import { postedPayments } from './payments.js';
 import { inPeriod, periodWindow } from './period.js';
@@ -43,12 +44,8 @@ function reconcile(comparable: boolean, known: boolean, same: boolean): Reconcil
   return same ? 'MATCHES' : 'DIFFERS';
 }
 
-/** `closureDates` are the dates the claim was closed; the release of the reserve to zero on or after one is not a review cue. */
-function reserveMovements(
-  events: readonly ReserveEvent[],
-  closureDates: readonly string[],
-  context: RuleContext,
-): ReserveMovementFact[] {
+/** A reserve taken to zero while the claim is closed is a closing release, not a review cue. */
+function reserveMovements(claim: ClaimRecord, events: readonly ReserveEvent[], context: RuleContext): ReserveMovementFact[] {
   const { material_reserve_delta_absolute_BWP: absolute, material_reserve_delta_percent: percent } = context.config.claims;
   return events.map((event, index) => {
     const before = new Decimal(event.old_amount);
@@ -59,7 +56,7 @@ function reserveMovements(
       !initial &&
       change.isNegative() &&
       new Decimal(event.new_amount).isZero() &&
-      closureDates.some((closed) => closed <= dateOf(event.event_at));
+      isClosedAt(claim, event.event_at);
     const kind = initial
       ? 'INITIAL'
       : closingRelease
@@ -260,11 +257,7 @@ export function computeClaimFacts(claim: ClaimRecord, context: RuleContext): Cla
         weekdays,
       )
     : [];
-  const closureDates = [
-    ...dated.filter((event) => event.to_stage === 'Closed').map((event) => dateOf(event.event_at ?? '')),
-    ...(claim.closed_at === null ? [] : [dateOf(claim.closed_at)]),
-  ];
-  const movements = reserveMovements(reserveEvents, closureDates, context);
+  const movements = reserveMovements(claim, reserveEvents, context);
 
   const partial = {
     sla,

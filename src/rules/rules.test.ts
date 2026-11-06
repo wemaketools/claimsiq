@@ -202,6 +202,20 @@ describe('the claims rules engine on the TEST fixture', () => {
     // The same release on a claim that never closed is a reserve move to review like any other.
     const neverClosed = computeClaimFacts({ ...clm103, events: clm103.events.filter((e) => e.to_stage !== 'Closed'), closed_at: null, status: 'OPEN' }, context);
     expect(neverClosed.reserve_movements.map((m) => [m.kind, m.material])).toEqual([['INITIAL', false], ['DECREASE', true]]);
+    // Only a claim that is closed at the moment of the release has a closing release: not after a reopen, and not
+    // when an earlier closure was followed by a reopen; a release after closing again is one.
+    const reserve = (id: string, at: string, from: string, to: string): ClaimRecord['reserve_events'][number] => ({ ...clm103.reserve_events[0], reserve_event_id: id, event_at: at, old_amount: from, new_amount: to }) as ClaimRecord['reserve_events'][number];
+    const history = (stages: ReadonlyArray<readonly [string, ClaimEvent['to_stage']]>, ...reserves: ClaimRecord['reserve_events']): ClaimRecord => ({
+      ...clm103,
+      closed_at: '2026-10-12',
+      events: stages.map(([at, stage], index) => event(clm103, `EVT-X-${index}`, at, stage)),
+      reserve_events: [reserve('RSV-X-0', '2026-10-10', '0.00', '4000.00'), ...reserves],
+    });
+    const movementKinds = (claim: ClaimRecord) => computeClaimFacts(claim, context).reserve_movements.map((m) => [m.kind, m.material]);
+    expect(movementKinds(history([['2026-10-10', 'New'], ['2026-10-12', 'Closed'], ['2026-10-14', 'Reopened']], reserve('RSV-X-1', '2026-10-18', '4000.00', '0.00')))).toEqual([['INITIAL', false], ['DECREASE', true]]);
+    expect(movementKinds(history([['2026-10-10', 'New'], ['2026-10-12', 'Closed'], ['2026-10-14', 'Reopened']], reserve('RSV-X-1', '2026-10-13', '4000.00', '1000.00'), reserve('RSV-X-2', '2026-10-18', '1000.00', '0.00')))).toEqual([['INITIAL', false], ['DECREASE', true], ['DECREASE', true]]);
+    expect(movementKinds(history([['2026-10-10', 'New'], ['2026-10-12', 'Closed'], ['2026-10-14', 'Reopened'], ['2026-10-20', 'Closed']], reserve('RSV-X-1', '2026-10-20', '4000.00', '0.00')))).toEqual([['INITIAL', false], ['CLOSING_RELEASE', false]]);
+    expect(movementKinds({ ...history([], reserve('RSV-X-1', '2026-10-12', '4000.00', '0.00')), events: [] })).toEqual([['INITIAL', false], ['CLOSING_RELEASE', false]]);
 
     const unverified = computeClaimFacts({ ...clm101, supplier_requests: clm101.supplier_requests.map((r) => ({ ...r, requested_at: null })) }, context);
     expect(unverified).toMatchObject({ supplier_delayed: false, supplier_delay_unverified: true });
