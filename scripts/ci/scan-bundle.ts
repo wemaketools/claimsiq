@@ -29,6 +29,7 @@ import { join, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { SERVER_ENV_KEYS, tryGetConfig } from '../../src/server/lib/config/index.js';
+import { directiveOf } from './csp.js';
 
 const repoRoot = fileURLToPath(new URL('../../', import.meta.url));
 export const DEFAULT_DIST = join(repoRoot, 'src', 'ui', 'dist');
@@ -203,13 +204,6 @@ export function scanBundle(dist: string, inputs: BundleScanInputs): BundleFindin
 }
 
 const CSP_META = /<meta\s+http-equiv="Content-Security-Policy"\s+content="([^"]*)"/i;
-
-function directiveOf(policy: string, name: string): string | undefined {
-  return policy
-    .split(';')
-    .map((directive) => directive.trim())
-    .find((directive) => directive.startsWith(`${name} `));
-}
 
 /**
  * Checks the production Content-Security-Policy of the built index.html: the meta tag is present and filled
