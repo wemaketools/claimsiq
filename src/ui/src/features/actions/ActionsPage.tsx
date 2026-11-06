@@ -28,6 +28,7 @@ import {
   CreateTaskDialog,
   SetTaskStatusDialog,
   TaskAuditTimeline,
+  TaskDue,
   TaskStatusChip,
   priorityLabel,
   statusLabel,
@@ -125,21 +126,7 @@ export default function ActionsPage() {
       id: 'due',
       header: t('actions.column.due'),
       sortable: true,
-      cell: (row) =>
-        row.task.due_at === null ? (
-          <span className="ciq-text-muted">{t('actions.noDue')}</span>
-        ) : (
-          <span className="ciq-inline">
-            <span className={row.task.overdue ? 'ciq-text-danger' : undefined}>
-              {formatMoment(row.task.due_at)}
-            </span>
-            {row.task.overdue && (
-              <Chip tone="danger" size="sm">
-                {t('actions.overdue')}
-              </Chip>
-            )}
-          </span>
-        ),
+      cell: (row) => <TaskDue task={row.task} />,
     },
     {
       id: 'priority',
@@ -225,7 +212,12 @@ export default function ActionsPage() {
         subtitle={t('actions.subtitle')}
         actions={
           <>
-            <ExportCsvButton screen="actions" queries={[tasks, users, facts]} table={table} />
+            <ExportCsvButton
+              screen="actions"
+              queries={[tasks, users]}
+              optionalQueries={[facts]}
+              table={table}
+            />
             <Button variant="primary" icon="plus" onClick={() => setDialog({ kind: 'create' })}>
               {t('actions.create')}
             </Button>

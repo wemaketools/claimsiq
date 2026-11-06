@@ -1,5 +1,5 @@
-/** How a task reads wherever it shows: its status chip and its audit trail. */
-import type { TaskRecord } from '../../../../contracts/index';
+/** How a task reads wherever it shows: its status chip, its due date with the overdue flag, and its audit trail. */
+import type { TaskListItem, TaskRecord } from '../../../../contracts/index';
 import { Chip, Timeline } from '../../components/ui';
 import type { ChipTone, TimelineItem } from '../../components/ui';
 import { t } from '../../lib/i18n';
@@ -17,6 +17,25 @@ export function TaskStatusChip({ status }: { readonly status: TaskRecord['status
     <Chip tone={STATUS_TONE[status]} size="sm">
       {statusLabel(status)}
     </Chip>
+  );
+}
+
+/** The due date, with the engine's overdue flag as a chip; `overdue` is required so no surface can show a due date without it. */
+export function TaskDue({ task }: { readonly task: Pick<TaskListItem, 'due_at' | 'overdue'> }) {
+  if (task.due_at === null) {
+    return <span className="ciq-text-muted">{t('claim-tasks.noDue')}</span>;
+  }
+  return (
+    <span className="ciq-inline">
+      <span className={task.overdue ? 'ciq-text-danger' : undefined}>
+        {formatMoment(task.due_at)}
+      </span>
+      {task.overdue && (
+        <Chip tone="danger" size="sm">
+          {t('claim-tasks.overdue')}
+        </Chip>
+      )}
+    </span>
   );
 }
 

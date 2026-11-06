@@ -4,7 +4,7 @@
 
 ## Status: Stage A, proof of concept
 
-Stage A builds the P0 requirements of `ai/specs` on the specs' synthetic TEST and DEMO data. Today the repository contains the scaffold: the stack, the design system, the app shell with its six destinations (Overview, Stages & Aging, Exceptions & SLA, Claims, Suppliers, Action Queue), real sign-in against a local Supabase stack, the persona switch and CI. The screens show their loading, empty and error states until the data layer and the screens arrive. See `CLAUDE.md` for the order of truth and the rules, and `docs/plan/design-decisions.md` for the decisions.
+Stage A builds the P0 requirements of `ai/specs` on the specs' synthetic TEST and DEMO data. Today the repository contains the stack, the design system, the app shell, real sign-in against a local Supabase stack, the persona switch, CI, the typed in-browser mock API over the fixtures, the rules engine, and all six screens of the shell (Overview, Stages & Aging, Exceptions & SLA, Claims, Suppliers, Action Queue) plus Claim Detail and the policy invoices, each with its loading, empty and error states. See `CLAUDE.md` for the order of truth and the rules, and `docs/plan/design-decisions.md` for the decisions.
 
 ## Prerequisites
 

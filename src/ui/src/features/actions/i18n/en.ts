@@ -31,8 +31,6 @@ const en = {
     '{count} task: {overdue} overdue, {open} open, {inProgress} in progress, {done} done.',
   summary_other:
     '{count} tasks: {overdue} overdue, {open} open, {inProgress} in progress, {done} done.',
-  overdue: 'Overdue',
-  noDue: 'No due date',
   unassigned: 'Not assigned',
   noIssue: 'Not flagged',
   noNotes: 'No note',

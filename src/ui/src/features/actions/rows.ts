@@ -11,7 +11,7 @@ export interface QueueRow {
   readonly task: TaskListItem;
   /** The claim the task is on, or `null` for a task on something else. */
   readonly claim: string | null;
-  /** The reasons the claim is flagged (labels); empty when it is not, `null` while the flags are not known. */
+  /** The reasons the claim is flagged (labels); empty when it is not, `null` while its flags are not known (not loaded, or the claim is not in them). */
   readonly issue: readonly string[] | null;
   /** The owner's name, or `null` when the task has no owner. */
   readonly owner: string | null;
@@ -33,11 +33,9 @@ export function queueRows(
       issue:
         claim === null
           ? []
-          : facts === undefined
+          : fact === undefined
             ? null
-            : fact === undefined
-              ? []
-              : claimReasons(fact).map((reason) => reason.label),
+            : claimReasons(fact).map((reason) => reason.label),
       owner: task.assigned_to === null ? null : userName(task.assigned_to),
     };
   });
@@ -67,13 +65,18 @@ const byId = (a: QueueRow, b: QueueRow): number =>
 const priorityRank = (row: QueueRow): number => TASK_PRIORITIES.indexOf(row.task.priority);
 const dueTime = (row: QueueRow): number =>
   row.task.due_at === null ? Number.POSITIVE_INFINITY : Date.parse(row.task.due_at.slice(0, 10));
+/** Earlier first, a task with no due date last. */
+function compareDue(a: QueueRow, b: QueueRow): number {
+  const [first, second] = [dueTime(a), dueTime(b)];
+  return first === second ? 0 : first < second ? -1 : 1;
+}
 
 /** The queue's own order: overdue first, then the higher priority, then the earlier due date (none last), then task number. */
 function queueOrder(a: QueueRow, b: QueueRow): number {
   return (
     Number(b.task.overdue) - Number(a.task.overdue) ||
     priorityRank(b) - priorityRank(a) ||
-    (dueTime(a) === dueTime(b) ? 0 : dueTime(a) < dueTime(b) ? -1 : 1) ||
+    compareDue(a, b) ||
     byId(a, b)
   );
 }
@@ -87,7 +90,7 @@ function compareBy(key: string, a: QueueRow, b: QueueRow): number {
     case 'owner':
       return (a.owner ?? '').localeCompare(b.owner ?? '');
     case 'due':
-      return dueTime(a) === dueTime(b) ? 0 : dueTime(a) < dueTime(b) ? -1 : 1;
+      return compareDue(a, b);
     case 'priority':
       return priorityRank(a) - priorityRank(b);
     case 'status':

@@ -61,6 +61,8 @@ const en = {
     note: 'Note: {note}',
     title: 'History of {task}',
   },
+  overdue: 'Overdue',
+  noDue: 'No due date',
   priority: { LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High' },
 } satisfies Catalog;
 

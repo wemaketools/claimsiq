@@ -1,4 +1,4 @@
-/** What the claim screens (Overview, Stages & Aging, Claims, Exceptions & SLA, Claim Detail, policy invoices) share: filters, the engine's facts, criteria, chips, reason texts, dates, paths and export. */
+/** What the screens that work on claims share, whichever they are: the filters, the engine's facts, criteria, chips, reason texts, dates, paths and the CSV export. */
 export * from './Chips';
 export { ClaimFilterBar } from './ClaimFilterBar';
 export { ExportCsvButton } from './ExportCsvButton';

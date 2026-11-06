@@ -1,15 +1,15 @@
 /** The follow-up tasks of a claim, each with its audit trail: who changed what, and when. */
 import { useState } from 'react';
 
-import type { TaskRecord } from '../../../../contracts/index';
+import type { TaskListItem } from '../../../../contracts/index';
 import type { QueryResult } from '../../api/hooks';
 import { Button, Card, Chip, EmptyState, ErrorState, SkeletonBlock } from '../../components/ui';
 import { t } from '../../lib/i18n';
-import { formatMoment } from '../claim-scope';
 import {
   AssignTaskDialog,
   SetTaskStatusDialog,
   TaskAuditTimeline,
+  TaskDue,
   TaskStatusChip,
   priorityLabel,
 } from '../claim-tasks';
@@ -20,13 +20,13 @@ export function TasksCard({
   names,
   onCreate,
 }: {
-  readonly tasks: QueryResult<{ readonly items: readonly TaskRecord[] }>;
+  readonly tasks: QueryResult<{ readonly items: readonly TaskListItem[] }>;
   readonly names: ClaimNames;
   readonly onCreate: () => void;
 }) {
   const items = [...(tasks.data?.items ?? [])].sort((a, b) => a.task_id.localeCompare(b.task_id));
-  const [assigning, setAssigning] = useState<TaskRecord | null>(null);
-  const [changing, setChanging] = useState<TaskRecord | null>(null);
+  const [assigning, setAssigning] = useState<TaskListItem | null>(null);
+  const [changing, setChanging] = useState<TaskListItem | null>(null);
   return (
     <Card
       title={t('claim-detail.tasks.title')}
@@ -67,8 +67,7 @@ export function TasksCard({
                   ? t('claim-detail.tasks.unassigned')
                   : names.user(task.assigned_to)}
                 {' · '}
-                {t('claim-detail.tasks.due')}:{' '}
-                {task.due_at === null ? t('claim-detail.tasks.noDue') : formatMoment(task.due_at)}
+                {t('claim-detail.tasks.due')}: <TaskDue task={task} />
               </p>
               <div className="ciq-inline">
                 <Button

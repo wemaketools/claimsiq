@@ -38,7 +38,7 @@ Left out: every tender-specific feature, route, contract, fixture and shared wid
 
 The sidebar has, in this order: Overview (`/overview`), Stages & Aging (`/stages`), Exceptions & SLA (`/exceptions`), Claims (`/claims`), Suppliers (`/suppliers`), Action Queue (`/actions`). They map to CLM-01, CLM-02, CLM-03, the claims list with CLM-04 (Claim Detail) under it, CLM-05 and CLM-06 of the requirements. `/` goes to the first destination. The sidebar is a flat list (no collapsible sections, no badges, no section actions): six items do not need them.
 
-Each destination is a feature module (`src/ui/src/features/<feature>`). Until the data layer exists, a page shows its title and one of three states through `useScreenStatus` and `ScreenStates`: loading, then an empty state, or an error state with retry when its loader fails. The screens that follow replace the page body with real content and drop the placeholder.
+Each destination is a feature module (`src/ui/src/features/<feature>`). Until the data layer exists, a page shows its title and one of three states through `useScreenStatus` and `ScreenStates`: loading, then an empty state, or an error state with retry when its loader fails. The screens that follow replace the page body with real content and drop the placeholder. Replaced in part by DD-44: the last placeholder screens were built and `useScreenStatus`, `ScreenStates` and `configureScreenLoader` are deleted; every screen now shows its states through `useApiQuery`, `DataTable` and `QueryView`.
 
 ### DD-07 Persona switch is a view, stored in the browser
 
@@ -91,7 +91,7 @@ The spec's CSV files live in `fixtures/v1/test` and `fixtures/v1/demo`, next to 
 
 Stage A has no server. `src/mock-api` implements the typed endpoints of `src/contracts/endpoints.ts` as a `fetch`-shaped function and `src/ui/src/api/mockTransport.ts` hands it to the API client as the `transport` adapter (the platform `fetch` when no transport is installed). The context of a call travels in headers, as it would to a server: `X-Tenant-Id` (the data set's tenant), `X-As-Of` and `X-Persona` (the actor of a command). Answers are `application/problem+json` on failure. The API client keeps validating every answer against the endpoint's schema in development builds, so the mock cannot drift from the contract.
 
-Lint boundaries: `src/mock-api` takes no Node module outside its tests and `test-support`; in the SPA only `src/api/mockTransport.ts` and tests import it. Stage B replaces `mockTransport.ts` with the real `fetch` and nothing else in the SPA. Reads are raw records, except `claims.facts`, which runs the rules engine over them (DD-22).
+Lint boundaries: `src/mock-api` takes no Node module outside its tests and `test-support`; in the SPA only `src/api/mockTransport.ts` and tests import it. Stage B replaces `mockTransport.ts` with the real `fetch` and nothing else in the SPA. Reads are raw records, except `claims.facts` (DD-22) and `suppliers.insights` (DD-40), which run the rules engine over them, and the `overdue` flag on each task of `tasks.list` (DD-42).
 
 ### DD-17 Validation: reject, warn, never coerce
 

@@ -146,7 +146,6 @@ const en = {
     assignee: 'Assigned to',
     unassigned: 'Not assigned',
     due: 'Due',
-    noDue: 'No due date',
     priority: 'Priority {priority}',
   },
 } satisfies Catalog;

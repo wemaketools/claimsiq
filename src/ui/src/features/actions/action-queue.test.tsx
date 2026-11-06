@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
+import type { ApiTransport } from '../../api/client';
 import { createMockTransport } from '../../api/mockTransport';
 import { captureDownloads, parseCsv } from '../../test/csv';
 import { renderApp, tableRows } from '../../test/renderApp';
@@ -272,8 +273,38 @@ describe('Action Queue', () => {
       expect([row[6], row[7], row[8], row[9]]).toEqual([shown[4], shown[5], shown[6], shown[7]]);
     }
 
-    // A refresh keeps the tasks and their trail, and Claim Detail shows the same task.
+    // The claim flags only add the Issue column. With that read failing the queue still lists the tasks, shows a dash for
+    // the issue, says so, and exports (an empty issue cell).
     view.unmount();
+    const mock = createMockTransport();
+    const factsDown: ApiTransport = (url, init) =>
+      url.startsWith('/api/v1/claim-facts')
+        ? Promise.resolve(
+            new Response(JSON.stringify({ type: 'about:blank', title: 'Down', status: 500 }), {
+              status: 500,
+              headers: { 'content-type': 'application/problem+json' },
+            }),
+          )
+        : mock(url, init);
+    const degraded = renderApp('/actions', { transport: factsDown });
+    expect(await screen.findByText('The claim flags could not be loaded')).toBeInTheDocument();
+    await waitFor(() => expect(queue()).toHaveLength(4));
+    expect(cells('TASK-0001')[1]).toBe('—');
+    const exportButton = screen.getByRole('button', { name: 'Export CSV' });
+    await waitFor(() => expect(exportButton).toBeEnabled());
+    await user.click(exportButton);
+    const degradedCsv = parseCsv((await downloads.next()).text);
+    expect(degradedCsv.slice(1).map((row) => row[2])).toEqual(['', '', '', '']);
+    degraded.unmount();
+
+    // A task whose claim is not among the facts (CLM-105 was reported on 20 Oct) has an unknown issue, not "Not flagged".
+    const early = renderApp('/actions', { asOf: '2026-10-05' });
+    await waitFor(() => expect(queue()).toHaveLength(4));
+    await waitFor(() => expect(cells('TASK-0001')[1]).toContain('High value'));
+    expect(cells('TASK-0002')[1]).toBe('—');
+    early.unmount();
+
+    // A refresh keeps the tasks and their trail, and Claim Detail shows the same task.
     renderApp('/actions', { transport: createMockTransport() });
     await screen.findByRole('table', { name: NAME });
     await waitFor(() =>
@@ -292,7 +323,8 @@ describe('Action Queue', () => {
     expect(await within(card).findByText('TASK-0001')).toBeInTheDocument();
     expect(within(card).getByText('Note: Estimate received')).toBeInTheDocument();
     expect(within(card).getByText(/Claims Handler · /)).toBeInTheDocument();
-    // The task can be moved on from the claim too.
+    expect(within(card).queryByText('Overdue')).not.toBeInTheDocument();
+    // The task can be moved on from the claim too, and reopened it is overdue there as in the queue.
     await user.click(within(card).getByRole('button', { name: 'Change status of TASK-0001' }));
     const dialog = await screen.findByRole('dialog', { name: 'Change the status' });
     await user.selectOptions(within(dialog).getByRole('combobox', { name: /^New status/ }), 'Open');
@@ -300,6 +332,7 @@ describe('Action Queue', () => {
     await waitFor(() =>
       expect(within(card).getByText('Open', { selector: '.ciq-chip' })).toBeInTheDocument(),
     );
+    await waitFor(() => expect(within(card).getByText('Overdue')).toBeInTheDocument());
     await user.click(screen.getByRole('link', { name: 'Action Queue' }));
     await waitFor(() => expect(cells('TASK-0001')[5]).toBe('Open'));
     expect(cells('TASK-0001')[3]).toBe('19 Oct 2026Overdue');
