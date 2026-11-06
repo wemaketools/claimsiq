@@ -17,6 +17,7 @@ import type {
 } from '../contracts/index.js';
 import { businessDaysBetween, calendarDaysBetween, momentMs, weekdaySet } from './calendar.js';
 import type { RuleConfig } from './config.js';
+import { postedPayments } from './payments.js';
 import { inPeriod, periodWindow } from './period.js';
 
 export interface RuleContext {
@@ -214,9 +215,8 @@ export function computeClaimFacts(claim: ClaimRecord, context: RuleContext): Cla
   const stageStartedAt = latest?.event_at ?? null;
   const isOpen = currentStage === null ? claim.status !== 'CLOSED' : currentStage !== 'Closed';
 
-  const paid = sumMoney(
-    claim.payments.filter((payment) => payment.status === 'POSTED' && onOrBeforeAsOf(payment.paid_at, asOf)).map((payment) => payment.paid_amount),
-  );
+  const posted = postedPayments(claim, asOf);
+  const paid = sumMoney(posted.map((payment) => payment.paid_amount));
   const reserveEvents = chronological(
     claim.reserve_events.filter((event) => onOrBeforeAsOf(event.event_at, asOf)),
     (event) => event.event_at,
@@ -225,11 +225,7 @@ export function computeClaimFacts(claim: ClaimRecord, context: RuleContext): Cla
   const reserve = reserveEvents[reserveEvents.length - 1]?.new_amount ?? claim.current_outstanding_reserve;
   const incurred = addMoney(paid, reserve);
   const window = periodWindow(context.period, asOf);
-  const paidInPeriod = sumMoney(
-    claim.payments
-      .filter((payment) => payment.status === 'POSTED' && inPeriod(payment.paid_at, window) && onOrBeforeAsOf(payment.paid_at, asOf))
-      .map((payment) => payment.paid_amount),
-  );
+  const paidInPeriod = sumMoney(posted.filter((payment) => inPeriod(payment.paid_at, window)).map((payment) => payment.paid_amount));
 
   const reportedAt = claim.reported_at;
   const ageDays = isOpen && reportedAt !== null ? calendarDaysBetween(reportedAt, asOf) : null;

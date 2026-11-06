@@ -22,7 +22,7 @@ type Plain =
   | 'incurred'
   | 'new-in-period'
   | 'paid-in-period'
-  | 'closed-in-period';
+  | 'turnaround';
 const PLAIN: readonly Plain[] = [
   'open',
   'closed',
@@ -34,7 +34,7 @@ const PLAIN: readonly Plain[] = [
   'incurred',
   'new-in-period',
   'paid-in-period',
-  'closed-in-period',
+  'turnaround',
 ];
 const OPEN_STAGES = CLAIM_STAGES.filter((stage) => stage !== 'Closed');
 
@@ -93,8 +93,8 @@ export function matchesCriterion(criterion: ClaimCriterion, fact: ClaimFacts): b
       return fact.reported_in_period;
     case 'paid-in-period':
       return positive(fact.paid_in_period);
-    case 'closed-in-period':
-      return fact.closed_in_period;
+    case 'turnaround':
+      return fact.closed_in_period && fact.closed_turnaround_days !== null;
     case 'paid':
       return positive(fact.paid);
     case 'reserve':

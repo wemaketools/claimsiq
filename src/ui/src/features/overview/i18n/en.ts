@@ -57,6 +57,7 @@ const en = {
     claims: 'Claims',
     amount: 'Amount (BWP)',
     days: 'Days',
+    undated: 'Closed claims with no closing date',
     leftOut: 'Closed in the period, left out of the average',
   },
 } satisfies Catalog;

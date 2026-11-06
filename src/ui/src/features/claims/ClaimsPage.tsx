@@ -118,7 +118,7 @@ const PAID_IN_PERIOD: DataTableColumn<ClaimRow> = {
   numeric: true,
   cell: (row) => formatMoney(row.paidInPeriod),
 };
-const PERIOD_CRITERIA = ['new-in-period', 'paid-in-period', 'closed-in-period'];
+const PERIOD_CRITERIA = ['new-in-period', 'paid-in-period', 'turnaround'];
 
 /** The paid-in-period card lists claims, so the list shows the posted payments of the period that make its amount. */
 const COLUMNS_WITH_PERIOD = BASE_COLUMNS.flatMap((column) =>
@@ -145,8 +145,8 @@ export default function ClaimsPage() {
   }, [facts, lookups, criterion, sort]);
   const paidInPeriod = criterion?.kind === 'paid-in-period';
   const table = useMemo(
-    () => (rows === undefined || !scope.settled ? undefined : claimsTable(rows, paidInPeriod)),
-    [rows, paidInPeriod, scope.settled],
+    () => (rows === undefined ? undefined : claimsTable(rows, paidInPeriod)),
+    [rows, paidInPeriod],
   );
 
   const pageCount = Math.max(1, Math.ceil((rows?.length ?? 0) / pageSize));
@@ -160,7 +160,7 @@ export default function ClaimsPage() {
       <PageHeader
         title={t('claims.title')}
         subtitle={t('claims.subtitle')}
-        actions={<ExportCsvButton screen="claims" table={table} />}
+        actions={<ExportCsvButton screen="claims" scope={scope} table={table} />}
       />
       <ClaimFilterBar
         scope={scope}

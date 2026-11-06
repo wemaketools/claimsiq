@@ -37,24 +37,16 @@ function overviewTable(summary: ClaimsSummary): string[][] {
       t('overview.csv.days'),
     ],
     ...groups.flatMap((group) => [
-      ...group.figures.map((figure) => [
-        group.heading,
-        figure.label,
-        figure.exported.claims,
-        figure.exported.amount,
-        figure.exported.days,
+      ...group.figures.flatMap((figure) => [
+        [
+          group.heading,
+          figure.label,
+          figure.exported.claims,
+          figure.exported.amount,
+          figure.exported.days,
+        ],
+        ...figure.notes.map((note) => [group.heading, note.label, String(note.claims), '', '']),
       ]),
-      ...(group.figures.some((figure) => figure.id === 'turnaround')
-        ? [
-            [
-              group.heading,
-              t('overview.csv.leftOut'),
-              String(summary.period.closed.without_turnaround),
-              '',
-              '',
-            ],
-          ]
-        : []),
     ]),
     ...section(t('overview.stage.title'), stageRows(summary)),
     ...section(t('overview.age.title'), ageRows(summary)),
@@ -105,8 +97,8 @@ export default function OverviewPage() {
   const scope = useClaimScope();
   const summary = scope.facts.data?.summary;
   const table = useMemo(
-    () => (summary === undefined || !scope.settled ? undefined : overviewTable(summary)),
-    [summary, scope.settled],
+    () => (summary === undefined ? undefined : overviewTable(summary)),
+    [summary],
   );
 
   return (
@@ -114,7 +106,7 @@ export default function OverviewPage() {
       <PageHeader
         title={t('overview.title')}
         subtitle={t('overview.subtitle')}
-        actions={<ExportCsvButton screen="overview" table={table} />}
+        actions={<ExportCsvButton screen="overview" scope={scope} table={table} />}
       />
       <ClaimFilterBar scope={scope} withPeriod />
       <QueryView

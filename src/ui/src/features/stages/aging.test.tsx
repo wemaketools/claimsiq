@@ -182,7 +182,8 @@ describe('Stages & Aging', () => {
           .join('\n'),
       },
     });
-    renderApp('/stages', { transport });
+    const first = renderApp('/stages', { transport });
+    const downloads = captureDownloads();
 
     const stages = await screen.findByRole('table', {
       name: 'Open claims and their value by stage',
@@ -212,6 +213,27 @@ describe('Stages & Aging', () => {
     expect(card('Paid in period')).toHaveTextContent('Posted payments on 2 claims');
     await user.click(within(card('Paid in period')).getByRole('link'));
     await waitFor(() => expect(listed()).toEqual(['CLM-102', 'CLM-103']));
+
+    // A closed claim with no closing date cannot be placed in any period: the card says so and the CSV counts it.
+    first.unmount();
+    renderApp('/overview', {
+      transport: transportOver({
+        TEST: {
+          ...files,
+          'claims.csv': (files['claims.csv'] ?? '').replace(
+            'TEST,CLM-103,POL-003,2026-10-10,2026-10-10,Closed,CLOSED,USR-CLM,SUP-01,0,BWP,2026-10-15',
+            'TEST,CLM-103,POL-003,2026-10-10,2026-10-10,Closed,CLOSED,USR-CLM,SUP-01,0,BWP,',
+          ),
+        },
+      }),
+    });
+    await screen.findByRole('region', { name: 'Open claims' });
+    expect(screen.getByRole('region', { name: 'Average closed turnaround' })).toHaveTextContent(
+      '1 closed with no closing date',
+    );
+    await user.click(screen.getByRole('button', { name: 'Export CSV' }));
+    const rows = parseCsv((await downloads.next()).text);
+    expect(rows.find((row) => row[1] === 'Closed claims with no closing date')?.[2]).toBe('1');
   });
 
   it('offers the export only once everything the screen shows has loaded, and the file then has every section of the screen', async () => {
@@ -220,7 +242,9 @@ describe('Stages & Aging', () => {
     const healthy = transportOver({});
     // The names behind the product, broker and owner rows arrive after the figures do.
     let slowFigures = false;
+    let failFigures = false;
     const slowNames: ApiTransport = async (url, init) => {
+      if (failFigures && url.includes('/claim-facts')) throw new TypeError('The network is down');
       if (slowFigures && url.includes('/claim-facts')) {
         await new Promise((resolve) => setTimeout(resolve, 300));
       }
@@ -271,5 +295,20 @@ describe('Stages & Aging', () => {
       '42000.00',
       '47000.00',
     ]);
+
+    // After a failed reload the screen may still show the old figures, but they are no longer the answer to the filters.
+    slowFigures = false;
+    failFigures = true;
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Product' }),
+      'Comprehensive Motor',
+    );
+    expect(await screen.findByText('This could not be loaded')).toBeInTheDocument();
+    expect(button).toBeDisabled();
+    failFigures = false;
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(button).toBeEnabled());
+    await user.click(button);
+    expect((await downloads.next()).text).toContain('Comprehensive Motor');
   });
 });

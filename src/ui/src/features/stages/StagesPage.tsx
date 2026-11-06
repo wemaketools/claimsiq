@@ -24,6 +24,7 @@ import {
   stageRows,
   useClaimScope,
 } from '../claim-scope';
+import { OpenTotals } from './OpenTotals';
 import type { BreakdownRow, ClaimFactsAnswer, ClaimLookups, GroupRow } from '../claim-scope';
 
 /** Counts only come in whole numbers, so the axes label no halves. */
@@ -119,19 +120,8 @@ interface BreakdownProps {
 }
 
 function BreakdownTable({ title, subtitle, firstHeader, caption, rows, summary }: BreakdownProps) {
-  const total = summary.open_totals;
   return (
-    <Card
-      title={title}
-      subtitle={subtitle}
-      flush
-      footer={
-        <span>
-          {t('stages.total')}: {formatCount(summary.open)} · {formatMoney(total.paid)} ·{' '}
-          {formatMoney(total.reserve)} · {formatMoney(total.incurred)}
-        </span>
-      }
-    >
+    <Card title={title} subtitle={subtitle} flush footer={<OpenTotals summary={summary} />}>
       <DataTable
         caption={caption}
         columns={columns<BreakdownRow>(firstHeader)}
@@ -163,18 +153,12 @@ function GroupTabs({
   summary: ClaimsSummary;
 }) {
   const [group, setGroup] = useState<Group>('product');
-  const total = summary.open_totals;
   return (
     <Card
       title={t('stages.group.title')}
       subtitle={t('stages.group.subtitle')}
       flush
-      footer={
-        <span>
-          {t('stages.total')}: {formatCount(summary.open)} · {formatMoney(total.paid)} ·{' '}
-          {formatMoney(total.reserve)} · {formatMoney(total.incurred)}
-        </span>
-      }
+      footer={<OpenTotals summary={summary} />}
     >
       <Tabs
         label={t('stages.group.tabs')}
@@ -279,11 +263,8 @@ export default function StagesPage() {
     [answer, lookups],
   );
   const table = useMemo(
-    () =>
-      view === undefined || !scope.settled
-        ? undefined
-        : stagesTable(view.answer.summary, view.groups),
-    [view, scope.settled],
+    () => (view === undefined ? undefined : stagesTable(view.answer.summary, view.groups)),
+    [view],
   );
 
   return (
@@ -291,7 +272,7 @@ export default function StagesPage() {
       <PageHeader
         title={t('stages.title')}
         subtitle={t('stages.subtitle')}
-        actions={<ExportCsvButton screen="stages" table={table} />}
+        actions={<ExportCsvButton screen="stages" scope={scope} table={table} />}
       />
       <ClaimFilterBar scope={scope} />
       <QueryView

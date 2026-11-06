@@ -62,7 +62,7 @@ const en = {
     age: 'Open claims aged {age}',
     'new-in-period': 'Claims reported in the period',
     'paid-in-period': 'Claims with payments posted in the period',
-    'closed-in-period': 'Claims closed in the period',
+    turnaround: 'Claims closed in the period with both dates (the claims averaged)',
     'high-priority': 'Open claims with High severity',
     stageUnknown: 'Open claims with no stage recorded',
     ageUnknown: 'Open claims with no reported date',

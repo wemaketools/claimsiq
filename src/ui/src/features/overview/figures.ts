@@ -18,6 +18,14 @@ export interface OverviewFigure {
   readonly shown: string;
   /** The figure as exported: a plain count, a plain decimal amount in BWP, or days with one decimal. */
   readonly exported: { readonly claims: string; readonly amount: string; readonly days: string };
+  /** Counts the card says in its hint and the CSV lists as rows after the figure, from the same data. */
+  readonly notes: readonly FigureNote[];
+}
+
+export interface FigureNote {
+  readonly label: string;
+  readonly claims: number;
+  readonly hint: string;
 }
 
 export interface FigureGroup {
@@ -52,6 +60,7 @@ function counted(
     hint,
     shown: formatCount(count),
     exported: { claims: String(count), amount: '', days: '' },
+    notes: [],
   };
 }
 
@@ -67,6 +76,7 @@ function money(
     hint,
     shown: formatMoney(amount),
     exported: { claims: '', amount, days: '' },
+    notes: [],
   };
 }
 
@@ -74,15 +84,27 @@ export function overviewFigures(summary: ClaimsSummary): FigureGroup[] {
   const { period } = summary;
   const averaged = period.closed.count - period.closed.without_turnaround;
   const days = period.closed.average_turnaround_days;
-  const turnaroundHint = [
-    t('overview.kpi.turnaround.hint', {
-      averaged: formatCount(averaged),
-      left: formatCount(period.closed.without_turnaround),
-    }),
+  const turnaroundNotes: FigureNote[] = [
+    {
+      label: t('overview.csv.leftOut'),
+      claims: period.closed.without_turnaround,
+      hint: t('overview.kpi.turnaround.hint', {
+        averaged: formatCount(averaged),
+        left: formatCount(period.closed.without_turnaround),
+      }),
+    },
     ...(period.closed.undated > 0
-      ? [t('overview.kpi.turnaround.undated', { count: formatCount(period.closed.undated) })]
+      ? [
+          {
+            label: t('overview.csv.undated'),
+            claims: period.closed.undated,
+            hint: t('overview.kpi.turnaround.undated', {
+              count: formatCount(period.closed.undated),
+            }),
+          },
+        ]
       : []),
-  ].join(' · ');
+  ];
   return [
     {
       heading: t('overview.group.asOf', { date: formatCalendarDate(summary.as_of) }),
@@ -117,8 +139,9 @@ export function overviewFigures(summary: ClaimsSummary): FigureGroup[] {
           tone: 'success',
         },
         {
-          ...base('turnaround', 'timer', 'info', { kind: 'closed-in-period' }),
-          hint: turnaroundHint,
+          ...base('turnaround', 'timer', 'info', { kind: 'turnaround' }),
+          hint: turnaroundNotes.map((note) => note.hint).join(' · '),
+          notes: turnaroundNotes,
           shown:
             days === null
               ? EMPTY_VALUE

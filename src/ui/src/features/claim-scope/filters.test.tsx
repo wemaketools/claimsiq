@@ -54,6 +54,8 @@ describe('the shared filters and as-of date', () => {
             const { claims, amount, days } = figure.exported;
             if (days !== '') {
               const turnarounds = selected.flatMap((fact) => fact.closed_turnaround_days ?? []);
+              // The list is exactly the claims averaged, no more.
+              expect(selected).toHaveLength(turnarounds.length);
               expect(String(turnarounds.length)).toBe(claims);
               expect(
                 (turnarounds.reduce((sum, d) => sum + d, 0) / turnarounds.length).toFixed(1),

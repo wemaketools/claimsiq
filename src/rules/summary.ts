@@ -49,7 +49,9 @@ export function breakdownOfOpenClaims(facts: readonly ClaimFacts[], keyOf: (fact
   const groups = new Map<string | null, ClaimFacts[]>();
   for (const fact of facts.filter((candidate) => candidate.is_open)) {
     const key = keyOf(fact);
-    groups.set(key, [...(groups.get(key) ?? []), fact]);
+    const group = groups.get(key);
+    if (group === undefined) groups.set(key, [fact]);
+    else group.push(fact);
   }
   return [...groups.entries()]
     .map(([id, group]) => ({ id, claims: group.length, ...totalsOf(group) }))

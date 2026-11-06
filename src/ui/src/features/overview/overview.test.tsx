@@ -82,11 +82,13 @@ describe('Overview', () => {
     const asOf = 'As of 21 Oct 2026';
     const period = 'Last 30 days: 22 Sep 2026 to 21 Oct 2026';
     const summary = rows.filter((row) => row[0] === asOf || row[0] === period);
-    expect(summary.map((row) => row[1])).toEqual([
-      ...Object.keys(figures),
-      'Closed in the period, left out of the average',
-    ]);
-    for (const [, measure, claims, amount, days] of summary.slice(0, -1)) {
+    const leftOut = 'Closed in the period, left out of the average';
+    expect(summary.map((row) => row[1])).toEqual(
+      Object.keys(figures).flatMap((label) =>
+        label === 'Average closed turnaround' ? [label, leftOut] : [label],
+      ),
+    );
+    for (const [, measure, claims, amount, days] of summary.filter((row) => row[1] !== leftOut)) {
       const shown =
         days !== '' ? `${days} days` : claims === '' ? formatMoney(amount ?? '') : claims;
       expect(card(measure ?? '')).toHaveTextContent(shown ?? '');
@@ -102,8 +104,8 @@ describe('Overview', () => {
       [period, 'New claims', '5', '', ''],
       [period, 'Paid in period', '', '9000.00', ''],
       [period, 'Average closed turnaround', '1', '', '5.0'],
+      [period, leftOut, '0', '', ''],
       [period, 'High-priority exceptions', '3', '', ''],
-      [period, 'Closed in the period, left out of the average', '0', '', ''],
     ]);
     expect(rows.filter((row) => row[0] === 'Open claims by stage')).toEqual([
       ['Open claims by stage', 'New', '1', '', ''],
