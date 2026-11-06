@@ -2,5 +2,6 @@
 	"agent": "claimsIQ",
 	"port": 5185,
 	"autoStart": true,
-	"dir": "ai/converse"
+	"dir": "ai/converse",
+	"repo": "wemaketools/claimsiq"
 }

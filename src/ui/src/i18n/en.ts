@@ -1,0 +1,233 @@
+/**
+ * The shell catalog (English). Namespaces: shell, auth, ui, format, charts, pages. Feature strings live in
+ * `features/<feature>/i18n/en.ts` (see `lib/i18n.ts`).
+ * Plurals use `_one` / `_other` suffixes and the `count` parameter.
+ */
+import type { Catalog } from '../lib/i18n';
+
+export const shellCatalog = {
+  shell: {
+    documentTitle: '{title} · ClaimsIQ',
+    skipToContent: 'Skip to content',
+    brand: {
+      claims: 'Claims',
+      iq: 'IQ',
+      sub: 'Claims Intelligence',
+    },
+    sidebar: { label: 'Main navigation and account' },
+    nav: {
+      label: 'Main navigation',
+    },
+    topbar: {
+      openMenu: 'Open navigation',
+    },
+    persona: {
+      label: 'Viewing as',
+      'head-of-claims': 'Head of Claims',
+      'claims-handler': 'Claims Handler',
+      'supplier-coordinator': 'Supplier Coordinator',
+      finance: 'Finance',
+    },
+    theme: {
+      useDark: 'Use dark theme',
+      useLight: 'Use light theme',
+    },
+    user: {
+      menu: 'Account menu',
+      open: 'Account menu for {name}, viewing as {persona}',
+      signedInAs: 'Signed in as {account}',
+      signOut: 'Sign out',
+    },
+    loading: {
+      session: 'Signing you in…',
+    },
+    footer: {
+      copyright: '© ClaimsIQ',
+      currency: 'All amounts in {currency}',
+      asOf: 'Data as of {time}',
+      refresh: 'Refresh data',
+    },
+  },
+  auth: {
+    field: {
+      email: 'Email address',
+      password: 'Password',
+    },
+    backToSignIn: 'Back to sign-in',
+    signIn: {
+      title: 'Sign in',
+      subtitle: 'Use your ClaimsIQ account.',
+      submit: 'Sign in',
+      signingIn: 'Signing in…',
+      failed:
+        'We could not sign you in with those details. Check your email and password, or contact your administrator.',
+      expired: 'Your session ended. Sign in again to continue.',
+      forgot: 'Forgot your password?',
+    },
+    demo: {
+      title: 'Demo accounts (local development only)',
+      subtitle: 'Choose a demo account to sign in with its local password ({password}).',
+      pick: 'Sign in as {name} ({email})',
+    },
+    forgot: {
+      title: 'Reset your password',
+      subtitle:
+        'Enter the email address of your account. We will send you a link to choose a new password.',
+      submit: 'Send reset link',
+      sentTitle: 'Check your email',
+      sent: 'If an account exists for that address, a reset link is on its way. The link expires after a short time.',
+    },
+    reset: {
+      title: 'Choose a new password',
+      subtitle: 'Use at least {min} characters.',
+      newPassword: 'New password',
+      confirmPassword: 'Confirm the new password',
+      submit: 'Save the new password',
+      tooShort: 'Use at least {min} characters.',
+      mismatch: 'The two passwords do not match.',
+      failed: 'The password could not be changed. Request a new reset link and try again.',
+      savedTitle: 'Password changed',
+      saved: 'Your new password is saved.',
+      continue: 'Continue',
+      noSessionTitle: 'This reset link is not valid any more',
+      noSession: 'Open the latest reset email, or request a new link.',
+      requestNew: 'Request a new link',
+    },
+  },
+  ui: {
+    loading: 'Loading…',
+    overdue: 'Overdue',
+    action: {
+      cancel: 'Cancel',
+      close: 'Close',
+      dismiss: 'Dismiss',
+      retry: 'Try again',
+    },
+    restricted: {
+      title: 'Restricted',
+      description: 'This view is not available to you. Nothing about it is shown.',
+    },
+    error: {
+      loadTitle: 'This could not be loaded',
+      network: 'The service could not be reached. Check your connection and try again.',
+      server: 'An unexpected error occurred. Quote the correlation id when you contact support.',
+      contract:
+        'Development check: the response of {endpoint} does not match its API contract ({detail}).',
+      notFound: 'This record does not exist or is not available to you.',
+      rateLimited: 'Too many requests. Wait a moment and try again.',
+      correlation: 'Correlation id: {id}',
+    },
+    confirm: {
+      actor: 'Acting as',
+      scope: 'Scope',
+      result: 'Result',
+    },
+    filters: {
+      label: 'Filters',
+      clear: 'Clear filters',
+    },
+    form: {
+      date: 'Date',
+      time: 'Time',
+      currency: 'Currency',
+      errorTitle: 'Some information needs attention',
+    },
+    table: {
+      empty: 'Nothing to show yet.',
+      selectAll: 'Select all rows on this page',
+      selectRow: 'Select {row}',
+      openColumn: 'Open',
+      openRowNumber: 'Open row {number}',
+      selected_one: '{count} selected',
+      selected_other: '{count} selected',
+    },
+    pagination: {
+      label: 'Pages',
+      showing: 'Showing {from}–{to} of {total}',
+      pageSize: 'Rows per page',
+      previous: 'Previous page',
+      next: 'Next page',
+      page: 'Page {page}',
+    },
+    step: {
+      complete: 'Complete',
+      current: 'Current step',
+      upcoming: 'Not started',
+      blocked: 'Blocked',
+    },
+    unsaved: {
+      title: 'Leave without saving?',
+      message: 'You have changes that are not saved. If you leave now, they are lost.',
+      stay: 'Stay on this page',
+      leave: 'Leave without saving',
+    },
+    toast: {
+      region: 'Messages',
+    },
+  },
+  format: {
+    month: {
+      1: 'Jan',
+      2: 'Feb',
+      3: 'Mar',
+      4: 'Apr',
+      5: 'May',
+      6: 'Jun',
+      7: 'Jul',
+      8: 'Aug',
+      9: 'Sep',
+      10: 'Oct',
+      11: 'Nov',
+      12: 'Dec',
+    },
+    age: {
+      now: 'now',
+      minutes: '{value}m',
+      hours: '{value}h',
+      days: '{value}d',
+    },
+    span: {
+      daysHours: '{days} d {hours} h',
+      hoursMinutes: '{hours} h {minutes} min',
+      minutes: '{minutes} min',
+    },
+    remaining: {
+      left: '{span} left',
+      ago: 'passed {span} ago',
+    },
+    bytes: {
+      b: '{value} B',
+      kb: '{value} KB',
+      mb: '{value} MB',
+      gb: '{value} GB',
+    },
+  },
+  charts: {
+    empty: 'No data for this period.',
+    segment: 'Segment',
+    value: 'Value',
+    share: 'Share',
+    period: 'Period',
+    category: 'Category',
+  },
+  pages: {
+    notFound: {
+      title: 'Page not found',
+      description: 'The address may be mistyped, or the page may have moved.',
+      home: 'Go to the start page',
+    },
+    routeError: {
+      reload: 'Reload the page',
+      chunk: {
+        title: 'This page could not be loaded',
+        description:
+          'The connection may have dropped, or a newer version of ClaimsIQ is available. Reload the page to continue.',
+      },
+      unexpected: {
+        title: 'Something went wrong',
+        description:
+          'This page stopped because of an unexpected error. Reload the page, or go back to the start page.',
+      },
+    },
+  },
+} satisfies Catalog;

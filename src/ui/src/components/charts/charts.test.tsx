@@ -1,0 +1,146 @@
+import { render, screen, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router';
+import { describe, expect, it } from 'vitest';
+
+import { BarList } from './BarList';
+import { chartColor } from './chartTheme';
+import { DonutChart } from './DonutChart';
+import { StackedBarChart } from './StackedBarChart';
+import { TrendChart } from './TrendChart';
+
+describe('chart colours', () => {
+  it('come from design tokens only', () => {
+    expect(chartColor('danger', 0)).toBe('var(--ciq-chart-6)');
+    expect(chartColor(undefined, 1)).toBe('var(--ciq-chart-2)');
+    expect(chartColor(undefined, 7)).toBe('var(--ciq-chart-2)');
+  });
+});
+
+describe('BarList', () => {
+  it('shows each value with its share and links to the list behind it', () => {
+    render(
+      <MemoryRouter>
+        <BarList
+          label="Claims by stage"
+          items={[
+            { id: 'open', label: 'Open', value: 3, to: '/claims?status=open' },
+            { id: 'closed', label: 'Closed', value: 1 },
+          ]}
+        />
+      </MemoryRouter>,
+    );
+    const list = screen.getByRole('list', { name: 'Claims by stage' });
+    expect(within(list).getByRole('link')).toHaveAttribute('href', '/claims?status=open');
+    expect(list).toHaveTextContent('Open375%');
+    expect(list).toHaveTextContent('Closed125%');
+  });
+
+  it('keeps the full label readable as a tooltip when a long label is truncated', () => {
+    render(
+      <BarList
+        label="Pipeline by stage"
+        items={[{ id: 'a', label: 'Awaiting release approval', value: 2 }]}
+      />,
+    );
+    expect(screen.getByText('Awaiting release approval')).toHaveAttribute(
+      'title',
+      'Awaiting release approval',
+    );
+  });
+
+  it('shows the empty state without items', () => {
+    render(<BarList label="x" items={[]} />);
+    expect(screen.getByText('No data for this period.')).toBeInTheDocument();
+  });
+});
+
+describe('Recharts wrappers', () => {
+  it('give the donut an accessible data table with values and shares', () => {
+    render(
+      <DonutChart
+        label="Open claims by days to close"
+        caption="Open claims"
+        segments={[
+          { id: 'a', label: '0-3 days', value: 1 },
+          { id: 'b', label: '15+ days', value: 3, tone: 'danger' },
+        ]}
+      />,
+    );
+    const table = screen.getByRole('table', { name: 'Open claims by days to close' });
+    expect(within(table).getByRole('row', { name: '15+ days 3 75%' })).toBeInTheDocument();
+    expect(screen.getByText('Open claims')).toBeInTheDocument();
+  });
+
+  it('give line and stacked bar charts a data table with formatted values', () => {
+    const series = [
+      { key: 'won', label: 'Awarded' },
+      { key: 'lost', label: 'Cancelled', dashed: true },
+    ];
+    const points = [
+      { x: 'Aug', values: { won: 2_000_000, lost: null } },
+      { x: 'Sep', values: { won: 100_000, lost: 50_000 } },
+    ];
+    render(
+      <>
+        <TrendChart
+          label="Trend"
+          series={series}
+          points={points}
+          formatValue={(v) => `BWP ${v / 1000}K`}
+        />
+        <StackedBarChart label="Stacked" series={series} points={points} horizontal />
+      </>,
+    );
+    expect(
+      within(screen.getByRole('table', { name: 'Trend' })).getByRole('row', {
+        name: 'Aug BWP 2000K —',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('table', { name: 'Stacked' })).getByRole('row', {
+        name: 'Sep 100,000 50,000',
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it('clip the accessible data table in a visually hidden wrapper so it cannot widen the page', () => {
+    render(
+      <StackedBarChart
+        label="Workload by owner"
+        categoryLabel="Owner"
+        series={[{ key: 'open', label: 'Open tasks' }]}
+        points={[{ x: 'Kagiso Dube', values: { open: 9 } }]}
+        horizontal
+      />,
+    );
+    const table = screen.getByRole('table', { name: 'Workload by owner' });
+    expect(table).not.toHaveClass('ciq-visually-hidden');
+    expect(table.parentElement).toHaveClass('ciq-visually-hidden');
+    expect(table.closest('figure')).toHaveClass('ciq-chart');
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((th) => th.textContent),
+    ).toEqual(['Owner', 'Open tasks']);
+  });
+
+  it('label the category column "Category" when no category label is given', () => {
+    render(
+      <StackedBarChart
+        label="Stacked"
+        series={[{ key: 'open', label: 'Open' }]}
+        points={[{ x: 'Aug', values: { open: 1 } }]}
+      />,
+    );
+    expect(
+      within(screen.getByRole('table', { name: 'Stacked' })).getByRole('columnheader', {
+        name: 'Category',
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it('show the empty state without data', () => {
+    render(<TrendChart label="Trend" series={[]} points={[]} />);
+    expect(screen.getByText('No data for this period.')).toBeInTheDocument();
+  });
+});

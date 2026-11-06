@@ -8,3 +8,51 @@ ai/converse/review/runs/
 # local
 .DS_Store
 .claude/settings.local.json
+
+# Dependencies
+node_modules/
+
+# Environment files: only the two placeholder catalogs are committed
+.env
+.env.*
+!.env.example
+!.env.local.example
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Vercel CLI state
+.vercel/
+
+# Supabase local state (supabase/.gitignore repeats these for the CLI's own files).
+# The wildcard also covers temporary files of an interrupted key write (they hold private key material).
+supabase/signing_keys.json*
+supabase/.branches/
+supabase/.temp/
+
+# Throwaway TypeScript files
+*.tmp.ts
+
+# Test output
+.test-results/
+coverage/
+e2e_tests/test-results/
+e2e_tests/playwright-report/
+e2e_tests/blob-report/
+e2e_tests/.cache/
+# Playwright storage-state files hold live session tokens
+e2e_tests/.auth/
+
+# Agent scratch space (screenshots, probes)
+.qa-scratch/
+
+# Logs
+*.log
+
+# OS and editor files
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/*
+!.vscode/extensions.json
