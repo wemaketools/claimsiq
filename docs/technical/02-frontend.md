@@ -1,6 +1,6 @@
 # Frontend (SPA)
 
-Status: as built (scaffold, data layer and the first screens: Overview, Stages & Aging, Claims). The decisions behind it (prefix and palette, brand, navigation, persona switch, tenant) are in `docs/plan/design-decisions.md`.
+Status: as built (scaffold, data layer and the claim screens: Overview, Stages & Aging, Claims, Exceptions & SLA, Claim Detail, policy invoices). The decisions behind it (prefix and palette, brand, navigation, persona switch, tenant) are in `docs/plan/design-decisions.md`.
 
 ## Layout of `src/ui/src`
 
@@ -14,7 +14,9 @@ Status: as built (scaffold, data layer and the first screens: Overview, Stages &
 | `api/` | `client.ts` (`call(endpoint)`), `hooks.ts` (`useApiQuery`, `useApiMutation`, `invalidateApiQueries`), `endpoint.ts`, `problem.ts`, `mockTransport.ts` (Stage A: the in-browser mock API as the transport) |
 | `auth/` | `AuthProvider`, sign-in, forgot and reset password, the development-only `DemoAccounts` |
 | `features/<feature>/` | `routes.tsx`, the page, `i18n/en.ts` |
-| `features/claim-scope/` | No route: what Overview, Stages & Aging and Claims share (see Claim screens) |
+| `features/claim-scope/` | No route: what the claim screens share (see Claim screens) |
+| `features/claim-tasks/` | No route: the "Create follow-up task" dialog and the task labels Exceptions and Claim Detail share |
+| `features/claim-detail/`, `features/invoices/` | Routes without a nav item: `/claims/:claimId` and `/policies/:policyId/invoices` (the stand-in for Premium Collections) |
 | `lib/` | `i18n.ts` (`t()`), `format.ts`, `csv.ts` (CSV text and download), `zonedTime.ts`, `storage.ts` (persona, theme, data set, as-of date, screen filters), `useMediaQuery.ts`, `useNow.ts` |
 | `i18n/en.ts` | The shell catalog (namespaces `shell`, `auth`, `ui`, `format`, `charts`, `pages`) |
 
@@ -42,7 +44,7 @@ Routes: `/` redirects to the first destination; `/signin`, `/forgot-password`, `
 
 ## Claim screens
 
-Overview (`features/overview`), Stages & Aging (`features/stages`) and Claims (`features/claims`) read one engine answer through `features/claim-scope`: `useClaimScope()` returns the shared filters (policy, broker, product, handler, and the period window of the period cards: `filters.byScreen['claim-scope']`, remembered under `ciq.filters`, cleared with the data set and on sign-out; Clear filters keeps the period), the `claims.facts` query for exactly those filters (the answer holds `items`, `summary` with its `period` figures, and the product, broker and handler `breakdowns`) and the master-data lookups (`useClaimLookups`: names for client, product and handler and the filter choices). `ClaimFilterBar` is the one filter bar. `criteria.ts` holds the criterion a figure counts, how it travels in the address (`/claims?show=stage:Assessment`) and the predicate that selects those claims from the facts; `stageAgeRows.ts` makes the stage and age rows from the summary; `ExportCsvButton` downloads the rows a screen builds from its own figures (`lib/csv.ts`) and is off while a request is on its way or after a failed one (DD-36). Screens never recompute a rule: a figure is a field of the engine's summary, a list is a selection of its facts. Decisions: DD-28 to DD-36.
+Overview (`features/overview`), Stages & Aging (`features/stages`) and Claims (`features/claims`) read one engine answer through `features/claim-scope`: `useClaimScope()` returns the shared filters (policy, broker, product, handler, and the period window of the period cards: `filters.byScreen['claim-scope']`, remembered under `ciq.filters`, cleared with the data set and on sign-out; Clear filters keeps the period), the `claims.facts` query for exactly those filters (the answer holds `items`, `summary` with its `period` figures, and the product, broker and handler `breakdowns`) and the master-data lookups (`useClaimLookups`: names for client, product and handler and the filter choices). `ClaimFilterBar` is the one filter bar. `criteria.ts` holds the criterion a figure counts, how it travels in the address (`/claims?show=stage:Assessment`) and the predicate that selects those claims from the facts; `stageAgeRows.ts` makes the stage and age rows from the summary; `ExportCsvButton` downloads the rows a screen builds from its own figures (`lib/csv.ts`) and is off while a request is on its way or after a failed one (DD-36). Screens never recompute a rule: a figure is a field of the engine's summary, a list is a selection of its facts. `reasons.ts` writes the engine's severity reasons in words (rule, trigger data), `Chips.tsx` and `labels.ts` are the severity and SLA chips, `moment.ts` formats a date or time (a missing one reads "Unknown") and `paths.ts` holds the claim and policy-invoice addresses. Exceptions & SLA (`features/exceptions`) lists the flagged open claims with the shared filters plus severity and reason; Claim Detail reads `claims.get`, `claims.facts` for one `claim_id`, the claim's tasks and the master names. Decisions: DD-28 to DD-39.
 
 ## States
 

@@ -6,6 +6,11 @@ export const GABORONE_ZONE = 'Africa/Gaborone';
 
 const GABORONE_OFFSET_MS = 2 * 60 * 60 * 1000;
 
+/** Position in time, for ordering events; a date alone means the start of that day in Africa/Gaborone. */
+export function momentMs(moment: string): number {
+  return Date.parse(moment.length === 10 ? `${moment}T00:00:00${GABORONE_OFFSET}` : moment);
+}
+
 export function instantOf(date: Date): string {
   const wall = new Date(date.getTime() + GABORONE_OFFSET_MS).toISOString();
   return `${wall.slice(0, 19)}${GABORONE_OFFSET}`;

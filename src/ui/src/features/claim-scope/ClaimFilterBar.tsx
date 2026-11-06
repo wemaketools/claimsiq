@@ -1,4 +1,6 @@
 /** The filter bar every claim screen shares: policy, broker, product and handler, with Clear filters. */
+import type { ReactNode } from 'react';
+
 import { PERIOD_OPTIONS } from '../../../../contracts/index';
 import { ErrorState, FilterBar, Select } from '../../components/ui';
 import type { SelectOption } from '../../components/ui';
@@ -11,9 +13,15 @@ export interface ClaimFilterBarProps {
   readonly scope: ClaimScope;
   /** Adds the period choice, for the screens that show period figures. */
   readonly withPeriod?: boolean;
+  /** Filters of the screen itself, shown after the shared ones; Clear filters clears them too. */
+  readonly extra?: {
+    readonly fields: ReactNode;
+    readonly active: boolean;
+    readonly clear: () => void;
+  };
 }
 
-export function ClaimFilterBar({ scope, withPeriod = false }: ClaimFilterBarProps) {
+export function ClaimFilterBar({ scope, withPeriod = false, extra }: ClaimFilterBarProps) {
   const { filters, setFilter, lookups } = scope;
   const options = lookups.lookups?.options;
   const field = (
@@ -35,8 +43,11 @@ export function ClaimFilterBar({ scope, withPeriod = false }: ClaimFilterBarProp
     <>
       <FilterBar
         label={t('claim-scope.filters.label')}
-        onClear={scope.clearFilters}
-        canClear={scope.filtered}
+        onClear={() => {
+          scope.clearFilters();
+          extra?.clear();
+        }}
+        canClear={scope.filtered || extra?.active === true}
       >
         {withPeriod && (
           <Select
@@ -76,6 +87,7 @@ export function ClaimFilterBar({ scope, withPeriod = false }: ClaimFilterBarProp
           t('claim-scope.filters.allHandlers'),
           options?.handlers ?? NONE,
         )}
+        {extra?.fields}
       </FilterBar>
       {lookups.error !== null && (
         <ErrorState

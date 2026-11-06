@@ -71,6 +71,11 @@ describe('the claims rules engine on the TEST fixture', () => {
       ['INITIAL', '0.00', '8000.00', null, false],
       ['INCREASE', '8000.00', '11000.00', 37.5, true],
     ]);
+    // It is material by the share of the prior amount (37.5% of P8,000 against 30%), not by the P5,000 amount.
+    expect(byClaim['CLM-101']?.reserve_movements.map((m) => [m.material_by, m.threshold_amount, m.threshold_percent])).toEqual([
+      [null, '5000.00', 30],
+      ['PERCENT', '5000.00', 30],
+    ]);
     expect(byClaim['CLM-102']?.reserve_movements.map((m) => m.material)).toEqual([false, false]);
     expect(byClaim['CLM-101']?.supplier_waits[0]).toMatchObject({ requested_at: '2026-10-06', status: 'delayed', business_days_waited: 11 });
 

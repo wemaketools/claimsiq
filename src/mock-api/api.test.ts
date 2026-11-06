@@ -82,6 +82,10 @@ describe('the mock API', () => {
     const inv001 = (await api.call(endpoints.invoicesList)).body.items.find((i) => i.invoice_id === 'INV-001');
     expect(inv001?.allocations.map((a) => a.allocated_amount)).toEqual(['6000.00']);
     expect(inv001?.receipts.map((r) => r.receipt_id)).toEqual(['RCP-001']);
+    // The invoices of one policy are joined on policy_id; the facts of one claim on claim_id.
+    expect((await api.call(endpoints.invoicesList, { query: { policy_id: 'POL-006' } })).body.items.map((i) => i.invoice_id)).toEqual(['INV-006']);
+    expect((await api.call(endpoints.invoicesList, { query: { policy_id: 'POL-999' } })).body.items).toEqual([]);
+    expect((await api.call(endpoints.claimsFacts, { query: { claim_id: 'CLM-104' } })).body.items.map((f) => f.claim_id)).toEqual(['CLM-104']);
 
     const issues = await api.call(endpoints.dataIssues, { tenant: 'DEMO' });
     expect(issues.body).toMatchObject({ tenant_id: 'DEMO', quarantined_rows: 0, issues: [] });

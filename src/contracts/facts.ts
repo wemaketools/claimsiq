@@ -61,6 +61,11 @@ export const ReserveMovementFact = z.object({
   /** Of the prior amount, one decimal; null when the prior amount is zero. */
   change_percent: z.number().nullable(),
   material: z.boolean(),
+  /** Which test made it material: the absolute amount or the share of the prior amount; null when it is not material. */
+  material_by: z.enum(['AMOUNT', 'PERCENT']).nullable(),
+  /** The thresholds the movement was tested against, so the screen can say which rule fired. */
+  threshold_amount: Money,
+  threshold_percent: z.number(),
   reason: z.string(),
 });
 export type ReserveMovementFact = z.infer<typeof ReserveMovementFact>;

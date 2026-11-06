@@ -21,7 +21,7 @@ const DESTINATIONS = [
 ];
 
 /** The destinations whose screens come in later items and still show their empty state. */
-const PLACEHOLDERS = ['Exceptions & SLA', 'Suppliers', 'Action Queue'];
+const PLACEHOLDERS = ['Suppliers', 'Action Queue'];
 
 async function signIn(page: Page, localPart: string): Promise<void> {
   await page.goto('/signin');
@@ -82,6 +82,18 @@ test.describe('shell', () => {
         await expect(page.getByRole('region', { name: 'Claim filters' })).toBeVisible();
       }
     }
+    await expectNoAxeViolations(page);
+
+    // A claim opens from the list, and its policy opens the invoices of that policy.
+    await nav.getByRole('link', { name: 'Claims' }).click();
+    await page.getByRole('table', { name: 'Claims' }).getByRole('link', { name: 'DCLM-002' }).click();
+    await expect(page.getByRole('heading', { name: 'Claim DCLM-002', level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Stage timeline' })).toBeVisible();
+    await expectNoAxeViolations(page);
+    await page.getByRole('link', { name: 'View policy invoices' }).click();
+    await expect(page.getByRole('heading', { name: 'Policy invoices', level: 1 })).toBeVisible();
+    await expect(page.getByText('A stand-in for Premium Collections')).toBeVisible();
+    await expect(page.getByRole('table', { name: 'Invoices of the policy' })).toBeVisible();
     await expectNoAxeViolations(page);
 
     await page.getByRole('combobox', { name: 'Viewing as' }).selectOption('supplier-coordinator');

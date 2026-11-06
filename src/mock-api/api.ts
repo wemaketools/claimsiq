@@ -6,7 +6,7 @@
  * Reads return the raw records of the tenant in `X-Tenant-Id`. Claims and their child records, receipts, allocations
  * and payment attempts are limited to those dated on or before `X-As-Of`; master data, invoices and tasks are not.
  * Nothing is rewritten; the one computed read is `claims.facts`, which runs the rules engine (`src/rules`) over the same
- * as-of records, narrowed first by the query (policy, broker, product, handler). Commands change a copy kept in
+ * as-of records, narrowed first by the query (claim, policy, broker, product, handler). Commands change a copy kept in
  * `KeyValueStore` and never the fixture.
  */
 import type { z } from 'zod';
@@ -191,11 +191,12 @@ export function createMockApi(options: MockApiOptions): MockApi {
     return { tenant_id: c.data.tenant.tenant_id, as_of: c.asOf, item };
   });
   route(endpoints.claimsFacts, (c) => {
-    const { policy_id, broker_id, product_id, handler_id, period } = c.query;
+    const { claim_id, policy_id, broker_id, product_id, handler_id, period } = c.query;
     const policies = new Map(c.data.records.policy.map((policy) => [policy.policy_id, policy]));
     const claims = claimRecords(c.data, c.asOf).filter((claim) => {
       const policy = policies.get(claim.policy_id);
       return (
+        (claim_id === undefined || claim.claim_id === claim_id) &&
         (policy_id === undefined || claim.policy_id === policy_id) &&
         (handler_id === undefined || claim.handler_id === handler_id) &&
         (broker_id === undefined || policy?.broker_id === broker_id) &&
@@ -219,7 +220,12 @@ export function createMockApi(options: MockApiOptions): MockApi {
   route(endpoints.clientsList, (c) => read(c, c.data.records.client));
   route(endpoints.brokersList, (c) => read(c, c.data.records.broker));
   route(endpoints.productsList, (c) => read(c, c.data.records.product));
-  route(endpoints.invoicesList, (c) => read(c, invoiceRecords(c.data, c.asOf)));
+  route(endpoints.invoicesList, (c) =>
+    read(
+      c,
+      invoiceRecords(c.data, c.asOf).filter((invoice) => c.query.policy_id === undefined || invoice.policy_id === c.query.policy_id),
+    ),
+  );
   route(endpoints.suppliersList, (c) => read(c, c.data.records.supplier));
   route(endpoints.usersList, (c) => read(c, c.data.records.user));
   route(endpoints.tasksList, (c) => {

@@ -15,8 +15,8 @@ import { createAppStore } from './store';
 const PAGES = [
   ['Overview', 'Paid to date'],
   ['Stages & Aging', 'Age detail'],
-  ['Exceptions & SLA', 'No exceptions to review'],
-  ['Claims', 'CLM-101'],
+  ['Exceptions & SLA', 'Why it needs review'],
+  ['Claims', 'Showing 1–6 of 6'],
   ['Suppliers', 'No suppliers to show'],
   ['Action Queue', 'No actions in the queue'],
 ] as const;

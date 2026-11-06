@@ -129,8 +129,9 @@ export const CreateTaskBody = z.object({
 });
 export type CreateTaskBody = z.input<typeof CreateTaskBody>;
 
-/** Narrows the claims `claims.facts` covers (the summary is computed over the narrowed set, never over all claims) and names the period window. */
+/** Narrows the claims `claims.facts` covers (one claim, or by policy, broker, product, handler; the summary is computed over the narrowed set, never over all claims) and names the period window. */
 export const ClaimFactsQuery = z.object({
+  claim_id: Id.optional(),
   policy_id: Id.optional(),
   broker_id: Id.optional(),
   product_id: Id.optional(),
@@ -139,6 +140,10 @@ export const ClaimFactsQuery = z.object({
   period: PeriodOption.optional(),
 });
 export type ClaimFactsQuery = z.infer<typeof ClaimFactsQuery>;
+
+/** The invoices of one policy; the join is the policy id and never a name. */
+export const InvoicesQuery = z.object({ policy_id: Id.optional() });
+export type InvoicesQuery = z.infer<typeof InvoicesQuery>;
 
 export const AssignTaskBody = z.object({ assigned_to: Id });
 export type AssignTaskBody = z.infer<typeof AssignTaskBody>;
@@ -183,6 +188,7 @@ export const endpoints = {
     id: 'invoices.list',
     method: 'GET',
     path: `${API}/invoices`,
+    query: InvoicesQuery,
     response: collection(InvoiceRecord),
   }),
   suppliersList: endpoint({ id: 'suppliers.list', method: 'GET', path: `${API}/suppliers`, response: collection(Supplier) }),

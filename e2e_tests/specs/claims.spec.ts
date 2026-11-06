@@ -102,6 +102,24 @@ test.describe('claim screens', () => {
     await expect(card('Open claims')).toContainText('2');
     await expectNoAxeViolations(page);
 
+    // Exceptions & SLA keeps the filter; a flagged claim opens with its reserve flag, and its policy opens its invoice.
+    const nav = page.getByRole('navigation', { name: 'Main navigation' });
+    await nav.getByRole('link', { name: 'Exceptions & SLA' }).click();
+    const exceptionIds = page.getByRole('table', { name: 'Exceptions' }).locator('tbody tr td:first-child');
+    await expect(exceptionIds).toHaveText(['CLM-101']);
+    await expect(page.getByRole('table', { name: 'Exceptions' })).toContainText('Supplier delay');
+    await expectNoHorizontalScroll(page);
+    await expectNoAxeViolations(page);
+    await page.getByRole('link', { name: 'CLM-101' }).click();
+    await expect(page.getByRole('heading', { name: 'Claim CLM-101', level: 1 })).toBeVisible();
+    await expect(page.getByRole('table', { name: 'Reserve history of the claim' })).toContainText('Review: material change');
+    await expectNoHorizontalScroll(page);
+    await expectNoAxeViolations(page);
+    await page.getByRole('link', { name: 'View policy invoices' }).click();
+    await expect(page.getByRole('table', { name: 'Invoices of the policy' })).toContainText('INV-001');
+    await expectNoHorizontalScroll(page);
+    await expectNoAxeViolations(page);
+
     // Reset shows a toast; with it on screen the page still passes axe (a status role on a list item used to fail it).
     await page.getByRole('button', { name: 'Reset', exact: true }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Reset', exact: true }).click();

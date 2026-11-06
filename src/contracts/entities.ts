@@ -32,6 +32,7 @@ export const TaskModule = z.enum(TASK_MODULES);
 export const TaskSubjectType = z.enum(TASK_SUBJECT_TYPES);
 export const TaskPriority = z.enum(TASK_PRIORITIES);
 export const TaskStatus = z.enum(TASK_STATUSES);
+export type TaskPriority = z.infer<typeof TaskPriority>;
 export type TaskStatus = z.infer<typeof TaskStatus>;
 
 export const Tenant = z.object({

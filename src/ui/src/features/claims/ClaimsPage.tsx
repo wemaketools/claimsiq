@@ -5,13 +5,12 @@ import { formatMoney } from '../../../../contracts/index';
 import {
   Banner,
   ButtonLink,
-  Chip,
   DataTable,
   EmptyState,
   PageHeader,
   Reference,
 } from '../../components/ui';
-import type { ChipTone, DataTableColumn, DataTableSort } from '../../components/ui';
+import type { DataTableColumn, DataTableSort } from '../../components/ui';
 import { EMPTY_VALUE, formatCount } from '../../lib/format';
 import { t } from '../../lib/i18n';
 import {
@@ -19,32 +18,24 @@ import {
   CRITERION_PARAM,
   ClaimFilterBar,
   ExportCsvButton,
+  SeverityChip,
+  SlaChip,
+  claimPath,
   describeCriterion,
   matchesCriterion,
   parseCriterion,
   stageLabel,
   useClaimScope,
 } from '../claim-scope';
-import { claimRows, claimsTable, severityLabel, slaLabel, sortRows } from './rows';
+import { claimRows, claimsTable, sortRows } from './rows';
 import type { ClaimRow } from './rows';
-
-const SLA_TONE = {
-  breached: 'danger',
-  approaching: 'warning',
-  within: 'success',
-  unknown: 'neutral',
-} as const satisfies Record<string, ChipTone>;
-const SEVERITY_TONE = { High: 'danger', Medium: 'warning', Low: 'info' } as const satisfies Record<
-  string,
-  ChipTone
->;
 
 const BASE_COLUMNS: DataTableColumn<ClaimRow>[] = [
   {
     id: 'claim',
     header: t('claims.column.claim'),
     sortable: true,
-    cell: (row) => <Reference value={row.id} to={`${CLAIMS_PATH}/${encodeURIComponent(row.id)}`} />,
+    cell: (row) => <Reference value={row.id} to={claimPath(row.id)} />,
   },
   { id: 'client', header: t('claims.column.client'), sortable: true, cell: (row) => row.client },
   { id: 'product', header: t('claims.column.product'), sortable: true, cell: (row) => row.product },
@@ -87,27 +78,13 @@ const BASE_COLUMNS: DataTableColumn<ClaimRow>[] = [
     id: 'sla',
     header: t('claims.column.sla'),
     sortable: true,
-    cell: (row) =>
-      row.sla === null ? (
-        EMPTY_VALUE
-      ) : (
-        <Chip tone={SLA_TONE[row.sla]} size="sm">
-          {slaLabel(row.sla)}
-        </Chip>
-      ),
+    cell: (row) => (row.sla === null ? EMPTY_VALUE : <SlaChip status={row.sla} />),
   },
   {
     id: 'severity',
     header: t('claims.column.severity'),
     sortable: true,
-    cell: (row) =>
-      row.severity === null ? (
-        EMPTY_VALUE
-      ) : (
-        <Chip tone={SEVERITY_TONE[row.severity]} size="sm">
-          {severityLabel(row.severity)}
-        </Chip>
-      ),
+    cell: (row) => (row.severity === null ? EMPTY_VALUE : <SeverityChip severity={row.severity} />),
   },
 ];
 

@@ -3,7 +3,7 @@ import { compareMoney } from '../../../../contracts/index';
 import type { ClaimFacts, Severity, SlaStatus } from '../../../../contracts/index';
 import type { DataTableSort } from '../../components/ui';
 import { t } from '../../lib/i18n';
-import { stageLabel } from '../claim-scope';
+import { severityLabel, slaLabel, stageLabel } from '../claim-scope';
 import type { ClaimLookups } from '../claim-scope';
 
 export interface ClaimRow {
@@ -85,9 +85,6 @@ export function sortRows(rows: readonly ClaimRow[], sort: DataTableSort): ClaimR
       direction * compareBy(sort.key, a, b) || a.id.localeCompare(b.id, 'en', { numeric: true }),
   );
 }
-
-export const slaLabel = (status: SlaStatus): string => t(`claim-scope.sla.${status}`);
-export const severityLabel = (severity: Severity): string => t(`claim-scope.severity.${severity}`);
 
 /** Header row first. An empty cell is a figure that does not apply (the screen shows a dash). */
 export function claimsTable(rows: readonly ClaimRow[], withPaidInPeriod: boolean): string[][] {

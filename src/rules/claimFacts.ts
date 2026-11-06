@@ -1,7 +1,7 @@
 /** The facts about one claim as of a date. Pure: the same claim record, date and config always give the same facts. */
 import { Decimal } from 'decimal.js';
 
-import { addMoney, compareMoney, onOrBeforeAsOf, sumMoney } from '../contracts/index.js';
+import { addMoney, compareMoney, momentMs, onOrBeforeAsOf, sumMoney } from '../contracts/index.js';
 import type {
   ClaimFacts,
   ClaimRecord,
@@ -15,7 +15,7 @@ import type {
   SupplierRequest,
   SupplierWaitFact,
 } from '../contracts/index.js';
-import { businessDaysBetween, calendarDaysBetween, momentMs, weekdaySet } from './calendar.js';
+import { businessDaysBetween, calendarDaysBetween, weekdaySet } from './calendar.js';
 import type { RuleConfig } from './config.js';
 import { postedPayments } from './payments.js';
 import { inPeriod, periodWindow } from './period.js';
@@ -56,8 +56,9 @@ function reserveMovements(events: readonly ReserveEvent[], context: RuleContext)
     const size = change.abs();
     const initial = index === 0 && before.isZero();
     const kind = initial ? 'INITIAL' : change.isZero() ? 'UNCHANGED' : change.isPositive() ? 'INCREASE' : 'DECREASE';
-    const material =
-      !initial && !size.isZero() && (size.gte(absolute) || (before.gt(0) && size.times(100).gte(before.times(percent))));
+    const byAmount = size.gte(absolute);
+    const byPercent = before.gt(0) && size.times(100).gte(before.times(percent));
+    const material = !initial && !size.isZero() && (byAmount || byPercent);
     return {
       reserve_event_id: event.reserve_event_id,
       event_at: event.event_at,
@@ -67,6 +68,9 @@ function reserveMovements(events: readonly ReserveEvent[], context: RuleContext)
       change_amount: size.toFixed(2),
       change_percent: before.gt(0) ? size.div(before).times(100).toDecimalPlaces(1).toNumber() : null,
       material,
+      material_by: material ? (byAmount ? 'AMOUNT' : 'PERCENT') : null,
+      threshold_amount: new Decimal(absolute).toFixed(2),
+      threshold_percent: percent,
       reason: event.reason,
     };
   });

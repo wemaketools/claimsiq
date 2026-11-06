@@ -707,6 +707,22 @@ button:disabled {
   display: none;
 }
 
+/* Up to 1599px the page title takes priority in the top bar: "Viewing as" keeps its label for assistive technology
+   only and the persona select narrows, so no page title (for example "Exceptions & SLA" at 1366px) is truncated. */
+@media (max-width: 1599px) {
+  .ciq-topbar .ciq-persona-switch > .ciq-persona-switch-label:not(.ciq-data-controls-label) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+  .ciq-persona-switch select {
+    min-width: 160px;
+  }
+}
+
 /* Icon rail below 1280px */
 @media (max-width: 1279px) {
   .ciq-app {
