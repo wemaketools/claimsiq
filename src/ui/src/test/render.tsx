@@ -30,7 +30,6 @@ export interface RenderOptions {
   readonly store?: AppStore;
   readonly route?: string;
   readonly routes?: RouteObject[];
-  /** The path pattern the element is mounted at (default `*`). */
   readonly path?: string;
   readonly auth?: AuthActions;
   readonly onUnauthorized?: () => void;

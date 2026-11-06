@@ -1,4 +1,3 @@
-/** Restores run after the current test even when it fails. */
 import { afterEach } from 'vitest';
 
 const pending: Array<() => void> = [];
