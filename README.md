@@ -72,7 +72,7 @@ bun run build:prototype    # the static build in src/ui/dist
 ### Deploy the demo (Kwaku)
 
 1. In Vercel choose **Add New, Project**, import this repository and pick the branch to deploy. Leave the framework (Vite), install command, build command and output directory as the project detects them from `vercel.json`.
-2. Do not add any environment variable. `vercel.json` already sets what the build needs: it installs with `bun install --frozen-lockfile`, builds with `VITE_AUTH_MODE=prototype bun run build` (typecheck, then the SPA in prototype mode), serves `src/ui/dist`, and rewrites every other path to `index.html`, so a link such as `/claims/CLM-101` opens directly.
+2. Do not add any environment variable. `vercel.json` already sets what the build needs: it installs with `bun install --frozen-lockfile`, builds with `VITE_AUTH_MODE=prototype bun run build` (typecheck, then the SPA in prototype mode), serves `src/ui/dist`, and rewrites every other path to `index.html`, so a link such as `/claims/DCLM-002` (a claim in the DEMO data set the prototype opens on) opens directly.
 3. Deploy. Open the URL, click a role: it lands on Overview under the banner.
 
 The deployed site is static files only. It calls no server, and the data it shows is synthetic. What a visitor changes (tasks, status) stays in their own browser until **Reset**. To check a build before deploying: `bun run build:prototype`, then `bun run --filter @claimsiq/ui preview` and open http://localhost:4273.
