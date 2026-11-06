@@ -106,7 +106,7 @@ export default function OverviewPage() {
       <PageHeader
         title={t('overview.title')}
         subtitle={t('overview.subtitle')}
-        actions={<ExportCsvButton screen="overview" scope={scope} table={table} />}
+        actions={<ExportCsvButton screen="overview" queries={[scope.facts]} table={table} />}
       />
       <ClaimFilterBar scope={scope} withPeriod />
       <QueryView

@@ -162,7 +162,7 @@ export default function ExceptionsPage() {
       <PageHeader
         title={t('exceptions.title')}
         subtitle={t('exceptions.subtitle')}
-        actions={<ExportCsvButton screen="exceptions" scope={scope} table={table} />}
+        actions={<ExportCsvButton screen="exceptions" queries={[scope.facts]} table={table} />}
       />
       <ClaimFilterBar
         scope={scope}

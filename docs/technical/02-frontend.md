@@ -1,21 +1,22 @@
 # Frontend (SPA)
 
-Status: as built (scaffold, data layer and the claim screens: Overview, Stages & Aging, Claims, Exceptions & SLA, Claim Detail, policy invoices). The decisions behind it (prefix and palette, brand, navigation, persona switch, tenant) are in `docs/plan/design-decisions.md`.
+Status: as built (scaffold, data layer, the claim screens: Overview, Stages & Aging, Claims, Exceptions & SLA, Claim Detail, policy invoices, and Supplier Insights and the Action Queue). The decisions behind it (prefix and palette, brand, navigation, persona switch, tenant) are in `docs/plan/design-decisions.md`.
 
 ## Layout of `src/ui/src`
 
 | Path | Contents |
 |---|---|
 | `theme/` | `tokens.css` (the `--ciq-*` custom properties for light and dark), `components.css` (the `.ciq-*` classes), `index.css` (self-hosted Inter and JetBrains Mono from `public/fonts`, imports) |
-| `components/ui/` | The design-system components (Button, Card, Chip, DataTable, Dialog, forms, KpiCard, Menu, Tabs, Timeline, EmptyState/ErrorState/RestrictedState, ScreenStates, …). Features import from `components/ui` |
+| `components/ui/` | The design-system components (Button, Card, Chip, DataTable, Dialog, forms, KpiCard, Menu, Tabs, Timeline, EmptyState/ErrorState/RestrictedState, …). Features import from `components/ui` |
 | `components/charts/` | Recharts wrappers on token colours; every chart has a table alternative for assistive technology |
 | `components/shell/` | `AppShell`, `Sidebar`, `Topbar`, `UserCard` |
-| `app/` | Store and slices (`session`, `dataContext`, `filters`), `dataContextActions.ts`, `router.tsx`, `RouteGuard`, the feature registry, `personas.ts`, `tenant.ts`, `screenStatus.ts` |
+| `app/` | Store and slices (`session`, `dataContext`, `filters`), `dataContextActions.ts`, `router.tsx`, `RouteGuard`, the feature registry, `personas.ts`, `tenant.ts` |
 | `api/` | `client.ts` (`call(endpoint)`), `hooks.ts` (`useApiQuery`, `useApiMutation`, `invalidateApiQueries`), `endpoint.ts`, `problem.ts`, `mockTransport.ts` (Stage A: the in-browser mock API as the transport) |
 | `auth/` | `AuthProvider`, sign-in, forgot and reset password, the development-only `DemoAccounts` |
 | `features/<feature>/` | `routes.tsx`, the page, `i18n/en.ts` |
 | `features/claim-scope/` | No route: what the claim screens share (see Claim screens) |
-| `features/claim-tasks/` | No route: the "Create follow-up task" dialog and the task labels Exceptions and Claim Detail share |
+| `features/claim-tasks/` | No route: what every screen that shows a task shares: the create (claim given or chosen), assign-owner and change-status dialogs, the status chip, the audit trail and the labels |
+| `features/suppliers/`, `features/actions/` | Supplier Insights (`suppliers.insights`, rows and CSV in `rows.ts`) and the Action Queue (`tasks.list` joined to the claim's flags and the owner's name; queue order, filters and CSV in `rows.ts`) |
 | `features/claim-detail/`, `features/invoices/` | Routes without a nav item: `/claims/:claimId` and `/policies/:policyId/invoices` (the stand-in for Premium Collections) |
 | `lib/` | `i18n.ts` (`t()`), `format.ts`, `csv.ts` (CSV text and download), `zonedTime.ts`, `storage.ts` (persona, theme, data set, as-of date, screen filters), `useMediaQuery.ts`, `useNow.ts` |
 | `i18n/en.ts` | The shell catalog (namespaces `shell`, `auth`, `ui`, `format`, `charts`, `pages`) |
@@ -44,11 +45,13 @@ Routes: `/` redirects to the first destination; `/signin`, `/forgot-password`, `
 
 ## Claim screens
 
-Overview (`features/overview`), Stages & Aging (`features/stages`) and Claims (`features/claims`) read one engine answer through `features/claim-scope`: `useClaimScope()` returns the shared filters (policy, broker, product, handler, and the period window of the period cards: `filters.byScreen['claim-scope']`, remembered under `ciq.filters`, cleared with the data set and on sign-out; Clear filters keeps the period), the `claims.facts` query for exactly those filters (the answer holds `items`, `summary` with its `period` figures, and the product, broker and handler `breakdowns`) and the master-data lookups (`useClaimLookups`: names for client, product and handler and the filter choices). `ClaimFilterBar` is the one filter bar. `criteria.ts` holds the criterion a figure counts, how it travels in the address (`/claims?show=stage:Assessment`) and the predicate that selects those claims from the facts; `stageAgeRows.ts` makes the stage and age rows from the summary; `ExportCsvButton` downloads the rows a screen builds from its own figures (`lib/csv.ts`) and is off while a request is on its way or after a failed one (DD-36). Screens never recompute a rule: a figure is a field of the engine's summary, a list is a selection of its facts. `reasons.ts` writes the engine's severity reasons in words (rule, trigger data), `Chips.tsx` and `labels.ts` are the severity and SLA chips, `moment.ts` formats a date or time (a missing one reads "Unknown") and `paths.ts` holds the claim and policy-invoice addresses. Exceptions & SLA (`features/exceptions`) lists the flagged open claims with the shared filters plus severity and reason; Claim Detail reads `claims.get`, `claims.facts` for one `claim_id`, the claim's tasks and the master names. Decisions: DD-28 to DD-39.
+Overview (`features/overview`), Stages & Aging (`features/stages`) and Claims (`features/claims`) read one engine answer through `features/claim-scope`: `useClaimScope()` returns the shared filters (policy, broker, product, handler, and the period window of the period cards: `filters.byScreen['claim-scope']`, remembered under `ciq.filters`, cleared with the data set and on sign-out; Clear filters keeps the period), the `claims.facts` query for exactly those filters (the answer holds `items`, `summary` with its `period` figures, and the product, broker and handler `breakdowns`) and the master-data lookups (`useClaimLookups`: names for client, product and handler and the filter choices). `ClaimFilterBar` is the one filter bar. `criteria.ts` holds the criterion a figure counts, how it travels in the address (`/claims?show=stage:Assessment`) and the predicate that selects those claims from the facts; `stageAgeRows.ts` makes the stage and age rows from the summary; `ExportCsvButton` downloads the rows a screen builds from its own figures (`lib/csv.ts`) and is off while any of the queries it is given is on its way or has failed (DD-36, DD-44). Screens never recompute a rule: a figure is a field of the engine's summary, a list is a selection of its facts. `reasons.ts` writes the engine's severity reasons in words (rule, trigger data), `Chips.tsx` and `labels.ts` are the severity and SLA chips, `moment.ts` formats a date or time (a missing one reads "Unknown") and `paths.ts` holds the claim and policy-invoice addresses. Exceptions & SLA (`features/exceptions`) lists the flagged open claims with the shared filters plus severity and reason; Claim Detail reads `claims.get`, `claims.facts` for one `claim_id`, the claim's tasks and the master names. Decisions: DD-28 to DD-39.
+
+Supplier Insights reads the shared filters through `useClaimScope()` and its own figures from `suppliers.insights`; a supplier opens the Claims list with the `supplier:<id>` criterion (DD-40, DD-41). The Action Queue has its own filters (status, owner, priority), is never limited by persona (DD-43) and shows the engine's `overdue` flag on each task (DD-42); its dialogs, and the same assign and status buttons on Claim Detail's task list, are the ones in `features/claim-tasks`.
 
 ## States
 
-Every screen has a loading, an empty and an error state, and a restricted state where a view can be limited. `EmptyState`, `ErrorState` (a 403 renders the restricted state instead) and `RestrictedState` are in `components/ui`; `QueryView` wires a `useApiQuery` result to them. A screen without data yet uses `useScreenStatus(screen)` and `ScreenStates`; `configureScreenLoader` lets a test hold a screen in `loading` or fail it.
+Every screen has a loading, an empty and an error state, and a restricted state where a view can be limited. `EmptyState`, `ErrorState` (a 403 renders the restricted state instead) and `RestrictedState` are in `components/ui`; `QueryView` wires a `useApiQuery` result to them.
 
 ## API client
 

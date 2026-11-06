@@ -36,6 +36,8 @@ export interface ConfirmActionDialogProps {
   /** A statement the user must tick before confirming (for example an irrevocable action). */
   readonly acknowledgement?: string;
   readonly pending?: boolean;
+  /** Keeps Confirm off until the dialog's own fields (given as `children`) are filled. */
+  readonly confirmDisabled?: boolean;
   readonly error?: ApiError | null;
   /** Extra content, such as a readiness summary. */
   readonly children?: ReactNode;
@@ -64,6 +66,7 @@ function OpenConfirmActionDialog({
   reason,
   acknowledgement,
   pending = false,
+  confirmDisabled = false,
   error = null,
   children,
   size = 'md',
@@ -75,7 +78,8 @@ function OpenConfirmActionDialog({
 
   const errors = formErrors(error, ['reason']);
   const reasonMissing = reason?.required === true && reasonText.trim() === '';
-  const blocked = reasonMissing || (acknowledgement !== undefined && !acknowledged);
+  const blocked =
+    reasonMissing || confirmDisabled || (acknowledgement !== undefined && !acknowledged);
 
   return (
     <Dialog

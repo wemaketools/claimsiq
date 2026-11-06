@@ -35,6 +35,13 @@ export const TaskStatus = z.enum(TASK_STATUSES);
 export type TaskPriority = z.infer<typeof TaskPriority>;
 export type TaskStatus = z.infer<typeof TaskStatus>;
 
+/** The status changes a task allows: a Done task can only be reopened, not resumed. */
+export const TASK_STATUS_TRANSITIONS: Readonly<Record<TaskStatus, readonly TaskStatus[]>> = {
+  OPEN: ['IN_PROGRESS', 'DONE'],
+  IN_PROGRESS: ['OPEN', 'DONE'],
+  DONE: ['OPEN'],
+};
+
 export const Tenant = z.object({
   tenant_id: Id,
   display_name: Text,

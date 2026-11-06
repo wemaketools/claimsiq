@@ -148,15 +148,6 @@ const en = {
     due: 'Due',
     noDue: 'No due date',
     priority: 'Priority {priority}',
-    history: 'History of {task}',
-    audit: {
-      CREATED: 'Created as {to}',
-      ASSIGNED: 'Assigned to {to}',
-      STATUS_CHANGED: 'Status changed from {from} to {to}',
-      unassignedFrom: 'not assigned',
-      by: '{actor} · {time}',
-      note: 'Note: {note}',
-    },
   },
 } satisfies Catalog;
 

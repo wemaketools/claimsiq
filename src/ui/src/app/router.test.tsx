@@ -2,13 +2,12 @@ import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
+import type { ApiTransport } from '../api/client';
 import { createMockTransport } from '../api/mockTransport';
 import { signedInSession } from '../test/fixtures';
 import { renderRouteTree } from '../test/render';
-import { restoreAfterEach } from '../test/restoreAfterEach';
 import { features } from './featureRegistry';
 import { buildRoutes } from './router';
-import { configureScreenLoader } from './screenStatus';
 import { signedOut } from './slices/session';
 import { createAppStore } from './store';
 
@@ -17,7 +16,7 @@ const PAGES = [
   ['Stages & Aging', 'Age detail'],
   ['Exceptions & SLA', 'Why it needs review'],
   ['Claims', 'Showing 1–6 of 6'],
-  ['Suppliers', 'No suppliers to show'],
+  ['Suppliers', 'Mma-Motor Repairs (fictional)'],
   ['Action Queue', 'No actions in the queue'],
 ] as const;
 
@@ -70,31 +69,41 @@ describe('the application routes', () => {
     expect(router.state.location.pathname).toBe('/signin');
   });
 
-  it('shows a page loading, then its error with a retry that recovers to the empty state', async () => {
+  it('shows a page loading, then its error with a retry that recovers to the page', async () => {
+    const mock = createMockTransport();
     let attempt = 0;
     let release: () => void = () => undefined;
-    restoreAfterEach(
-      configureScreenLoader(() => {
-        attempt += 1;
-        if (attempt === 1) {
-          return new Promise<void>((resolve) => {
-            release = resolve;
-          }).then(() => Promise.reject(new Error('Backend is down')));
-        }
-        return Promise.resolve();
-      }),
-    );
+    const transport: ApiTransport = (url, init) => {
+      if (!url.startsWith('/api/v1/supplier-insights')) return mock(url, init);
+      attempt += 1;
+      if (attempt > 1) return mock(url, init);
+      return new Promise<void>((resolve) => {
+        release = resolve;
+      }).then(
+        () =>
+          new Response(JSON.stringify({ type: 'about:blank', title: 'Down', status: 500 }), {
+            status: 500,
+            headers: { 'content-type': 'application/problem+json' },
+          }),
+      );
+    };
     renderRouteTree(buildRoutes(features), {
-      state: { session: signedInSession() },
+      state: {
+        session: signedInSession(),
+        dataContext: { dataSet: 'TEST', asOf: '2026-10-21' },
+      },
+      transport,
       route: '/suppliers',
     });
-    expect(await screen.findByText('Loading…')).toBeInTheDocument();
+    expect(await screen.findByRole('table', { name: 'Suppliers' })).toHaveAttribute(
+      'aria-busy',
+      'true',
+    );
 
     await act(async () => release());
 
-    expect(await screen.findByText('This could not be loaded')).toBeInTheDocument();
-    expect(screen.getByText(/could not be reached/)).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Try again' })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
-    expect(await screen.findByText('No suppliers to show')).toBeInTheDocument();
+    expect(await screen.findByText('Mma-Motor Repairs (fictional)')).toBeInTheDocument();
   });
 });

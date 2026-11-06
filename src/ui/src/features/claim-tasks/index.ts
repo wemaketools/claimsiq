@@ -1,3 +1,5 @@
-/** Follow-up tasks on a claim: the create dialog and the labels Exceptions and Claim Detail share. */
+/** Follow-up tasks: the create, assign and status dialogs, and the labels, chips and audit trail every screen that shows a task shares. */
 export * from './CreateTaskDialog';
 export * from './labels';
+export * from './TaskDialogs';
+export * from './TaskParts';

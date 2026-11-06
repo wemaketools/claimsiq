@@ -5,8 +5,9 @@
  *
  * Reads return the raw records of the tenant in `X-Tenant-Id`. Claims and their child records, receipts, allocations
  * and payment attempts are limited to those dated on or before `X-As-Of`; master data, invoices and tasks are not.
- * Nothing is rewritten; the one computed read is `claims.facts`, which runs the rules engine (`src/rules`) over the same
- * as-of records, narrowed first by the query (claim, policy, broker, product, handler). Commands change a copy kept in
+ * Nothing is rewritten; the computed reads are `claims.facts` and `suppliers.insights`, which run the rules engine
+ * (`src/rules`) over the same as-of records, narrowed first by the query (claim, policy, broker, product, handler),
+ * and the `overdue` flag of `tasks.list`. Commands change a copy kept in
  * `KeyValueStore` and never the fixture.
  */
 import type { z } from 'zod';
@@ -16,6 +17,7 @@ import {
   DEFAULT_AS_OF,
   PERSONA_HEADER,
   PersonaId,
+  TASK_STATUS_TRANSITIONS,
   TENANT_HEADER,
   endpoints,
   instantOf,
@@ -23,12 +25,13 @@ import {
   isRealDate,
 } from '../contracts/index.js';
 import type {
+  ClaimFactsQuery,
   DataSetId,
   EndpointContract,
   TaskAuditEntry,
   TaskRecord,
 } from '../contracts/index.js';
-import { breakdownOfOpenClaims, computeClaimsFacts, parseRuleConfig } from '../rules/index.js';
+import { breakdownOfOpenClaims, computeClaimsFacts, isTaskOverdue, parseRuleConfig, summarizeSuppliers } from '../rules/index.js';
 import { claimRecords, invoiceRecords } from './asOfViews.js';
 import { changesKey, clearChanges, readChanges, taskIdOf, writeChanges } from './changes.js';
 import type { Changes } from './changes.js';
@@ -190,8 +193,12 @@ export function createMockApi(options: MockApiOptions): MockApi {
     }
     return { tenant_id: c.data.tenant.tenant_id, as_of: c.asOf, item };
   });
-  route(endpoints.claimsFacts, (c) => {
-    const { claim_id, policy_id, broker_id, product_id, handler_id, period } = c.query;
+  /** The claims visible at the as-of date that match the claim filters (broker and product reach a claim through its policy). */
+  function narrowedClaims(
+    c: Context<unknown, unknown>,
+    query: Omit<ClaimFactsQuery, 'period'>,
+  ) {
+    const { claim_id, policy_id, broker_id, product_id, handler_id } = query;
     const policies = new Map(c.data.records.policy.map((policy) => [policy.policy_id, policy]));
     const claims = claimRecords(c.data, c.asOf).filter((claim) => {
       const policy = policies.get(claim.policy_id);
@@ -203,7 +210,12 @@ export function createMockApi(options: MockApiOptions): MockApi {
         (product_id === undefined || policy?.product_id === product_id)
       );
     });
-    const { items, summary } = computeClaimsFacts(claims, { asOf: c.asOf, config: ruleConfig, period });
+    return { policies, claims };
+  }
+
+  route(endpoints.claimsFacts, (c) => {
+    const { policies, claims } = narrowedClaims(c, c.query);
+    const { items, summary } = computeClaimsFacts(claims, { asOf: c.asOf, config: ruleConfig, period: c.query.period });
     return {
       tenant_id: c.data.tenant.tenant_id,
       as_of: c.asOf,
@@ -214,6 +226,15 @@ export function createMockApi(options: MockApiOptions): MockApi {
         brokers: breakdownOfOpenClaims(items, (fact) => policies.get(fact.policy_id)?.broker_id ?? null),
         handlers: breakdownOfOpenClaims(items, (fact) => fact.handler_id),
       },
+    };
+  });
+  route(endpoints.suppliersInsights, (c) => {
+    const { items } = computeClaimsFacts(narrowedClaims(c, c.query).claims, { asOf: c.asOf, config: ruleConfig });
+    const tasks = allTasks(c.data, readAll(c.data));
+    return {
+      tenant_id: c.data.tenant.tenant_id,
+      as_of: c.asOf,
+      ...summarizeSuppliers(c.data.records.supplier, items, tasks, { asOf: c.asOf, config: ruleConfig }),
     };
   });
   route(endpoints.policiesList, (c) => read(c, c.data.records.policy));
@@ -234,7 +255,8 @@ export function createMockApi(options: MockApiOptions): MockApi {
       .filter((task) => subject_type === undefined || task.subject_type === subject_type)
       .filter((task) => subject_id === undefined || task.subject_id === subject_id)
       .filter((task) => assigned_to === undefined || task.assigned_to === assigned_to)
-      .filter((task) => status === undefined || task.status === status);
+      .filter((task) => status === undefined || task.status === status)
+      .map((task) => ({ ...task, overdue: isTaskOverdue(task, c.asOf) }));
     return read(c, tasks);
   });
 
@@ -316,6 +338,9 @@ export function createMockApi(options: MockApiOptions): MockApi {
       const task = findTask(c.data, changes, c.params.taskId ?? '');
       if (task.status === c.body.status) {
         return task;
+      }
+      if (!TASK_STATUS_TRANSITIONS[task.status].includes(c.body.status)) {
+        fail('status', `A task that is ${task.status} cannot become ${c.body.status}.`);
       }
       const at = instantOf(c.now);
       const updated = audit(

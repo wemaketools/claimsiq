@@ -3,7 +3,7 @@
  * (`/claims?show=stage:Assessment`) and selects exactly those claims from the engine's facts. A criterion only selects;
  * every figure itself comes from the rules engine.
  */
-import { CLAIM_STAGES, compareMoney } from '../../../../contracts/index';
+import { CLAIM_STAGES, compareMoney, isSupplierCase } from '../../../../contracts/index';
 import type { ClaimFacts, ClaimStage } from '../../../../contracts/index';
 import { t } from '../../lib/i18n';
 
@@ -41,7 +41,8 @@ const OPEN_STAGES = CLAIM_STAGES.filter((stage) => stage !== 'Closed');
 export type ClaimCriterion =
   | { readonly kind: Plain }
   | { readonly kind: 'stage'; readonly stage: ClaimStage | typeof UNKNOWN }
-  | { readonly kind: 'age'; readonly bucket: string };
+  | { readonly kind: 'age'; readonly bucket: string }
+  | { readonly kind: 'supplier'; readonly supplier: string };
 
 export function criterionValue(criterion: ClaimCriterion): string {
   switch (criterion.kind) {
@@ -49,6 +50,8 @@ export function criterionValue(criterion: ClaimCriterion): string {
       return `stage:${criterion.stage}`;
     case 'age':
       return `age:${criterion.bucket}`;
+    case 'supplier':
+      return `supplier:${criterion.supplier}`;
     default:
       return criterion.kind;
   }
@@ -72,6 +75,7 @@ export function parseCriterion(value: string | null): ClaimCriterion | null {
     return argument === UNKNOWN ? { kind: 'stage', stage: UNKNOWN } : null;
   }
   if (kind === 'age' && argument !== '') return { kind: 'age', bucket: argument };
+  if (kind === 'supplier' && argument !== '') return { kind: 'supplier', supplier: argument };
   return null;
 }
 
@@ -115,6 +119,8 @@ export function matchesCriterion(criterion: ClaimCriterion, fact: ClaimFacts): b
           ? fact.age_days === null
           : fact.age_bucket === criterion.bucket)
       );
+    case 'supplier':
+      return isSupplierCase(fact, criterion.supplier);
   }
 }
 
@@ -128,8 +134,11 @@ export function stageLabel(stage: ClaimStage | null): string {
   return t(`claim-scope.stage.${stage ?? UNKNOWN}`);
 }
 
-export function describeCriterion(criterion: ClaimCriterion): string {
+/** `supplierName` is the name behind a `supplier` criterion; the id stands in until it is known. */
+export function describeCriterion(criterion: ClaimCriterion, supplierName?: string): string {
   switch (criterion.kind) {
+    case 'supplier':
+      return t('claim-scope.criteria.supplier', { supplier: supplierName ?? criterion.supplier });
     case 'stage':
       return criterion.stage === UNKNOWN
         ? t('claim-scope.criteria.stageUnknown')

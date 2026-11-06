@@ -18,13 +18,22 @@ export function fixtureFiles(name: 'test' | 'demo'): Record<string, string> {
   );
 }
 
-export function transportOver(files: { TEST?: FixtureFiles; DEMO?: FixtureFiles }): ApiTransport {
+/** The committed rule config with some of its `claims` thresholds changed. */
+export function ruleConfigWith(changes: Record<string, unknown>): unknown {
+  return { ...ruleConfig, claims: { ...ruleConfig.claims, ...changes } };
+}
+
+export function transportOver(files: {
+  TEST?: FixtureFiles;
+  DEMO?: FixtureFiles;
+  ruleConfig?: unknown;
+}): ApiTransport {
   return createMockApi({
     fixtures: {
       TEST: files.TEST ?? fixtureFiles('test'),
       DEMO: files.DEMO ?? fixtureFiles('demo'),
     },
     storage: memoryStore(),
-    ruleConfig,
+    ruleConfig: files.ruleConfig ?? ruleConfig,
   }).fetch;
 }

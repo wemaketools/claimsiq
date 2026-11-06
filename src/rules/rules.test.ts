@@ -7,7 +7,7 @@ import { claimRecords } from '../mock-api/asOfViews.js';
 import { loadDataset } from '../mock-api/fixtures/index.js';
 import { memoryStore } from '../mock-api/storage.js';
 import { readFixtureFiles, readFixtureJson } from '../mock-api/test-support/fixtureFiles.js';
-import { ageBucketLabel, businessDaysBetween, computeClaimFacts, computeClaimsFacts, parseRuleConfig, summarizeClaimFacts, weekdaySet } from './index.js';
+import { ageBucketLabel, businessDaysBetween, computeClaimFacts, computeClaimsFacts, isTaskOverdue, parseRuleConfig, summarizeClaimFacts, summarizeSuppliers, weekdaySet } from './index.js';
 import type { RuleContext } from './index.js';
 
 const AS_OF = '2026-10-21';
@@ -230,6 +230,83 @@ describe('the claims rules engine on the TEST fixture', () => {
     const weekdays = weekdaySet(parseRuleConfig(RULE_CONFIG_JSON).claims.business_days);
     expect([['2026-10-16', '2026-10-19'], ['2026-10-16', '2026-10-18'], ['2026-10-17', '2026-10-19'], ['2026-10-19', '2026-10-19'], ['2026-10-20', '2026-10-19']].map(([a, b]) => businessDaysBetween(a ?? '', b ?? '', weekdays))).toEqual([1, 0, 1, 0, 0]);
     expect([0, 7, 8, 30, 31, 60, 61, 90, 91].map((days) => ageBucketLabel([7, 30, 60, 90], days))).toEqual(['0-7', '0-7', '8-30', '8-30', '31-60', '31-60', '61-90', '61-90', '>90']);
+  });
+
+  it('summarizes each supplier from the facts: open requests, waits, breaches, cases, late actions and turnaround, with averages only from the minimum sample', async () => {
+    const suppliers = testData.records.supplier;
+    const insights = (config = parseRuleConfig(RULE_CONFIG_JSON), claims = records(), tasks: Parameters<typeof summarizeSuppliers>[2] = []) =>
+      summarizeSuppliers(suppliers, computeClaimsFacts(claims, contextOf(config)).items, tasks, contextOf(config));
+    const rowOf = (result: ReturnType<typeof insights>, id: string) => result.items.find((item) => item.supplier_id === id);
+
+    // By hand: REQ-CLM-101 was sent on 6 Oct and REQ-CLM-106 on 2 Oct, both with SUP-02 and both still open on 21 Oct.
+    // Business days after the request day up to 21 Oct: 11 and 13, so the mean is 12.0 and both pass the 5-day target.
+    // SUP-02 is assigned CLM-101 and CLM-106; SUP-01 is assigned the open CLM-102, 104 and 105 (CLM-103 is closed); SUP-03 has nothing.
+    const base = insights();
+    expect(base).toMatchObject({ min_sample: 2, target_business_days: 5 });
+    expect(base.items.map((item) => item.supplier_id)).toEqual(['SUP-01', 'SUP-02', 'SUP-03']);
+    expect(rowOf(base, 'SUP-02')).toEqual({
+      supplier_id: 'SUP-02',
+      open_requests: 2,
+      wait: { sample: 2, average: 12, longest: 13 },
+      breaches: 2,
+      unverified: 0,
+      open_assigned_cases: 2,
+      late_actions: 0,
+      turnaround: { sample: 0, average: null },
+      cases: 2,
+    });
+    expect(rowOf(base, 'SUP-01')).toMatchObject({ open_requests: 0, wait: { sample: 0, average: null, longest: null }, open_assigned_cases: 3, cases: 3 });
+    expect(rowOf(base, 'SUP-03')).toMatchObject({ open_requests: 0, open_assigned_cases: 0, cases: 0 });
+
+    // Below the minimum sample there is no average, but the longest wait and the breaches are still the cases' own facts.
+    const strict = rowOf(insights(withClaims({ supplier_min_sample: 3 })), 'SUP-02');
+    expect(strict).toMatchObject({ wait: { sample: 2, average: null, longest: 13 }, breaches: 2 });
+
+    // A raised target moves the breaches; a request with no time is unverified, not a sample; a completed request is turnaround.
+    expect(rowOf(insights(withClaims({ supplier_wait_target_business_days: 12 })), 'SUP-02')).toMatchObject({ breaches: 1 });
+    const clm101 = records().find((claim) => claim.claim_id === 'CLM-101');
+    const clm106 = records().find((claim) => claim.claim_id === 'CLM-106');
+    if (clm101 === undefined || clm106 === undefined) throw new Error('TEST claims missing');
+    const request = (claim: ClaimRecord) => claim.supplier_requests[0] as ClaimRecord['supplier_requests'][number];
+    const others = records().filter((claim) => !['CLM-101', 'CLM-106'].includes(claim.claim_id));
+    const edited = [
+      ...others,
+      { ...clm101, supplier_requests: [{ ...request(clm101), completed_at: '2026-10-13' }] },
+      { ...clm106, supplier_requests: [{ ...request(clm106), requested_at: null }] },
+    ];
+    expect(rowOf(insights(parseRuleConfig(RULE_CONFIG_JSON), edited), 'SUP-02')).toMatchObject({
+      open_requests: 1,
+      wait: { sample: 0, average: null, longest: null },
+      breaches: 0,
+      unverified: 1,
+      turnaround: { sample: 1, average: null },
+      cases: 2,
+    });
+    // Completed 13 Oct after 6 Oct: 7, 8, 9, 12 and 13 Oct make 5 business days; one request is enough when the minimum is 1.
+    expect(rowOf(insights(withClaims({ supplier_min_sample: 1 }), edited), 'SUP-02')?.turnaround).toEqual({ sample: 1, average: 5 });
+
+    // Late actions are the not-done tasks on a supplier's cases whose due date is before the as-of date (due on the day is not late).
+    const task = (subject_id: string, due_at: string | null, status: 'OPEN' | 'IN_PROGRESS' | 'DONE') => ({ subject_type: 'CLAIM' as const, subject_id, due_at, status });
+    const tasks = [
+      task('CLM-106', '2026-10-19', 'OPEN'),
+      task('CLM-106', '2026-10-20T09:00:00+02:00', 'IN_PROGRESS'),
+      task('CLM-106', '2026-10-21', 'OPEN'),
+      task('CLM-101', '2026-10-01', 'DONE'),
+      task('CLM-101', null, 'OPEN'),
+      task('CLM-104', '2026-10-10', 'OPEN'),
+    ];
+    const withTasks = insights(parseRuleConfig(RULE_CONFIG_JSON), records(), tasks);
+    expect(rowOf(withTasks, 'SUP-02')?.late_actions).toBe(2);
+    expect(rowOf(withTasks, 'SUP-01')?.late_actions).toBe(1);
+    expect(tasks.map((item) => isTaskOverdue(item, AS_OF))).toEqual([true, true, false, false, false, true]);
+
+    // The API serves the same rows over the filtered claims, and flags each task overdue.
+    const api = createMockApi({ fixtures: { TEST: readFixtureFiles('test'), DEMO: readFixtureFiles('demo') }, storage: memoryStore(), ruleConfig: RULE_CONFIG_JSON });
+    const get = async (path: string) => (await api.fetch(path, { headers: { 'X-Tenant-Id': 'TEST' } })).json();
+    expect(endpoints.suppliersInsights.response.parse(await get(endpoints.suppliersInsights.path))).toMatchObject({ tenant_id: 'TEST', as_of: AS_OF, ...base });
+    const ofBroker = endpoints.suppliersInsights.response.parse(await get(`${endpoints.suppliersInsights.path}?broker_id=BRK-01`));
+    expect(rowOf(ofBroker, 'SUP-02')).toMatchObject({ open_requests: 1, open_assigned_cases: 1, cases: 1 });
+    expect(rowOf(ofBroker, 'SUP-01')).toMatchObject({ open_assigned_cases: 1 });
   });
 
   it('formats money as P12,345.67', () => {

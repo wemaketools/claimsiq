@@ -1,7 +1,8 @@
 /**
  * The rule config (`fixtures/v1/proposed_rule_config.json`), validated. Every threshold the engine uses is read from
  * here. The thresholds the spec states in prose but its config file does not carry (the approaching window, the
- * severity cut-offs and the age buckets) are optional fields with the spec's proposed values as defaults.
+ * severity cut-offs and the age buckets) are optional fields with the spec's proposed values as defaults; the supplier
+ * sample minimum is ours (the spec only asks that a small sample not mislead).
  */
 import { z } from 'zod';
 
@@ -24,6 +25,7 @@ export const ClaimsRuleConfig = z.object({
   business_days: z.array(z.enum(BUSINESS_DAY_CODES)).min(1),
   holidays_excluded: z.literal(false, { error: 'public holidays are not supported: holidays_excluded must be false' }),
   supplier_wait_target_business_days: Count,
+  supplier_min_sample: z.number().int().min(1).default(2),
   material_reserve_delta_absolute_BWP: Amount,
   material_reserve_delta_percent: Amount,
   high_value_incurred_BWP: Amount,

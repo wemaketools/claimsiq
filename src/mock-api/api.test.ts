@@ -142,6 +142,22 @@ describe('the mock API', () => {
     await first.call(endpoints.tasksAssign, { persona: 'claims-handler', path: { taskId: 'TASK-0001' }, body: { assigned_to: handler } });
     await first.call(endpoints.tasksSetStatus, { persona: 'claims-handler', path: { taskId: 'TASK-0001' }, body: { status: 'DONE', note: 'Repairer replied' } });
 
+    // A done task cannot be resumed, only reopened; the refused change leaves no audit entry.
+    const resume = await first.call(endpoints.tasksSetStatus, { persona: 'finance', path: { taskId: 'TASK-0001' }, body: { status: 'IN_PROGRESS' } });
+    expect(resume.status).toBe(422);
+    expect(resume.body).toMatchObject({ errors: [{ field: 'status' }] });
+    const overdueOf = async () => Object.fromEntries((await first.call(endpoints.tasksList)).body.items.map((task) => [task.task_id, task.overdue]));
+    expect(await overdueOf()).toEqual({ 'TASK-0001': false });
+    // The flag follows the as-of date: not done and due before it. A done task is never overdue, and neither is one with no due date.
+    await first.call(endpoints.tasksCreate, { persona: 'finance', key: 'late', body: { subject_type: 'CLAIM', subject_id: 'CLM-101', due_at: '2026-10-20' } });
+    await first.call(endpoints.tasksCreate, { persona: 'finance', key: 'today', body: { subject_type: 'CLAIM', subject_id: 'CLM-101', due_at: '2026-10-21' } });
+    expect(await overdueOf()).toEqual({ 'TASK-0001': false, 'TASK-0002': true, 'TASK-0003': false });
+    await first.call(endpoints.tasksSetStatus, { persona: 'finance', path: { taskId: 'TASK-0002' }, body: { status: 'DONE' } });
+    expect(await overdueOf()).toMatchObject({ 'TASK-0002': false });
+    await first.call(endpoints.tasksSetStatus, { persona: 'finance', path: { taskId: 'TASK-0002' }, body: { status: 'OPEN' } });
+    expect(await overdueOf()).toMatchObject({ 'TASK-0002': true });
+    await first.call(endpoints.tasksSetStatus, { persona: 'finance', path: { taskId: 'TASK-0002' }, body: { status: 'DONE' } });
+
     const bad = await first.call(endpoints.tasksCreate, { persona: 'finance', body: { subject_type: 'CLAIM', subject_id: 'CLM-999' } });
     expect(bad.status).toBe(422);
     expect(bad.body).toMatchObject({ errors: [{ field: 'subject_id' }] });
@@ -150,14 +166,14 @@ describe('the mock API', () => {
     expect((await first.call(endpoints.tasksSetStatus, { persona: 'finance', path: { taskId: 'TASK-9' }, body: { status: 'DONE' } })).status).toBe(404);
 
     const refreshed = client(first.storage);
-    const [task] = (await refreshed.call(endpoints.tasksList)).body.items;
+    const task = (await refreshed.call(endpoints.tasksList)).body.items.find((item) => item.task_id === 'TASK-0001');
     expect(task).toMatchObject({ task_id: 'TASK-0001', status: 'DONE', assigned_to: handler });
     expect(task?.audit.map((a) => [a.action, a.actor, a.from, a.to])).toEqual([
       ['CREATED', 'head-of-claims', null, 'OPEN'],
       ['ASSIGNED', 'claims-handler', null, handler],
       ['STATUS_CHANGED', 'claims-handler', 'OPEN', 'DONE'],
     ]);
-    expect((await refreshed.call(endpoints.tasksList, { query: { status: 'OPEN' } })).body.items).toEqual([]);
+    expect((await refreshed.call(endpoints.tasksList, { query: { status: 'OPEN' } })).body.items.map((item) => item.task_id)).toEqual(['TASK-0003']);
     expect((await refreshed.call(endpoints.tasksList, { tenant: 'DEMO' })).body.items).toEqual([]);
     expect((await refreshed.call(endpoints.tasksList, { query: { status: 'FINISHED' } })).status).toBe(400);
 

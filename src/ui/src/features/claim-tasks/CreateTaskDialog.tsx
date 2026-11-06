@@ -1,4 +1,4 @@
-/** "Create follow-up task": opens a claim task through the typed endpoint, confirmed with who, what and the result. */
+/** "Create follow-up task": opens a claim task through the typed endpoint, confirmed with who, what and the result. Given no claim, it asks which one. */
 import { useState } from 'react';
 
 import { TASK_PRIORITIES, endpoints } from '../../../../contracts/index';
@@ -10,7 +10,8 @@ import { t } from '../../lib/i18n';
 import { priorityLabel } from './labels';
 
 export interface CreateTaskDialogProps {
-  readonly claimId: string;
+  /** The claim the task is for; `null` lets the user choose it (the Action Queue has no claim of its own). */
+  readonly claimId: string | null;
   readonly defaultPriority: TaskPriority;
   readonly onClose: () => void;
 }
@@ -19,6 +20,9 @@ export interface CreateTaskDialogProps {
 export function CreateTaskDialog({ claimId, defaultPriority, onClose }: CreateTaskDialogProps) {
   const toast = useToast();
   const users = useApiQuery(endpoints.usersList, {});
+  const claims = useApiQuery(endpoints.claimsList, claimId === null ? {} : null);
+  const [chosen, setChosen] = useState('');
+  const claim = claimId ?? chosen;
   const create = useApiMutation(endpoints.tasksCreate);
   const [assignee, setAssignee] = useState('');
   const [priority, setPriority] = useState<TaskPriority>(defaultPriority);
@@ -29,7 +33,12 @@ export function CreateTaskDialog({ claimId, defaultPriority, onClose }: CreateTa
       open
       size="lg"
       title={t('claim-tasks.create.title')}
-      scope={t('claim-tasks.create.scope', { claim: claimId })}
+      scope={
+        claim === ''
+          ? t('claim-tasks.create.scopeNoClaim')
+          : t('claim-tasks.create.scope', { claim })
+      }
+      confirmDisabled={claim === ''}
       consequence={t('claim-tasks.create.consequence')}
       confirmLabel={t('claim-tasks.create.confirm')}
       reason={{
@@ -45,7 +54,7 @@ export function CreateTaskDialog({ claimId, defaultPriority, onClose }: CreateTa
           const task = await create.mutate({
             body: {
               subject_type: 'CLAIM',
-              subject_id: claimId,
+              subject_id: claim,
               assigned_to: assignee === '' ? null : assignee,
               due_at: due === '' ? null : due,
               priority,
@@ -53,10 +62,7 @@ export function CreateTaskDialog({ claimId, defaultPriority, onClose }: CreateTa
             },
           });
           invalidateApiQueries('tasks.');
-          toast.show(
-            t('claim-tasks.create.created', { task: task.task_id, claim: claimId }),
-            'success',
-          );
+          toast.show(t('claim-tasks.create.created', { task: task.task_id, claim }), 'success');
           onClose();
         } catch (caught) {
           // The mutation keeps the problem and the dialog shows it; anything else is a bug worth seeing.
@@ -64,6 +70,19 @@ export function CreateTaskDialog({ claimId, defaultPriority, onClose }: CreateTa
         }
       }}
     >
+      {claimId === null && (
+        <Select
+          label={t('claim-tasks.create.claim')}
+          placeholder={t('claim-tasks.create.chooseClaim')}
+          required
+          value={chosen}
+          hint={claims.error === null ? undefined : t('claim-tasks.create.claimsFailed')}
+          options={(claims.data?.items ?? [])
+            .map((item) => ({ value: item.claim_id, label: item.claim_id }))
+            .sort((a, b) => a.label.localeCompare(b.label, 'en', { numeric: true }))}
+          onChange={setChosen}
+        />
+      )}
       <Select
         label={t('claim-tasks.create.assignee')}
         placeholder={t('claim-tasks.create.unassigned')}

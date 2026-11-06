@@ -6,4 +6,5 @@ export * from './facts.js';
 export * from './money.js';
 export * from './personas.js';
 export * from './primitives.js';
+export * from './suppliers.js';
 export * from './time.js';

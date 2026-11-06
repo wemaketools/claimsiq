@@ -1,7 +1,8 @@
 /**
  * The typed endpoints of the API, shared by the SPA (which calls them), the mock API (which implements them in the
  * browser for Stage A) and the backend later. Reads return raw records of the active tenant, limited by the as-of date
- * where the mock API says so; the one computed read is `claims.facts`, which runs the rules engine over those records.
+ * where the mock API says so; the computed reads are `claims.facts` and `suppliers.insights`, which run the rules engine over those records, and
+ * the `overdue` flag of `tasks.list`.
  *
  * Request context travels in headers: `X-Tenant-Id`, `X-As-Of` (a date, default 2026-10-21) and, on commands,
  * `X-Persona` (the actor).
@@ -11,6 +12,7 @@ import { z } from 'zod';
 import { ClaimBreakdowns, ClaimFacts, ClaimsSummary, PeriodOption } from './facts.js';
 import { PersonaId } from './personas.js';
 import { DateOnly, Id, Instant, Moment, Text } from './primitives.js';
+import { SupplierInsights } from './suppliers.js';
 import {
   Broker,
   Claim,
@@ -94,6 +96,10 @@ export type InvoiceRecord = z.infer<typeof InvoiceRecord>;
 export const TaskRecord = Task.extend({ audit: z.array(TaskAuditEntry) });
 export type TaskRecord = z.infer<typeof TaskRecord>;
 
+/** A task as `tasks.list` serves it: with the engine's judgement whether it is overdue at the as-of date. */
+export const TaskListItem = TaskRecord.extend({ overdue: z.boolean() });
+export type TaskListItem = z.infer<typeof TaskListItem>;
+
 export const DataIssue = z.object({
   /** Counts from 1 in the order found; unique in a list, so it is the key of a row. */
   issue_no: z.number().int().min(1),
@@ -140,6 +146,15 @@ export const ClaimFactsQuery = z.object({
   period: PeriodOption.optional(),
 });
 export type ClaimFactsQuery = z.infer<typeof ClaimFactsQuery>;
+
+/** The claim filters of `suppliers.insights`: the figures cover the open claims these filters leave. */
+export const SupplierInsightsQuery = ClaimFactsQuery.pick({
+  policy_id: true,
+  broker_id: true,
+  product_id: true,
+  handler_id: true,
+});
+export type SupplierInsightsQuery = z.infer<typeof SupplierInsightsQuery>;
 
 /** The invoices of one policy; the join is the policy id and never a name. */
 export const InvoicesQuery = z.object({ policy_id: Id.optional() });
@@ -192,13 +207,21 @@ export const endpoints = {
     response: collection(InvoiceRecord),
   }),
   suppliersList: endpoint({ id: 'suppliers.list', method: 'GET', path: `${API}/suppliers`, response: collection(Supplier) }),
+  /** Each supplier's open requests, waits, breaches, cases, late actions and turnaround over the filtered claims (the rules engine's `summarizeSuppliers`). */
+  suppliersInsights: endpoint({
+    id: 'suppliers.insights',
+    method: 'GET',
+    path: `${API}/supplier-insights`,
+    query: SupplierInsightsQuery,
+    response: z.object({ ...readContext, ...SupplierInsights.shape }),
+  }),
   usersList: endpoint({ id: 'users.list', method: 'GET', path: `${API}/users`, response: collection(User) }),
   tasksList: endpoint({
     id: 'tasks.list',
     method: 'GET',
     path: `${API}/tasks`,
     query: TaskQuery,
-    response: collection(TaskRecord),
+    response: collection(TaskListItem),
   }),
   tasksCreate: endpoint({
     id: 'tasks.create',

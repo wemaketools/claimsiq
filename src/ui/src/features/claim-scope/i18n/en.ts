@@ -108,6 +108,7 @@ const en = {
     'paid-in-period': 'Claims with payments posted in the period',
     turnaround: 'Claims closed in the period with both dates (the claims averaged)',
     'high-priority': 'Open claims with High severity',
+    supplier: 'Open claims assigned to {supplier} or waiting on a request to it',
     stageUnknown: 'Open claims with no stage recorded',
     ageUnknown: 'Open claims with no reported date',
   },

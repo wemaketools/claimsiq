@@ -272,7 +272,7 @@ export default function StagesPage() {
       <PageHeader
         title={t('stages.title')}
         subtitle={t('stages.subtitle')}
-        actions={<ExportCsvButton screen="stages" scope={scope} table={table} />}
+        actions={<ExportCsvButton screen="stages" queries={[scope.facts]} table={table} />}
       />
       <ClaimFilterBar scope={scope} />
       <QueryView

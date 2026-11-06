@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
-import { formatMoney } from '../../../../contracts/index';
+import { endpoints, formatMoney } from '../../../../contracts/index';
+import { useApiQuery } from '../../api/hooks';
 import {
   Banner,
   ButtonLink,
@@ -113,6 +114,14 @@ export default function ClaimsPage() {
   const criterion = useMemo(() => parseCriterion(shown), [shown]);
   const facts = scope.facts.data?.items;
   const lookups = scope.lookups.lookups;
+  const suppliers = useApiQuery(
+    endpoints.suppliersList,
+    criterion?.kind === 'supplier' ? {} : null,
+  );
+  const supplierName =
+    criterion?.kind === 'supplier'
+      ? suppliers.data?.items.find((supplier) => supplier.supplier_id === criterion.supplier)?.name
+      : undefined;
 
   const rows = useMemo(() => {
     if (facts === undefined || lookups === undefined) return undefined;
@@ -137,7 +146,7 @@ export default function ClaimsPage() {
       <PageHeader
         title={t('claims.title')}
         subtitle={t('claims.subtitle')}
-        actions={<ExportCsvButton screen="claims" scope={scope} table={table} />}
+        actions={<ExportCsvButton screen="claims" queries={[scope.facts]} table={table} />}
       />
       <ClaimFilterBar
         scope={scope}
@@ -152,7 +161,7 @@ export default function ClaimsPage() {
             </ButtonLink>
           }
         >
-          {t('claims.criterion.label')}: {describeCriterion(criterion)}
+          {t('claims.criterion.label')}: {describeCriterion(criterion, supplierName)}
           {rows !== undefined && <> · {t('claims.criterion.count', { count: rows.length })}</>}
         </Banner>
       )}
