@@ -1,4 +1,4 @@
-/** Reads the committed CSV fixtures from disk, for tests. The SPA bundles the same files with Vite instead. */
+/** Reads the committed CSV fixtures from disk, for tests and the database seed. The SPA bundles the same files with Vite instead. */
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 

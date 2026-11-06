@@ -4,7 +4,7 @@
 
 ## Status: Stage A, proof of concept
 
-Stage A builds the P0 requirements of `ai/specs` on the specs' synthetic TEST and DEMO data, and is complete: the stack, the design system, the app shell, real sign-in against a local Supabase stack (or a role click in the hosted prototype), the persona switch, CI, the typed in-browser mock API over the fixtures, the rules engine, and all six screens of the shell (Overview, Stages & Aging, Exceptions & SLA, Claims, Suppliers, Action Queue) plus Claim Detail and the policy invoices, each with its loading, empty and error states. There is no backend yet: figures come from the rules engine running in the browser, and what you change (tasks and their status) stays in the browser until Reset.
+Stage A builds the P0 requirements of `ai/specs` on the specs' synthetic TEST and DEMO data, and is complete: the stack, the design system, the app shell, real sign-in against a local Supabase stack (or a role click in the hosted prototype), the persona switch, CI, the typed in-browser mock API over the fixtures, the rules engine, and all six screens of the shell (Overview, Stages & Aging, Exceptions & SLA, Claims, Suppliers, Action Queue) plus Claim Detail and the policy invoices, each with its loading, empty and error states. Stage B has started: the local Supabase stack now also holds the database (schema, tenant isolation and the fixture seed, see "The local database"). The app still reads from the in-browser mock API until the API arrives: figures come from the rules engine running in the browser, and what you change (tasks and their status) stays in the browser until Reset.
 
 - `docs/acceptance.md`: the spec's 16 acceptance tests (CLM-AT-01 to 16), where each is asserted and the result.
 - `docs/demo-script.md`: the 7 to 9 minute Head of Claims demo, step by step, for the hosted prototype.
@@ -28,10 +28,11 @@ Step by step:
 bun install
 bun run supabase:start        # local Supabase stack in Docker (first run downloads the images)
 cp .env.local.example .env.local
-# put the API_URL, ANON_KEY and SERVICE_ROLE_KEY of `bunx supabase status -o env` into .env.local
-# (SUPABASE_URL and VITE_SUPABASE_URL = API_URL, SUPABASE_ANON_KEY and VITE_SUPABASE_ANON_KEY = ANON_KEY,
-# SUPABASE_SERVICE_ROLE_KEY = SERVICE_ROLE_KEY)
-bun run auth:personas         # create the demo accounts in local Supabase Auth
+# put the API_URL, DB_URL, ANON_KEY and SERVICE_ROLE_KEY of `bunx supabase status -o env` into .env.local
+# (SUPABASE_URL and VITE_SUPABASE_URL = API_URL, DATABASE_URL = DB_URL, SUPABASE_ANON_KEY and VITE_SUPABASE_ANON_KEY
+# = ANON_KEY, SUPABASE_SERVICE_ROLE_KEY = SERVICE_ROLE_KEY)
+bun run db:reset              # build the local database: migrations, demo accounts, TEST and DEMO seed
+# (or, for the demo accounts alone: bun run auth:personas)
 bun run dev                   # the SPA on http://localhost:5273
 ```
 
@@ -45,11 +46,24 @@ If you only want to look at the app, skip Supabase and `.env.local`: `bun run de
 |---|---|
 | SPA (Vite) | http://localhost:5273 |
 | Supabase API gateway (Auth) | http://127.0.0.1:54421 |
-| Postgres | 127.0.0.1:54422 (no application schema yet) |
+| Postgres | 127.0.0.1:54422 (the application schema, `DATABASE_URL`) |
 | Supabase Studio | http://127.0.0.1:54423 |
 | Mailpit (password-reset emails) | http://127.0.0.1:54424 (SMTP 54425) |
 
 The ports are the Supabase defaults plus 100, so the stack runs beside another project's default one.
+
+### The local database
+
+The schema is plain SQL in `supabase/migrations`. The tables are keyed `(tenant_id, id)` and TEST and DEMO are two tenants of one database; row level security keeps a tenant's session away from the other's rows.
+
+| Command | What it does |
+|---|---|
+| `bun run db:migrate` | Applies the migrations the local database has not seen (`supabase migration up --local`) |
+| `bun run db:reset` | Rebuilds the local database from empty: all migrations, the demo accounts (`auth:personas`), then the seed. Refuses any database that is not the local stack |
+| `bun run db:seed` | Replaces the TEST and DEMO rows from `fixtures/v1` through the fixture loader and links the four demo accounts to both tenants. Prints the row counts and every quarantined row. `-- --data-set TEST` seeds one |
+| `bun run db:types` | Regenerates the Kysely table types (`src/server/lib/db/generated/schema.ts`) after a migration |
+
+A new migration is a new file in `supabase/migrations` (never an edit of an applied one), then `bun run db:migrate` and `bun run db:types`.
 
 ### Demo accounts
 

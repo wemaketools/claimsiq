@@ -13,6 +13,7 @@ import {
 const VALID = {
   APP_ENV: 'local',
   LOG_LEVEL: 'debug',
+  DATABASE_URL: 'postgresql://postgres:<local-db-password>@127.0.0.1:54322/postgres',
   SUPABASE_URL: 'http://127.0.0.1:54321/',
   SUPABASE_ANON_KEY: 'anon-key-value',
   SUPABASE_SERVICE_ROLE_KEY: 'service-role-key-value',
@@ -42,6 +43,7 @@ describe('loadConfig', () => {
     expect(config).toEqual({
       appEnv: 'local',
       logLevel: 'debug',
+      database: { url: 'postgresql://postgres:<local-db-password>@127.0.0.1:54322/postgres' },
       supabase: {
         url: 'http://127.0.0.1:54321',
         authIssuer: 'http://127.0.0.1:54321/auth/v1',

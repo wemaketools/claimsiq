@@ -1,6 +1,6 @@
 # Testing and CI
 
-Status: as built (scaffold, data layer, rules engine, claim screens, exceptions, claim detail, policy invoices, supplier insights, the action queue, prototype mode and the acceptance pass). The decisions behind it (CI and checks, Bun) are in `docs/plan/design-decisions.md`.
+Status: as built (scaffold, data layer, rules engine, the Stage B database, claim screens, exceptions, claim detail, policy invoices, supplier insights, the action queue, prototype mode and the acceptance pass). The decisions behind it (CI and checks, Bun) are in `docs/plan/design-decisions.md`.
 
 ## Test projects
 
@@ -39,17 +39,21 @@ Exceptions, Claim Detail and the policy invoices have one flow each: `features/e
 
 Supplier Insights and the Action Queue have one flow each, on the real mock API over TEST: `features/suppliers/suppliers.test.tsx` (every supplier's figures worked by hand from the fixture, an average held back below the sample minimum, a filter narrowing the cases, the CSV equals the table, the supplier's click-through lists exactly its cases) and `features/actions/action-queue.test.tsx` (a task created from an exception and three from the queue, the default queue order, assign, the statuses with the persona changing between them and the allowed next statuses, the audit trail, column sort and the three filters, the CSV equals the table, a refresh keeps the tasks, Claim Detail shows and moves the same task, Reset clears). `test/datasets.ts` also builds a mock API over a rule config with changed thresholds (`ruleConfigWith`).
 
+## Database tests
+
+`scripts/db/seed.test.ts` and `scripts/db/isolation.test.ts` run against a scratch database that each file creates on the local Postgres, migrates and seeds (`scratchDatabase.ts`), then drops; they never touch the stack's own data and are skipped, with the token tests, when the stack is not up or `DATABASE_URL` is unset. `seed.test.ts` has two flows: the migrations (every table has RLS and the tenant policy, `anon` and `authenticated` read nothing, the committed Kysely types equal what `db:types` would write) and the seed (TEST 6 and DEMO 30 claims, row counts equal to the loader's, the TEST figures of `expected_metrics.json` in SQL, the rule configuration, a quarantined row reported and not inserted, a second run giving the same counts). `isolation.test.ts` has two: a TEST session under RLS sees no DEMO row in any table, cannot write or change one, a session with no tenant sees nothing and a claim cannot reference another tenant's policy, with the same through `withTenant`; and the membership lookup, the audit trail the application role can only append to, the task counter, and Supabase's REST API showing the anonymous key no claim.
+
 ## Auth tests
 
 `auth/auth.test.tsx` (the password sign-in's states and the recovery flow, over a stub auth context), `auth/SupabaseAuthProvider.test.tsx` (the Supabase session into the store, the token and tenant on API calls, sign-out on 401) and `auth/prototype.test.tsx` (a prototype build over the real routes and mock API, with supabase-js and `auth/supabase.ts` mocked to throw if loaded: the roles card instead of a password form, a role click signs in and returns to the requested page, the banner, a refresh keeps the session, the password pages redirect to sign-in, sign-out). That nothing of supabase-js is in a prototype bundle is `scan-bundle --prototype`'s job, and that none loads in the browser is the prototype e2e spec's.
 
 ## The local-stack skip
 
-`src/server/tests/unit/platform-auth/verify.local-stack.test.ts` verifies tokens issued by the real local Supabase Auth against its JWKS. It probes `<SUPABASE_URL>/auth/v1/health` once at load and skips the whole file when `.env.local` is missing or the stack does not answer, so `bun run test` passes on a machine without Docker (1 test skipped). CI starts the stack first, so there they run. Because skipped tests hide regressions, CI never runs the unit project through the skip assertion; it relies on the stack step failing first.
+`src/server/tests/unit/platform-auth/verify.local-stack.test.ts` verifies tokens issued by the real local Supabase Auth against its JWKS. It probes `<SUPABASE_URL>/auth/v1/health` once at load and skips the whole file when `.env.local` is missing or the stack does not answer, so `bun run test` passes on a machine without Docker (5 tests skipped, the token test and the four database tests; the database tests skip the same way, probing `DATABASE_URL`). CI starts the stack first, so there they run. Because skipped tests hide regressions, CI runs the unit project through the skip assertion (`ci:test:unit`).
 
 ## Count floors
 
-`bun run ci:test:ui` and `ci:test:unit` write a Vitest JSON report and run `scripts/ci/assert-test-run.ts`, which fails when the run did not succeed, when any test failed or was skipped, or when fewer than `--min-tests` tests ran (it catches silently dropped suites). The floors in `package.json` are sized to what exists: SPA 59, unit 26 (the number of unit tests that run with the stack up). Raise them in the same change that adds tests. `ci:test:unit` also fails on the skipped local-stack test, so it is only meaningful where the stack is up; CI runs `test:unit` for that reason and `ci:test:ui` for the SPA.
+`bun run ci:test:ui` and `ci:test:unit` write a Vitest JSON report and run `scripts/ci/assert-test-run.ts`, which fails when the run did not succeed, when any test failed or was skipped, or when fewer than `--min-tests` tests ran (it catches silently dropped suites). The floors in `package.json` are sized to what exists: SPA 59, unit 30 (the number of unit tests that run with the stack up). Raise them in the same change that adds tests. `ci:test:unit` also fails on the skipped local-stack and database tests, so it is only meaningful where the stack is up, which is where CI runs it, beside `ci:test:ui` for the SPA.
 
 ## End-to-end
 
@@ -63,6 +67,6 @@ Prerequisites: Docker running, `bun run supabase:start`, `.env.local` written, `
 
 ## CI
 
-`.github/workflows/ci.yml` has one `verify` job on every push and pull request: set up Bun from `.bun-version`, `bun install --frozen-lockfile`, print tool versions, start the local Supabase stack, write a throwaway `.env.local` from `supabase status`, seed the demo accounts, then typecheck, typecheck the SPA, lint, lint the SPA (with Prettier), unit tests, SPA tests with the floor, the production build, a second build in prototype mode with `.env.local` moved aside (the Vercel build), the security scans, install Chromium, run Playwright, upload the Playwright report on failure and stop the stack. Runs on one ref cancel older ones, except on `main` and `dev`.
+`.github/workflows/ci.yml` has one `verify` job on every push and pull request: set up Bun from `.bun-version`, `bun install --frozen-lockfile`, print tool versions, start the local Supabase stack, write a throwaway `.env.local` from `supabase status` (with `DATABASE_URL`), apply the migrations (`db:migrate`), rebuild the database from empty (`db:reset`: migrations, demo accounts, TEST and DEMO seed), then typecheck, typecheck the SPA, lint, lint the SPA (with Prettier), unit tests with the floor (the database tests among them), SPA tests with the floor, the production build, a second build in prototype mode with `.env.local` moved aside (the Vercel build), the security scans, install Chromium, run Playwright, upload the Playwright report on failure and stop the stack. Runs on one ref cancel older ones, except on `main` and `dev`.
 
 `bun run verify` is the local equivalent of the non-browser steps: typecheck, typecheck:ui, lint, lint:ui, test, test:ui, build:ui.

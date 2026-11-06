@@ -1,6 +1,6 @@
-# ClaimsIQ CI: one `verify` job. The local Supabase stack runs for AUTHENTICATION ONLY: the unit tests verify real
-# ES256 tokens against it and the Playwright specs sign in with it. There is no application schema, so there is no
-# reset, integration suite or schema validation yet; the backend work extends `verify` with them.
+# ClaimsIQ CI: one `verify` job. The local Supabase stack provides Auth (the unit tests verify real ES256 tokens against
+# it and the Playwright specs sign in with it) and the Postgres of Stage B: the job applies the migrations, rebuilds the
+# database from empty with `db:reset` (migrations, demo accounts, fixture seed) and runs the database tests against it.
 # App deploys are not a CI step: Vercel's Git integration builds on push.
 
 name: CI
@@ -49,17 +49,18 @@ jobs:
           bunx supabase --version
           bunx playwright --version
 
-      - name: Start the local Supabase stack (Auth for real sign-in)
+      - name: Start the local Supabase stack (Auth for real sign-in, Postgres for the schema)
         run: bun run supabase:start
 
       - name: Write a throwaway .env.local from supabase status
         run: |
-          eval "$(bunx supabase status -o env | grep -E '^(API_URL|ANON_KEY|SERVICE_ROLE_KEY)=')"
-          test -n "$API_URL" && test -n "$ANON_KEY" && test -n "$SERVICE_ROLE_KEY"
+          eval "$(bunx supabase status -o env | grep -E '^(API_URL|DB_URL|ANON_KEY|SERVICE_ROLE_KEY)=')"
+          test -n "$API_URL" && test -n "$DB_URL" && test -n "$ANON_KEY" && test -n "$SERVICE_ROLE_KEY"
           echo "::add-mask::$SERVICE_ROLE_KEY"
           {
             echo "APP_ENV=local"
             echo "LOG_LEVEL=info"
+            echo "DATABASE_URL=$DB_URL"
             echo "SUPABASE_URL=$API_URL"
             echo "SUPABASE_ANON_KEY=$ANON_KEY"
             echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
@@ -67,8 +68,11 @@ jobs:
             echo "VITE_SUPABASE_ANON_KEY=$ANON_KEY"
           } > .env.local
 
-      - name: Create the demo accounts in local Supabase Auth
-        run: bun run auth:personas
+      - name: Apply the migrations (the stack applied them at start, so this changes nothing)
+        run: bun run db:migrate
+
+      - name: Rebuild the database from empty, create the demo accounts and seed TEST and DEMO
+        run: bun run db:reset
 
       - name: Typecheck (backend, scripts)
         run: bun run typecheck
@@ -82,8 +86,8 @@ jobs:
       - name: Lint (SPA, including Prettier)
         run: bun run lint:ui
 
-      - name: Unit tests (token verification against the local stack, config, scripts)
-        run: bun run test:unit
+      - name: Unit tests (token verification, config, scripts and the database tests; fail on skipped tests and below the count floor)
+        run: bun run ci:test:unit
 
       - name: SPA tests (fail on skipped tests, enforce the count floor)
         run: bun run ci:test:ui

@@ -82,7 +82,7 @@ function Get-SupabaseStatusEnv {
       $values[$Matches[1]] = $Matches[2]
     }
   }
-  foreach ($required in @('API_URL', 'ANON_KEY', 'SERVICE_ROLE_KEY')) {
+  foreach ($required in @('API_URL', 'DB_URL', 'ANON_KEY', 'SERVICE_ROLE_KEY')) {
     if (-not $values.ContainsKey($required) -or [string]::IsNullOrWhiteSpace($values[$required])) {
       throw "The output of 'supabase status' did not include $required."
     }
@@ -94,6 +94,7 @@ function Sync-EnvLocal {
   $status = Get-SupabaseStatusEnv
   # Values that must always match the running stack (they change when the signing key is regenerated).
   $managed = [ordered]@{
+    'DATABASE_URL'              = $status['DB_URL']
     'SUPABASE_URL'              = $status['API_URL']
     'SUPABASE_ANON_KEY'         = $status['ANON_KEY']
     'SUPABASE_SERVICE_ROLE_KEY' = $status['SERVICE_ROLE_KEY']

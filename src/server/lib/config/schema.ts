@@ -1,12 +1,13 @@
 /**
  * The typed server environment.
  *
- * Current subset: `bun run auth:personas` provisions the demo accounts and the token verifier checks real Supabase
- * JWTs, so only these variables exist yet:
+ * Current subset: `bun run auth:personas` provisions the demo accounts, the token verifier checks real Supabase JWTs
+ * and the database scripts, seed and tenancy helpers connect to Postgres, so only these variables exist yet:
  *
  * | Variable                    | Required | Purpose                                                            |
  * |-----------------------------|----------|--------------------------------------------------------------------|
  * | `APP_ENV`                   | no       | `local` (default) / `dev` / `preview` / `staging` / `production`   |
+ * | `DATABASE_URL`              | no       | Postgres connection URL (direct, not a pooler); the db scripts and tests need it |
  * | `LOG_LEVEL`                 | no       | `debug` / `info` (default) / `warn` / `error`                      |
  * | `SUPABASE_URL`              | yes      | Project URL; the JWT issuer is pinned to `<url>/auth/v1`            |
  * | `SUPABASE_ANON_KEY`         | yes      | Verification client (`getClaims` only)                              |
@@ -56,6 +57,12 @@ const httpUrl = (name: string) =>
 export const serverEnvSchema = z
   .object({
     APP_ENV: blankAsAbsent(z.enum(APP_ENV_VALUES, { error: `APP_ENV must be one of ${APP_ENV_VALUES.join(', ')}.` }).default('local')),
+    DATABASE_URL: blankAsAbsent(
+      z
+        .string()
+        .regex(/^postgres(ql)?:\/\/\S+$/, 'DATABASE_URL must be a postgres:// or postgresql:// connection URL.')
+        .optional(),
+    ),
     LOG_LEVEL: blankAsAbsent(z.enum(LOG_LEVELS, { error: `LOG_LEVEL must be one of ${LOG_LEVELS.join(', ')}.` }).default('info')),
     SUPABASE_URL: blankAsAbsent(httpUrl('SUPABASE_URL')),
     SUPABASE_ANON_KEY: blankAsAbsent(required('SUPABASE_ANON_KEY')),
@@ -92,6 +99,10 @@ export const BROWSER_ENV_KEYS = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'] 
 export interface AppConfig {
   readonly appEnv: AppEnvValue;
   readonly logLevel: LogLevel;
+  readonly database: {
+    /** The Postgres connection URL, or null when `DATABASE_URL` is unset. */
+    readonly url: string | null;
+  };
   readonly supabase: {
     /** Project URL without a trailing slash. */
     readonly url: string;
@@ -110,6 +121,7 @@ export function toAppConfig(env: z.output<typeof serverEnvSchema>): AppConfig {
   return {
     appEnv: env.APP_ENV,
     logLevel: env.LOG_LEVEL,
+    database: { url: env.DATABASE_URL ?? null },
     supabase: {
       url,
       authIssuer: `${url}/auth/v1`,

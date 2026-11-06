@@ -45,9 +45,10 @@ enabled = true
 schema_paths = []
 
 [db.seed]
-# Baseline seed: code-owned reference data only, no users. Written with the backend.
-enabled = true
-sql_paths = ["./seed.sql"]
+# No SQL seed: the fixtures load through the TypeScript loader (`bun run db:seed`), because they must pass the same
+# validation and quarantine as the mock API's.
+enabled = false
+sql_paths = []
 
 [db.network_restrictions]
 enabled = false
