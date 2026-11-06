@@ -31,19 +31,33 @@ as $$ select nullif(current_setting('app.tenant_id', true), '') $$;
 revoke all on function app_tenant_id() from public, anon, authenticated;
 grant execute on function app_tenant_id() to claimsiq_app;
 
--- Every table with a tenant_id column calls this once, right after it is created. `p_privileges` is what
--- `claimsiq_app` may do with the rows of its own tenant (all four by default).
-create function enable_tenant_isolation(p_table regclass, p_privileges text default 'select, insert, update, delete')
+-- Every table with a tenant_id column calls this once, right after it is created. `p_mode` is what `claimsiq_app` may
+-- do with the rows of its own tenant, by name, so no call spells out a privilege list:
+--   full        select, insert, update, delete
+--   no_delete   select, insert, update   (a table whose rows other rows depend on, or that must never shrink)
+--   append_only select, insert           (an audit trail)
+--   read_only   select
+create function enable_tenant_isolation(p_table regclass, p_mode text default 'full')
   returns void
   language plpgsql
 as $$
+declare
+  privileges text := case p_mode
+    when 'full' then 'select, insert, update, delete'
+    when 'no_delete' then 'select, insert, update'
+    when 'append_only' then 'select, insert'
+    when 'read_only' then 'select'
+  end;
 begin
+  if privileges is null then
+    raise exception 'unknown isolation mode %', p_mode;
+  end if;
   execute format('alter table %s enable row level security', p_table);
   execute format(
     'create policy tenant_isolation on %s for all to claimsiq_app using (tenant_id = app_tenant_id()) with check (tenant_id = app_tenant_id())',
     p_table
   );
-  execute format('grant %s on %s to claimsiq_app', p_privileges, p_table);
+  execute format('grant %s on %s to claimsiq_app', privileges, p_table);
 end
 $$;
 

@@ -7,7 +7,7 @@ create table tenants (
   dataset_tag  text not null check (dataset_tag in ('TEST', 'DEMO')),
   unique (tenant_id, dataset_tag)
 );
-select enable_tenant_isolation('tenants', 'select');
+select enable_tenant_isolation('tenants', 'read_only');
 
 -- A demo persona account (Supabase Auth) may enter a tenant only through a row here. The persona is the view the
 -- account starts in, never authentication (DD-07). Written by the seed (owner), read by the API before it knows the
@@ -19,7 +19,7 @@ create table tenant_memberships (
   primary key (tenant_id, auth_user_id)
 );
 create index tenant_memberships_user_idx on tenant_memberships (auth_user_id);
-select enable_tenant_isolation('tenant_memberships', 'select');
+select enable_tenant_isolation('tenant_memberships', 'read_only');
 
 -- The claims rule configuration (the shape of src/rules/config.ts, seeded from fixtures/v1/proposed_rule_config.json),
 -- one per tenant and data set so the rule editor can change a tenant's thresholds. `version` counts the saves.
@@ -33,4 +33,4 @@ create table rule_configs (
   primary key (tenant_id, data_set),
   foreign key (tenant_id, data_set) references tenants (tenant_id, dataset_tag) on delete cascade
 );
-select enable_tenant_isolation('rule_configs', 'select, insert, update');
+select enable_tenant_isolation('rule_configs', 'no_delete');

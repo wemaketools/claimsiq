@@ -19,7 +19,7 @@ create table tasks (
   unique (tenant_id, idempotency_key)
 );
 create index tasks_subject_idx on tasks (tenant_id, subject_type, subject_id);
-select enable_tenant_isolation('tasks', 'select, insert, update');
+select enable_tenant_isolation('tasks', 'no_delete');
 
 -- Append only: the application role can add entries and read them, never change or remove one. Removing a task
 -- would remove its entries, so the application role may not delete tasks either, and the key does not cascade.
@@ -37,14 +37,14 @@ create table task_audit_entries (
   foreign key (tenant_id, task_id) references tasks (tenant_id, task_id)
 );
 create index task_audit_entries_task_idx on task_audit_entries (tenant_id, task_id, at);
-select enable_tenant_isolation('task_audit_entries', 'select, insert');
+select enable_tenant_isolation('task_audit_entries', 'append_only');
 
 -- Ids are TASK-0001 and up, counted per tenant.
 create table task_counters (
   tenant_id   text primary key references tenants (tenant_id) on delete cascade,
   next_number integer not null default 1 check (next_number >= 1)
 );
-select enable_tenant_isolation('task_counters', 'select, insert, update');
+select enable_tenant_isolation('task_counters', 'no_delete');
 
 create function next_task_id(p_tenant_id text) returns text
   language sql volatile
