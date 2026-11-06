@@ -100,6 +100,20 @@ test.describe('claim screens', () => {
     await expect(page.getByRole('table', { name: 'Reserve history of the claim' })).toContainText('Review: material change');
     await expectNoHorizontalScroll(page);
     await expectNoAxeViolations(page);
+    // The stage what-if answers from the API's rules engine, shows the move beside the real view, and saves nothing.
+    const whatIf = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Stage what-if' }) });
+    await expect(whatIf).toContainText('What-if: not saved');
+    await whatIf.getByLabel('Move the claim to').selectOption('Negotiation');
+    const compared = whatIf.getByRole('table', { name: 'Claim now and in a what-if move to Negotiation' });
+    await expect(compared).toContainText('Assessment');
+    await expect(compared).toContainText('Negotiation: 0 of 5 business days used');
+    await expectNoAxeViolations(page);
+    await whatIf.getByRole('button', { name: 'Reset' }).click();
+    await expect(compared).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByRole('table', { name: 'Reserve history of the claim' })).toContainText('Review: material change');
+    await expect(page.getByRole('list', { name: 'Stage history of CLM-101' })).toContainText('Assessment');
+    await expect(page.getByLabel('Move the claim to')).toHaveValue('');
     await page.getByRole('link', { name: 'View policy invoices' }).click();
     await expect(page.getByRole('table', { name: 'Invoices of the policy' })).toContainText('INV-001');
     await expectNoHorizontalScroll(page);
@@ -108,6 +122,6 @@ test.describe('claim screens', () => {
     // Reset shows a toast; with it on screen the page still passes axe (a status role on a list item used to fail it).
     await resetData(page, 'TEST');
     await expectNoAxeViolations(page);
-    expect(apiCalls).toEqual(expect.arrayContaining(['GET /api/v1/claim-facts', 'GET /api/v1/claims', 'POST /api/v1/demo/reset']));
+    expect(apiCalls).toEqual(expect.arrayContaining(['GET /api/v1/claim-facts', 'GET /api/v1/claims', 'GET /api/v1/claims/CLM-101/what-if', 'POST /api/v1/demo/reset']));
   });
 });

@@ -7,7 +7,7 @@ import { claimRecords } from '../read-model/asOfViews.js';
 import { loadDataset } from '../read-model/fixtures/index.js';
 import { memoryStore } from '../mock-api/storage.js';
 import { readFixtureFiles, readFixtureJson } from '../server/lib/seed/fixtureFiles.js';
-import { ageBucketLabel, businessDaysBetween, computeClaimFacts, computeClaimsFacts, isTaskOverdue, parseRuleConfig, summarizeClaimFacts, summarizeSuppliers, weekdaySet } from './index.js';
+import { ageBucketLabel, businessDaysBetween, computeClaimFacts, computeClaimsFacts, isTaskOverdue, parseRuleConfig, summarizeClaimFacts, summarizeSuppliers, weekdaySet, nextStages, withHypotheticalStage } from './index.js';
 import type { RuleContext } from './index.js';
 
 const AS_OF = '2026-10-21';
@@ -337,6 +337,33 @@ describe('the claims rules engine on the TEST fixture', () => {
     const ofBroker = endpoints.suppliersInsights.response.parse(await get(`${endpoints.suppliersInsights.path}?broker_id=BRK-01`));
     expect(rowOf(ofBroker, 'SUP-02')).toMatchObject({ open_requests: 1, open_assigned_cases: 1, cases: 1 });
     expect(rowOf(ofBroker, 'SUP-01')).toMatchObject({ open_assigned_cases: 1 });
+  });
+
+  it('appends one hypothetical stage event that restarts the clock at the as-of date, follows the stage map, and leaves the claim record untouched', () => {
+    const byId = (id: string) => records().find((claim) => claim.claim_id === id) as ClaimRecord;
+    const [triaged, closed] = [byId('CLM-102'), byId('CLM-103')];
+    const before = JSON.stringify(triaged);
+
+    // CLM-102 sits in Triage since 3 Sep, far past its target; moving it to Assessment starts that clock today.
+    const now = computeClaimFacts(triaged, contextOf());
+    const moved = computeClaimFacts(withHypotheticalStage(triaged, 'Assessment', 'Triage', AS_OF), contextOf());
+    expect(now.sla?.status).toBe('breached');
+    expect(moved).toMatchObject({ current_stage: 'Assessment', stage_started_at: AS_OF, stage_check: 'MATCHES', is_open: true });
+    expect(moved.sla).toMatchObject({ status: 'within', stage: 'Assessment', business_days_in_stage: 0, target_business_days: 5 });
+    expect(moved.severity_reasons.map((reason) => reason.rule)).not.toContain('SLA_BREACH');
+    expect(JSON.stringify(triaged)).toBe(before);
+    expect(triaged.events).toHaveLength(2);
+
+    // Closing ends the clock; a closed claim can only be reopened, and Reopened has no target, so its SLA is unknown.
+    expect(computeClaimFacts(withHypotheticalStage(triaged, 'Closed', 'Triage', AS_OF), contextOf())).toMatchObject({ is_open: false, sla: null, severity: null, closed_at: AS_OF });
+    const reopened = computeClaimFacts(withHypotheticalStage(closed, 'Reopened', 'Closed', AS_OF), contextOf());
+    expect(reopened).toMatchObject({ is_open: true, current_stage: 'Reopened', closed_at: '2026-10-15' });
+    expect(reopened.sla).toMatchObject({ status: 'unknown', unknown_reason: 'NO_TARGET_FOR_STAGE' });
+
+    expect(nextStages('Triage')).toEqual(['Assessment', 'Negotiation', 'Approved', 'Settlement', 'Closed']);
+    expect(nextStages('Closed')).toEqual(['Reopened']);
+    expect(nextStages('Reopened')).toEqual(['Triage', 'Assessment', 'Negotiation', 'Approved', 'Settlement', 'Closed']);
+    expect(nextStages('New')).not.toContain('New');
   });
 
   it('formats money as P12,345.67', () => {

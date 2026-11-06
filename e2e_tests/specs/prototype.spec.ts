@@ -62,6 +62,15 @@ test.describe('prototype build', () => {
     await expect(page.getByRole('note')).toHaveText('Prototype: synthetic demo data');
     await expectNoAxeViolations(page);
 
+    // The stage what-if runs in the browser too: DCLM-002 moved to Closed has no stage clock, and nothing is kept.
+    const whatIf = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Stage what-if' }) });
+    await expect(whatIf).toContainText('What-if: not saved');
+    await whatIf.getByLabel('Move the claim to').selectOption('Closed');
+    await expect(whatIf.getByRole('table', { name: 'Claim now and in a what-if move to Closed' })).toContainText('No stage clock: the claim is closed.');
+    await expectNoAxeViolations(page);
+    await page.reload();
+    await expect(whatIf.getByLabel('Move the claim to')).toHaveValue('');
+
     // Every screen loads its figures from the in-browser mock API.
     const sidebar = page.getByRole('complementary', { name: 'Main navigation and account' });
     const nav = sidebar.getByRole('navigation', { name: 'Main navigation' });

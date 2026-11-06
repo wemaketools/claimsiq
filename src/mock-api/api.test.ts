@@ -93,6 +93,32 @@ describe('the mock API', () => {
     expect((await api.call(endpoints.claimsList, { tenant: 'OTHER' })).status).toBe(403);
   });
 
+  it('answers the what-if from the rules engine without saving it, and refuses a stage the claim may not move to', async () => {
+    const writes: string[] = [];
+    const storage = { ...memoryStore(), setItem: (key: string) => void writes.push(key) };
+    const api = client(storage);
+    const path = { claimId: 'CLM-102' };
+
+    const options = await api.call(endpoints.claimsWhatIf, { path });
+    expect(options.body).toMatchObject({ claim_id: 'CLM-102', what_if: null });
+    expect(options.body.next_stages).toEqual(['Assessment', 'Negotiation', 'Approved', 'Settlement', 'Closed']);
+
+    const moved = await api.call(endpoints.claimsWhatIf, { path, query: { to_stage: 'Assessment' } });
+    expect(moved.body.current.sla?.status).toBe('breached');
+    expect(moved.body.what_if).toMatchObject({ to_stage: 'Assessment', event_at: '2026-10-21' });
+    expect(moved.body.what_if?.facts.sla).toMatchObject({ status: 'within', stage: 'Assessment', business_days_in_stage: 0 });
+    expect((await api.call(endpoints.claimsGet, { path })).body.item.events).toHaveLength(2);
+    expect(await api.call(endpoints.claimsFacts, { query: { claim_id: 'CLM-102' } })).toMatchObject({ body: { items: [{ current_stage: 'Triage' }] } });
+    expect(writes).toEqual([]);
+
+    const refused = await api.call(endpoints.claimsWhatIf, { path, query: { to_stage: 'Triage' } });
+    expect(refused.status).toBe(422);
+    expect(refused.body).toMatchObject({ errors: [{ field: 'to_stage' }] });
+    expect((await api.call(endpoints.claimsWhatIf, { path: { claimId: 'CLM-103' }, query: { to_stage: 'Settlement' } })).status).toBe(422);
+    expect((await api.call(endpoints.claimsWhatIf, { path: { claimId: 'CLM-NOPE' } })).status).toBe(404);
+    expect((await api.call(endpoints.claimsWhatIf, { path, query: { to_stage: 'Nowhere' } })).status).toBe(400);
+  });
+
   it('reads as of the chosen date: later records are not shown, the default is 2026-10-21, a bad date is refused', async () => {
     const api = client();
 

@@ -14,6 +14,7 @@ export * from './period.js';
 export * from './suppliers.js';
 export * from './summary.js';
 export * from './tasks.js';
+export * from './transitions.js';
 
 export function computeClaimsFacts(
   claims: readonly ClaimRecord[],

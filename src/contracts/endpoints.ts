@@ -17,6 +17,7 @@ import {
   Broker,
   Claim,
   ClaimEvent,
+  ClaimStage,
   ClaimPayment,
   Client,
   Invoice,
@@ -149,6 +150,10 @@ export const ClaimFactsQuery = z.object({
 });
 export type ClaimFactsQuery = z.infer<typeof ClaimFactsQuery>;
 
+/** The stage the what-if moves the claim to; without it the read only names the stages the claim may move to. */
+export const ClaimWhatIfQuery = z.object({ to_stage: ClaimStage.optional() });
+export type ClaimWhatIfQuery = z.infer<typeof ClaimWhatIfQuery>;
+
 /** The claim filters of `suppliers.insights`: the figures cover the open claims these filters leave. */
 export const SupplierInsightsQuery = ClaimFactsQuery.pick({
   policy_id: true,
@@ -195,6 +200,25 @@ export const endpoints = {
       items: z.array(ClaimFacts),
       summary: ClaimsSummary,
       breakdowns: ClaimBreakdowns,
+    }),
+  }),
+  /**
+   * A claim's facts now beside its facts with one hypothetical stage event appended at the as-of date, both from the
+   * rules engine. Nothing is saved. A stage the claim may not move to is refused with a 422 on `to_stage`.
+   */
+  claimsWhatIf: endpoint({
+    id: 'claims.whatIf',
+    method: 'GET',
+    path: `${API}/claims/:claimId/what-if`,
+    query: ClaimWhatIfQuery,
+    response: z.object({
+      ...readContext,
+      claim_id: Id,
+      current: ClaimFacts,
+      /** The stages the claim may move to from its current stage, in stage order. */
+      next_stages: z.array(ClaimStage),
+      /** Null when no `to_stage` was asked for. */
+      what_if: z.object({ to_stage: ClaimStage, event_at: Moment, facts: ClaimFacts }).nullable(),
     }),
   }),
   policiesList: endpoint({ id: 'policies.list', method: 'GET', path: `${API}/policies`, response: collection(Policy) }),

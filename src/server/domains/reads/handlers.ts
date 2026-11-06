@@ -7,6 +7,7 @@ type ReadEndpoints =
   | 'claimsList'
   | 'claimsGet'
   | 'claimsFacts'
+  | 'claimsWhatIf'
   | 'suppliersInsights'
   | 'policiesList'
   | 'clientsList'
@@ -24,6 +25,16 @@ export const readHandlers: HandlersOf<ReadEndpoints> = {
     run: async (c) => {
       const claimId = c.params.claimId ?? '';
       const found = reads.claimsGet(await c.model(), c.asOf, claimId);
+      if (found === null) {
+        throw new HttpProblem(404, claimNotFoundMessage(claimId, c.asOf));
+      }
+      return found;
+    },
+  },
+  claimsWhatIf: {
+    run: async (c) => {
+      const claimId = c.params.claimId ?? '';
+      const found = reads.claimsWhatIf(await c.model(), c.asOf, claimId, c.query);
       if (found === null) {
         throw new HttpProblem(404, claimNotFoundMessage(claimId, c.asOf));
       }

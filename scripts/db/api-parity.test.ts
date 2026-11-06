@@ -2,7 +2,8 @@
  * The server and the mock API give the same answers (skipped without the local stack's database): the same fixtures,
  * one seeded into a scratch database behind the real Hono app and one parsed by the mock API, answer every read
  * endpoint alike for both tenants, at two as-of dates and with filters, with rejected rows in TEST (so the data issues
- * list has content), and keep alike through a task created, assigned and moved on, with a fixed clock.
+ * list has content), with every claim's what-if to each stage, legal or not, and keep alike through a task created,
+ * assigned and moved on, with a fixed clock.
  */
 import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -93,6 +94,15 @@ describe.skipIf(serverUrl === null)('the API and the mock API', () => {
         await same(tenant, `/api/v1/claims/${claim.claim_id}`);
       }
       await same(tenant, '/api/v1/claims/CLM-NOPE');
+      for (const claim of claims.items) {
+        const options = (await same(tenant, `/api/v1/claims/${claim.claim_id}/what-if`)).body as unknown as { next_stages: string[] };
+        for (const stage of ['New', ...options.next_stages]) {
+          await same(tenant, `/api/v1/claims/${claim.claim_id}/what-if?to_stage=${stage}`);
+        }
+      }
+      await same(tenant, '/api/v1/claims/CLM-NOPE/what-if');
+      await same(tenant, '/api/v1/claims/CLM-101/what-if?to_stage=Nowhere');
+      await same(tenant, '/api/v1/claims/CLM-101/what-if?to_stage=Negotiation', { asOf: '2026-10-10' });
     }
     const issues = (await same('TEST', endpoints.dataIssues.path)).body as unknown as { quarantined_rows: number };
     expect(issues.quarantined_rows).toBeGreaterThan(0);

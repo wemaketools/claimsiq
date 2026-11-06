@@ -6,6 +6,7 @@
  */
 import type {
   ClaimFactsQuery,
+  ClaimWhatIfQuery,
   ClaimRecord,
   DataIssue,
   InvoicesQuery,
@@ -14,10 +15,19 @@ import type {
   TaskQuery,
   TaskRecord,
 } from '../contracts/index.js';
-import { breakdownOfOpenClaims, computeClaimsFacts, isTaskOverdue, summarizeSuppliers } from '../rules/index.js';
+import {
+  breakdownOfOpenClaims,
+  computeClaimFacts,
+  computeClaimsFacts,
+  isTaskOverdue,
+  nextStages,
+  summarizeSuppliers,
+  withHypotheticalStage,
+} from '../rules/index.js';
 import type { RuleConfig } from '../rules/index.js';
 import { claimRecords, invoiceRecords } from './asOfViews.js';
 import type { RecordSet } from './asOfViews.js';
+import { InvalidValues } from './problems.js';
 
 export interface ReadModel extends RecordSet {
   readonly tenantId: string;
@@ -68,6 +78,37 @@ export const reads = {
   claimsGet: (model: ReadModel, asOf: string, claimId: string): { tenant_id: string; as_of: string; item: ClaimRecord } | null => {
     const [item] = claimRecords(model, asOf, claimId);
     return item === undefined ? null : { tenant_id: model.tenantId, as_of: asOf, item };
+  },
+
+  /**
+   * `null` when the claim does not exist as of the date. A stage the claim may not move to is refused as an invalid
+   * `to_stage`. The claim record is only read: the what-if event exists for the engine's run and nowhere else.
+   */
+  claimsWhatIf: (model: ReadModel, asOf: string, claimId: string, query: ClaimWhatIfQuery) => {
+    const [claim] = claimRecords(model, asOf, claimId);
+    if (claim === undefined) return null;
+    const context = { asOf, config: model.ruleConfig };
+    const current = computeClaimFacts(claim, context);
+    const from = current.current_stage ?? claim.stage;
+    const allowed = nextStages(from);
+    const to = query.to_stage;
+    if (to !== undefined && !allowed.includes(to)) {
+      throw InvalidValues.field(
+        'to_stage',
+        `Claim ${claimId} is in ${from} and cannot move to ${to}. It may move to: ${allowed.join(', ')}.`,
+      );
+    }
+    return {
+      tenant_id: model.tenantId,
+      as_of: asOf,
+      claim_id: claimId,
+      current,
+      next_stages: allowed,
+      what_if:
+        to === undefined
+          ? null
+          : { to_stage: to, event_at: asOf, facts: computeClaimFacts(withHypotheticalStage(claim, to, from, asOf), context) },
+    };
   },
 
   claimsFacts: (model: ReadModel, asOf: string, query: ClaimFactsQuery) => {

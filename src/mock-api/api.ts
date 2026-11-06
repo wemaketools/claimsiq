@@ -187,6 +187,14 @@ export function createMockApi(options: MockApiOptions): MockApi {
     }
     return found;
   });
+  route(endpoints.claimsWhatIf, (c) => {
+    const claimId = c.params.claimId ?? '';
+    const found = reads.claimsWhatIf(readModel(c.data), c.asOf, claimId, c.query);
+    if (found === null) {
+      throw new HttpProblem(404, claimNotFoundMessage(claimId, c.asOf));
+    }
+    return found;
+  });
   route(endpoints.claimsFacts, (c) => reads.claimsFacts(readModel(c.data), c.asOf, c.query));
   route(endpoints.suppliersInsights, (c) => reads.suppliersInsights(readModel(c.data), c.asOf, c.query));
   route(endpoints.policiesList, (c) => reads.policiesList(readModel(c.data), c.asOf));
