@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { localEnvValue } from './localEnv';
 
 /** The trimmed value of an environment variable; empty or whitespace counts as unset. Every env read goes through it. */
 export function envValue(name: string): string | undefined {
@@ -11,15 +11,7 @@ export function envValue(name: string): string | undefined {
  * `.env.local`, which the API server reads (Playwright does not load it).
  */
 export function databaseUrl(): string {
-  const fromEnvironment = envValue('DATABASE_URL');
-  if (fromEnvironment !== undefined) return fromEnvironment;
-  const file = new URL('../.env.local', import.meta.url);
-  const line = existsSync(file)
-    ? readFileSync(file, 'utf8')
-        .split(/\r?\n/)
-        .find((candidate) => candidate.startsWith('DATABASE_URL='))
-    : undefined;
-  const value = line?.slice('DATABASE_URL='.length).trim().replace(/^["']|["']$/g, '');
-  if (value === undefined || value === '') throw new Error('DATABASE_URL is not set in the environment or in .env.local.');
+  const value = envValue('DATABASE_URL') ?? localEnvValue('DATABASE_URL');
+  if (value === undefined) throw new Error('DATABASE_URL is not set in the environment or in .env.local.');
   return value;
 }
