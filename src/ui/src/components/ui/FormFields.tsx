@@ -104,6 +104,8 @@ export interface TextFieldProps
     Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'required'> {
   readonly value: string;
   readonly onChange: (value: string) => void;
+  /** A unit shown after the input, for example `BWP`. */
+  readonly suffix?: string;
 }
 
 export function TextField({
@@ -116,10 +118,24 @@ export function TextField({
   onChange,
   id: givenId,
   type = 'text',
+  suffix,
   ...rest
 }: TextFieldProps) {
   const generated = useId();
   const id = givenId ?? generated;
+  const input = (
+    <input
+      id={id}
+      type={type}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      required={required}
+      aria-required={required || undefined}
+      aria-invalid={error !== undefined || undefined}
+      aria-describedby={describedBy(id, hint, error)}
+      {...rest}
+    />
+  );
   return (
     <FieldShell
       id={id}
@@ -129,17 +145,14 @@ export function TextField({
       required={required}
       className={fieldClassName}
     >
-      <input
-        id={id}
-        type={type}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        required={required}
-        aria-required={required || undefined}
-        aria-invalid={error !== undefined || undefined}
-        aria-describedby={describedBy(id, hint, error)}
-        {...rest}
-      />
+      {suffix === undefined ? (
+        input
+      ) : (
+        <div className="ciq-input-group">
+          {input}
+          <span className="ciq-input-addon">{suffix}</span>
+        </div>
+      )}
     </FieldShell>
   );
 }

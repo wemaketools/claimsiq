@@ -10,7 +10,6 @@ import {
   Button,
   Card,
   ConfirmActionDialog,
-  NumberInput,
   TextField,
   UnsavedChangesGuard,
   useToast,
@@ -42,19 +41,17 @@ function RuleInput({ info, value, error, saved, standard, onChange }: RuleInputP
       </span>
     </>
   );
-  if (info.kind === 'buckets') {
-    return (
-      <TextField label={info.label} hint={hint} error={error} value={value} onChange={onChange} />
-    );
-  }
+  // A text field, not a number field: what is typed stays on screen with its message, never quietly dropped.
+  const numeric = info.kind !== 'buckets';
   return (
-    <NumberInput
+    <TextField
       label={info.label}
       hint={hint}
       error={error}
       value={value}
       onChange={onChange}
-      places={info.kind === 'money' || info.kind === 'percent' ? 2 : 0}
+      inputMode={numeric ? 'decimal' : undefined}
+      className={numeric ? 'ciq-num' : undefined}
       suffix={unitOf(info.kind)}
     />
   );

@@ -37,9 +37,10 @@ export const shellCatalog = {
       issuesUnknown: 'Data issues',
       reset: 'Reset',
       resetTitle: 'Reset the {dataSet} data set?',
-      resetScope: 'Every task and other change made in the {dataSet} data set',
+      resetScope:
+        'Every task, the saved rules and their change history, and any other change made in the {dataSet} data set',
       resetResult:
-        'The changes are removed and the fixture shows exactly as loaded. The data set and the as-of date stay.',
+        'The changes are removed, the rules go back to the spec’s, and the fixture shows exactly as loaded. The data set and the as-of date stay.',
       resetDone: 'The {dataSet} fixture is back as loaded.',
       issuesDialog: {
         title: 'Data issues',

@@ -87,6 +87,11 @@ const en = {
   changedFromDefault: 'Changed from the spec',
   error: {
     number: 'Enter a number.',
+    whole: 'Must be a whole number.',
+    min: 'Must be at least {min}.',
+    max: 'Must be at most {max}.',
+    increasing: 'Each limit must be larger than the one before.',
+    invalid: 'Enter a valid value.',
     buckets: 'Enter whole days separated by commas, for example 7, 30, 60, 90.',
   },
   action: {

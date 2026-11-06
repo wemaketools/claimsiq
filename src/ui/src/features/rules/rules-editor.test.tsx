@@ -48,11 +48,50 @@ describe('Rules editor', () => {
     const buckets = screen.getByLabelText('Age buckets: upper limits');
     await user.clear(buckets);
     await user.type(buckets, '30, 7');
-    expect(await screen.findByText(/must be strictly increasing/)).toBeInTheDocument();
+    expect(
+      await screen.findByText('Each limit must be larger than the one before.'),
+    ).toBeInTheDocument();
     await user.clear(buckets);
     await user.type(buckets, '7, 30, 60, 90');
+    // What is typed stays in the field with a plain message and Save stays off, whatever the kind of mistake.
+    const typed = async (label: string, text: string, message: string) => {
+      const field = screen.getByLabelText(label);
+      await user.clear(field);
+      await user.type(field, text);
+      expect(field).toHaveValue(text);
+      expect(await screen.findByText(message)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
+      expect(
+        screen.queryByText(/expected|Too small|Too big|Invalid input/),
+      ).not.toBeInTheDocument();
+      await user.clear(field);
+      await user.type(field, saved[label] ?? '');
+      expect(screen.queryByText(message)).not.toBeInTheDocument();
+    };
+    const saved: Record<string, string> = {
+      'Supplier sample minimum': '2',
+      'High-value line': '25000',
+      'Approaching window': '1',
+      'Stage target: New': '2',
+    };
+    await typed('Supplier sample minimum', '0', 'Must be at least 1.');
+    await typed('High-value line', '-5', 'Must be at least 0.');
+    await typed('High-value line', 'abc', 'Enter a number.');
+    await typed('Approaching window', '1.5', 'Must be a whole number.');
+    await typed('Stage target: New', '0x10', 'Enter a number.');
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
+    expect(screen.getByLabelText('High-value line')).toHaveValue('25000');
+
+    // Reset names the saved rules among what it removes.
+    await user.click(screen.getByRole('button', { name: 'Reset' }));
+    const resetting = await screen.findByRole('dialog', { name: 'Reset the TEST data set?' });
+    expect(
+      within(resetting).getByText(/the saved rules and their change history/),
+    ).toBeInTheDocument();
+    await user.click(within(resetting).getByRole('button', { name: 'Cancel' }));
 
     // CLM-106 stops being high value at P40,000, on the Overview and in the Exceptions & SLA CSV.
+    await user.clear(line);
     await user.type(line, '40000');
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
     const confirm = await screen.findByRole('dialog', { name: 'Save the rules?' });
