@@ -56,7 +56,7 @@ Which account you sign in with does not choose the persona (DD-07).
 
 ### DD-10 One demo tenant
 
-The shell labels the dataset "The Brittany" (the tenant of the specs, SF §5/§6) and the API client sends `X-Tenant-Id: the-brittany` on every non-public call while the user is signed in. Tenant switching does not exist; the specs' tenant and dataset label (TEST or DEMO) is added with the data layer.
+The shell labels the dataset with the fixture tenant `DEMO`, "Fictional Botswana insurer demo" (`02_expanded_demo_fixture/tenants.csv`), and the API client sends `X-Tenant-Id: DEMO` on every non-public call while the user is signed in. The name "The Brittany" is not shown in the application chrome (QuoteIQ removed it after review). Tenant switching does not exist yet; the data layer makes the label and the id follow the selected data set (TEST or DEMO).
 
 ### DD-11 What the scaffold does not contain
 

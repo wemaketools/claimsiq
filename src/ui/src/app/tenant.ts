@@ -7,4 +7,4 @@ export interface Tenant {
   readonly name: string;
 }
 
-export const TENANT: Tenant = { id: 'the-brittany', name: 'The Brittany' };
+export const TENANT: Tenant = { id: 'DEMO', name: 'Fictional Botswana insurer demo' };

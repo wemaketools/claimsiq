@@ -29,7 +29,6 @@ export default function DemoAccounts({ onPick, disabled = false }: DemoAccountsP
               className="ciq-demo-account"
               disabled={disabled}
               onClick={() => onPick(account.email, DEMO_PASSWORD)}
-              aria-label={t('auth.demo.pick', { name: account.fullName, email: account.email })}
             >
               {account.fullName}
               <span className="ciq-demo-account-role">{account.email}</span>

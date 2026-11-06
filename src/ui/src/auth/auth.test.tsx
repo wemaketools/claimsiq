@@ -12,6 +12,22 @@ import { SignInPage } from './SignInPage';
 const signedOut = signedOutSession();
 
 describe('SignInPage', () => {
+  it('renders, and marks the form busy while signing in, without React reporting an invalid attribute', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const auth = stubAuth({ signIn: vi.fn(() => new Promise<{ ok: boolean }>(() => undefined)) });
+    const { container } = renderWithProviders(<SignInPage />, {
+      state: { session: signedOut },
+      auth,
+    });
+    expect(container.querySelector('form')).not.toHaveAttribute('aria-busy');
+
+    await userEvent.type(screen.getByLabelText(/Email address/), 'someone@claimsiq.local');
+    await userEvent.type(screen.getByLabelText(/Password/), 'pw{Enter}');
+
+    expect(container.querySelector('form')).toHaveAttribute('aria-busy', 'true');
+    expect(error).not.toHaveBeenCalled();
+  });
+
   it('signs in with email and password and shows ONE generic message on failure', async () => {
     const auth = stubAuth({ signIn: vi.fn(() => Promise.resolve({ ok: false })) });
     renderWithProviders(<SignInPage />, { state: { session: signedOut }, auth });
@@ -52,7 +68,7 @@ describe('SignInPage', () => {
     const auth = stubAuth();
     renderWithProviders(<SignInPage />, { state: { session: signedOut }, auth });
 
-    const finance = await screen.findByRole('button', { name: /Sign in as Finance/ });
+    const finance = await screen.findByRole('button', { name: /Finance/ });
     expect(document.querySelector(`[data-marker="${DEMO_ACCOUNTS_MARKER}"]`)).not.toBeNull();
     await userEvent.click(finance);
 

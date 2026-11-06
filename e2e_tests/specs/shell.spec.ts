@@ -72,7 +72,7 @@ test.describe('shell', () => {
     await expect(links).toHaveText(DESTINATIONS);
     await expectNoAxeViolations(page);
 
-    await page.getByRole('button', { name: /Account menu for Head of Claims/ }).click();
+    await page.getByRole('button', { name: /^Head of Claims/ }).click();
     await page.getByRole('menuitem', { name: 'Sign out' }).click();
     await expect(page).toHaveURL(/\/signin$/);
   });

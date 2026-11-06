@@ -40,7 +40,7 @@ describe('Sidebar', () => {
     renderWithProviders(<Sidebar modules={modules} />, { state: { session: signedInSession() } });
 
     const sidebar = screen.getByRole('complementary', { name: 'Main navigation and account' });
-    expect(within(sidebar).getByText('The Brittany')).toBeInTheDocument();
+    expect(within(sidebar).getByText('Fictional Botswana insurer demo')).toBeInTheDocument();
     expect(sidebar.querySelector('.ciq-brand-name')).toHaveTextContent('ClaimsIQ');
     expect(sidebar.querySelector('.ciq-brand-name .ciq-brand-iq')).toHaveTextContent('IQ');
     expect(within(sidebar).getByText('Claims Intelligence')).toBeInTheDocument();
@@ -139,9 +139,7 @@ describe('AppShell', () => {
       auth,
     });
 
-    const trigger = screen.getByRole('button', {
-      name: 'Account menu for Head of Claims, viewing as Claims Handler',
-    });
+    const trigger = screen.getByRole('button', { name: /^Head of Claims/ });
     expect(trigger).toHaveTextContent('Claims Handler');
     await userEvent.click(trigger);
     await userEvent.click(screen.getByRole('menuitem', { name: 'Sign out' }));
@@ -153,7 +151,7 @@ describe('AppShell', () => {
     const store = createAppStore({ session: signedInSession() });
     renderWithProviders(<AppShell modules={modules} />, { store });
 
-    await userEvent.click(screen.getByRole('button', { name: /^Account menu for/ }));
+    await userEvent.click(screen.getByRole('button', { name: /^Head of Claims/ }));
     await userEvent.click(screen.getByRole('menuitem', { name: 'Use dark theme' }));
 
     expect(store.getState().session.theme).toBe('dark');

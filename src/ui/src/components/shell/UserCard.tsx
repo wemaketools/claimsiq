@@ -51,12 +51,7 @@ export function UserCard() {
           },
         ]}
         trigger={(props) => (
-          <button
-            type="button"
-            className="ciq-user-card-btn"
-            aria-label={t('shell.user.open', { name: user.fullName, persona: personaLabel })}
-            {...props}
-          >
+          <button type="button" className="ciq-user-card-btn" {...props}>
             <span className="ciq-avatar" aria-hidden="true">
               {initialsOf(user.fullName)}
             </span>

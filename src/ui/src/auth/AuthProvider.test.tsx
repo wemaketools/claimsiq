@@ -136,7 +136,7 @@ describe('AuthProvider', () => {
 
     await waitFor(() => expect(requests).toHaveLength(1));
     expect(requests[0]?.headers.authorization).toBe('Bearer jwt-from-session');
-    expect(requests[0]?.headers['x-tenant-id']).toBe('the-brittany');
+    expect(requests[0]?.headers['x-tenant-id']).toBe('DEMO');
   });
 
   it('signs the user out when the API answers 401', async () => {

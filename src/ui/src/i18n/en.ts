@@ -34,7 +34,6 @@ export const shellCatalog = {
     },
     user: {
       menu: 'Account menu',
-      open: 'Account menu for {name}, viewing as {persona}',
       signedInAs: 'Signed in as {account}',
       signOut: 'Sign out',
     },
@@ -67,7 +66,6 @@ export const shellCatalog = {
     demo: {
       title: 'Demo accounts (local development only)',
       subtitle: 'Choose a demo account to sign in with its local password ({password}).',
-      pick: 'Sign in as {name} ({email})',
     },
     forgot: {
       title: 'Reset your password',

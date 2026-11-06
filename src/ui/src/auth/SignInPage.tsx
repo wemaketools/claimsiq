@@ -80,7 +80,7 @@ export function SignInPage() {
         ) : undefined
       }
     >
-      <form onSubmit={onSubmit} noValidate aria-submitting={submitting || undefined}>
+      <form onSubmit={onSubmit} noValidate aria-busy={submitting || undefined}>
         {session.signOutReason === 'expired' && !failed && (
           <Banner tone="info">{t('auth.signIn.expired')}</Banner>
         )}
