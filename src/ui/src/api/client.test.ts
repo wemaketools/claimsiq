@@ -1,15 +1,15 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
 import { installFetch, problem } from '../test/fetchMock';
+import { restoreAfterEach } from '../test/restoreAfterEach';
 import { ApiError, call, configureApiClient, fieldErrorsFor } from './client';
 import type { ApiEndpoint } from './endpoint';
 
-const restores: Array<() => void> = [];
 function adapters(
   options: { tenant?: string | null; onUnauthorized?: () => void; token?: string | null } = {},
 ) {
-  restores.push(
+  restoreAfterEach(
     configureApiClient({
       getAccessToken: () => Promise.resolve(options.token === undefined ? 'jwt-1' : options.token),
       getTenantId: () => (options.tenant === undefined ? 'tenant-a' : options.tenant),
@@ -17,9 +17,6 @@ function adapters(
     }),
   );
 }
-afterEach(() => {
-  while (restores.length > 0) restores.pop()?.();
-});
 
 const health: ApiEndpoint<{ ok: boolean }> = {
   id: 'test.health',

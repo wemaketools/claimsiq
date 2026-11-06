@@ -46,7 +46,7 @@ The persona switch offers Head of Claims, Claims Handler, Supplier Coordinator a
 
 ### DD-08 Real sign-in against local Supabase; one demo account per persona
 
-Sign-in uses real Supabase Auth from the first item. `auth:personas` creates four accounts (`head.of.claims@`, `claims.handler@`, `supplier.coordinator@`, `finance@claimsiq.local`, password `test1234`, local only; the script refuses to run against anything but the local stack). The development-only quick-pick on the sign-in page lists the same accounts; a unit test keeps the two lists equal and `scan-bundle` proves the quick-pick is absent from production builds.
+Sign-in uses real Supabase Auth from the first item. `auth:personas` creates four accounts (`head.of.claims@`, `claims.handler@`, `supplier.coordinator@`, `finance@claimsiq.local`, password `test1234`, local only; the script refuses to run against anything but the local stack). The development-only quick-pick on the sign-in page lists the same accounts: the seed script and the quick-pick both import the one list in `src/ui/src/auth/demoAccountList.ts`, and a SPA test checks that its names are the four persona labels. `scan-bundle` proves the quick-pick is absent from production builds.
 
 Which account you sign in with does not choose the persona (DD-07).
 

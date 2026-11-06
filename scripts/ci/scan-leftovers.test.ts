@@ -19,6 +19,7 @@ const LEFTOVERS: ReadonlyArray<{ readonly name: string; readonly pattern: RegExp
   { name: 'a decision id (DD-nn)', pattern: /\bDD-\d+/ },
   { name: 'a spec or brief section sign', pattern: /§/ },
   { name: 'a mock-up screenshot file', pattern: /\b[\w-]+\.png\b/ },
+  { name: 'a reference-table, sealed-bid or opening-session wording', pattern: /reference[- ]tables?|reference screenshots?|sealed|opening session/i },
   { name: 'an approval, audit or amendment feature', pattern: /approval route|audit history|amendment histor/i },
 ];
 

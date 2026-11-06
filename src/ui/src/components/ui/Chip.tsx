@@ -12,7 +12,7 @@ import type { IconName } from './Icon';
 export interface ChipProps {
   readonly tone: ChipTone;
   readonly children: ReactNode;
-  /** Transparent background with a coloured outline (overdue flags in the reference tables). */
+  /** Transparent background with a coloured outline (for example an overdue flag next to a due date). */
   readonly outlined?: boolean;
   readonly size?: 'md' | 'sm';
   readonly icon?: IconName;

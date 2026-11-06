@@ -1,8 +1,9 @@
 /**
  * The demo accounts of the local development quick-pick.
  *
- * DEVELOPMENT BUILDS ONLY: this module is reached only through the dynamic import in SignInPage, which sits behind
- * `import.meta.env.DEV`, so Vite drops it from production builds. `scan-bundle` fails the build if
+ * DEVELOPMENT BUILDS ONLY: the SPA reaches this module only through the dynamic import in SignInPage, which sits
+ * behind `import.meta.env.DEV`, so Vite drops it from production builds. The seed script, which is not bundled, imports
+ * it too. `scan-bundle` fails the build if
  * `DEMO_ACCOUNTS_MARKER` appears in `src/ui/dist`.
  *
  * The accounts are created in LOCAL Supabase Auth by `bun run auth:personas`, which imports this module (so it has no

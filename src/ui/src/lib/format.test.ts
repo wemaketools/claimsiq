@@ -63,7 +63,7 @@ describe('official time', () => {
 describe('relative time', () => {
   const now = Date.parse('2026-09-29T12:00:00Z');
 
-  it('shows ages as in the reference tables', () => {
+  it('shows ages in days, hours and minutes, or now', () => {
     expect(formatAge('2026-08-22T12:00:00Z', now)).toBe('38d');
     expect(formatAge('2026-09-29T07:00:00Z', now)).toBe('5h');
     expect(formatAge('2026-09-29T11:48:00Z', now)).toBe('12m');
@@ -84,7 +84,7 @@ describe('relative time', () => {
 });
 
 describe('misc', () => {
-  it('formats byte sizes and initials', () => {
+  it('formats byte sizes', () => {
     expect(formatBytes(12)).toBe('12 B');
     expect(formatBytes(2048)).toBe('2 KB');
     expect(formatBytes(52_428_800)).toBe('50 MB');
@@ -93,6 +93,9 @@ describe('misc', () => {
   it('chooses the byte unit after rounding, so a size near a boundary never reads 1024 KB', () => {
     expect(formatBytes(1_048_575)).toBe('1 MB');
     expect(formatBytes(1_023 * 1024)).toBe('1023 KB');
+  });
+
+  it('builds avatar initials from the first and last word of a name', () => {
     expect(initialsOf('Kagiso Dube')).toBe('KD');
     expect(initialsOf('Sam')).toBe('S');
   });

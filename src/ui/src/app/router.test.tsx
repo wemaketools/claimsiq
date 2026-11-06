@@ -1,37 +1,18 @@
-import { render, screen, within } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Provider } from 'react-redux';
-import { RouterProvider, createMemoryRouter } from 'react-router';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { ApiError } from '../api/client';
-import { AuthContext } from '../auth/authContext';
-import { ToastProvider } from '../components/ui/ToastProvider';
 import { signedInSession, signedOutSession } from '../test/fixtures';
-import { stubAuth } from '../test/render';
+import { renderRouteTree } from '../test/render';
+import { restoreAfterEach } from '../test/restoreAfterEach';
 import { buildRoutes } from './router';
 import { features } from './featureRegistry';
 import { configureScreenLoader } from './screenStatus';
-import { createAppStore } from './store';
 import type { RootState } from './store';
 
-const restores: Array<() => void> = [];
-afterEach(() => {
-  while (restores.length > 0) restores.pop()?.();
-});
-
 function renderApp(route: string, session: RootState['session']) {
-  const router = createMemoryRouter(buildRoutes(features), { initialEntries: [route] });
-  render(
-    <Provider store={createAppStore({ session })}>
-      <AuthContext.Provider value={stubAuth()}>
-        <ToastProvider>
-          <RouterProvider router={router} />
-        </ToastProvider>
-      </AuthContext.Provider>
-    </Provider>,
-  );
-  return router;
+  return renderRouteTree(buildRoutes(features), { state: { session }, route }).router;
 }
 
 const PAGES = [
@@ -86,7 +67,7 @@ describe('the route tree', () => {
 
   it('shows the error state of a page whose loader fails, and recovers on retry', async () => {
     let failing = true;
-    restores.push(
+    restoreAfterEach(
       configureScreenLoader(() =>
         failing
           ? Promise.reject(
@@ -110,7 +91,7 @@ describe('the route tree', () => {
   });
 
   it('shows the loading state while a page waits for its data', async () => {
-    restores.push(configureScreenLoader(() => new Promise<void>(() => undefined)));
+    restoreAfterEach(configureScreenLoader(() => new Promise<void>(() => undefined)));
     renderApp('/suppliers', signedInSession());
 
     expect(await screen.findByText('Loading…')).toBeInTheDocument();

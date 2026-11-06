@@ -23,11 +23,11 @@ describe('Icon', () => {
     const { container } = render(
       <>
         <Icon name="bell" />
-        <Icon name="lock" label="Sealed" />
+        <Icon name="lock" label="Locked" />
       </>,
     );
     expect(container.querySelector('[data-icon="bell"]')).toHaveAttribute('aria-hidden', 'true');
-    expect(screen.getByRole('img', { name: 'Sealed' })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Locked' })).toBeInTheDocument();
   });
 });
 
@@ -120,11 +120,11 @@ describe('Empty, restricted and error states', () => {
     render(
       <>
         <EmptyState title="No claims yet" description="Create the first one." />
-        <RestrictedState description="Sealed until the opening session." />
+        <RestrictedState description="Finance figures are not shown to this persona." />
       </>,
     );
     expect(screen.getByText('No claims yet')).toBeInTheDocument();
-    expect(screen.getByText('Sealed until the opening session.')).toBeInTheDocument();
+    expect(screen.getByText('Finance figures are not shown to this persona.')).toBeInTheDocument();
   });
 
   it('renders a 403 as the restricted state and a 5xx with its correlation id and retry', async () => {
@@ -185,14 +185,14 @@ describe('KpiCard', () => {
           delta={{ direction: 'down', text: '-1', positive: true }}
         />
         <KpiCard label="Avg cycle time" value={null} icon="timer" />
-        <KpiCard label="Sealed items" value="9" icon="lock" restricted />
+        <KpiCard label="Finance figures" value="9" icon="lock" restricted />
       </>,
     );
     expect(screen.getByText('-2').closest('.ciq-kpi-delta')).toHaveClass('ciq-kpi-delta--down');
     expect(screen.getByText('-1').closest('.ciq-kpi-delta')).toHaveClass('ciq-kpi-delta--up');
     expect(screen.getByRole('region', { name: 'Avg cycle time' })).toHaveTextContent('—');
     // A metric the caller may not see is left out entirely.
-    expect(screen.queryByRole('region', { name: 'Sealed items' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Finance figures' })).not.toBeInTheDocument();
     expect(screen.queryByText('9')).not.toBeInTheDocument();
   });
 });

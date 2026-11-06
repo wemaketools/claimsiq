@@ -1,14 +1,10 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { ApiError } from '../api/client';
+import { restoreAfterEach } from '../test/restoreAfterEach';
 import { configureScreenLoader, useScreenStatus } from './screenStatus';
-
-const restores: Array<() => void> = [];
-afterEach(() => {
-  while (restores.length > 0) restores.pop()?.();
-});
 
 function Probe() {
   const { status, reload } = useScreenStatus('test');
@@ -25,7 +21,7 @@ function Probe() {
 describe('useScreenStatus', () => {
   it('is loading until the loader settles, then empty', async () => {
     let release: () => void = () => undefined;
-    restores.push(
+    restoreAfterEach(
       configureScreenLoader(
         () =>
           new Promise<void>((resolve) => {
@@ -43,7 +39,7 @@ describe('useScreenStatus', () => {
 
   it('shows the error of a failed loader and loads again on reload', async () => {
     let fail = true;
-    restores.push(
+    restoreAfterEach(
       configureScreenLoader(() =>
         fail ? Promise.reject(new Error('Backend is down')) : Promise.resolve(),
       ),
@@ -58,7 +54,7 @@ describe('useScreenStatus', () => {
   });
 
   it('keeps the title of an ApiError the loader rejects with', async () => {
-    restores.push(
+    restoreAfterEach(
       configureScreenLoader(() =>
         Promise.reject(
           new ApiError({ kind: 'server', status: 500, title: 'Boom', endpointId: 'test' }),

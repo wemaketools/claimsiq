@@ -4,6 +4,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { signedInSession, signedOutSession } from '../test/fixtures';
 import { LocationProbe, renderWithProviders, stubAuth } from '../test/render';
+import { PERSONA_IDS } from '../app/personas';
+import { t } from '../lib/i18n';
 import { DEMO_ACCOUNTS, DEMO_ACCOUNTS_MARKER } from './demoAccountList';
 import { ForgotPasswordPage } from './ForgotPasswordPage';
 import { ResetPasswordPage } from './ResetPasswordPage';
@@ -75,6 +77,12 @@ describe('SignInPage', () => {
     expect(auth.signIn).toHaveBeenCalledWith('finance@claimsiq.local', 'test1234');
     const emails = DEMO_ACCOUNTS.map((account) => account.email);
     expect(new Set(emails).size).toBe(emails.length);
+  });
+
+  it('has one demo account per persona, named after it', () => {
+    expect(DEMO_ACCOUNTS.map((account) => account.fullName)).toEqual(
+      PERSONA_IDS.map((id) => t(`shell.persona.${id}`)),
+    );
   });
 
   it('explains an expired session', () => {
