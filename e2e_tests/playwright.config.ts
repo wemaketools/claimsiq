@@ -15,7 +15,8 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig, devices } from '@playwright/test';
 
-import { envValue, running } from './projects';
+import { envValue } from './env';
+import { running } from './projects';
 
 const uiDir = fileURLToPath(new URL('../src/ui', import.meta.url));
 const isCI = envValue('CI') !== undefined;

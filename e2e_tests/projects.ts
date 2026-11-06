@@ -2,11 +2,7 @@
  * The e2e projects, each with the server it needs: the one home of both, so a project never starts another's server.
  * `E2E_PROJECT` (set by `test:e2e:prototype`) selects one; unset runs all.
  */
-/** The trimmed value of an environment variable; empty or whitespace counts as unset. Every env read goes through it. */
-export function envValue(name: string): string | undefined {
-  const raw = process.env[name]?.trim();
-  return raw === undefined || raw === '' ? undefined : raw;
-}
+import { envValue } from './env';
 
 function portFromEnv(name: string, fallback: number): number {
   const raw = envValue(name);
