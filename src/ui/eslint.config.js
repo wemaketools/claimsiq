@@ -5,6 +5,8 @@
  *
  * Boundaries enforced here:
  * - The SPA never imports backend code (src/server). It talks to the API only through src/api/client.ts.
+ * - The mock API (src/mock-api) is imported only by src/api/mockTransport.ts, the one place that picks the transport,
+ *   and by tests; screens call the typed endpoints.
  * - `@supabase/supabase-js` is imported only by src/auth/**: the one browser client is for authentication
  *   only. Type-only imports are allowed anywhere.
  */
@@ -21,6 +23,11 @@ import { sharedRules } from '../../eslint.shared.js';
 const SERVER_BOUNDARY = {
   group: ['**/server', '**/server/**'],
   message: 'The SPA never imports backend code. Call the API through src/api/client.ts.',
+};
+const MOCK_API_BOUNDARY = {
+  group: ['**/mock-api', '**/mock-api/**'],
+  message:
+    'Screens talk to the typed API through src/api/client.ts. Only src/api/mockTransport.ts imports the mock API.',
 };
 const SUPABASE_AUTH_ONLY = {
   name: '@supabase/supabase-js',
@@ -60,6 +67,16 @@ export default defineConfig([
       'no-restricted-imports': 'off',
       '@typescript-eslint/no-restricted-imports': [
         'error',
+        { paths: [SUPABASE_AUTH_ONLY], patterns: [SERVER_BOUNDARY, MOCK_API_BOUNDARY] },
+      ],
+    },
+  },
+  {
+    name: 'claimsiq-ui/mock-api-importers',
+    files: ['src/api/mockTransport.ts', '**/*.test.{ts,tsx}', 'src/test/**/*.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
         { paths: [SUPABASE_AUTH_ONLY], patterns: [SERVER_BOUNDARY] },
       ],
     },
@@ -68,7 +85,10 @@ export default defineConfig([
     name: 'claimsiq-ui/auth-module',
     files: ['src/auth/**/*.{ts,tsx}'],
     rules: {
-      '@typescript-eslint/no-restricted-imports': ['error', { patterns: [SERVER_BOUNDARY] }],
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        { patterns: [SERVER_BOUNDARY, MOCK_API_BOUNDARY] },
+      ],
     },
   },
   {

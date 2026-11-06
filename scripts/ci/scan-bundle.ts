@@ -2,7 +2,8 @@
  * Production bundle leak scan (`bun run ci:security`).
  *
  * Builds the SPA (`bun run build:ui`; skip with `--no-build`) and fails if any file in `src/ui/dist` contains:
- * - mock API code or fixtures (persona e-mails `@claimsiq.local`, mock-api paths and messages);
+ * - persona e-mails (`@claimsiq.local`) and mock-api source paths or messages in plain text (the in-browser mock API
+ *   ships in the bundle on purpose in Stage A, over the synthetic CSV fixtures);
  * - `src/server` code (paths and messages unique to the server platform modules);
  * - a server-only environment variable name (the keys of src/server/lib/config plus the keys of the planned
  *   backend; the browser-safe `VITE_` names are allowed);
@@ -62,8 +63,8 @@ function escapeRegExp(value: string): string {
 export function bundleRules(inputs: BundleScanInputs): BundleRule[] {
   const serverKeys = [...new Set<string>([...SERVER_ENV_KEYS, ...PLANNED_SERVER_KEYS])];
   const rules: BundleRule[] = [
-    { id: 'mock-fixture', description: 'mock API fixture data (persona e-mail)', pattern: /@claimsiq\.local\b/g },
-    { id: 'mock-code', description: 'mock API code', pattern: /mock-api[\\/]|handler module skipped|No fixture persona|fixture drift/g },
+    { id: 'mock-fixture', description: 'a persona e-mail', pattern: /@claimsiq\.local\b/g },
+    { id: 'mock-code', description: 'mock-api source paths or messages', pattern: /mock-api[\\/]|handler module skipped|No fixture persona|fixture drift/g },
     {
       id: 'server-code',
       description: 'src/server code',
@@ -275,7 +276,7 @@ function main(): void {
     process.exitCode = 1;
     return;
   }
-  process.stdout.write(`scan-bundle: ${dist} is clean (no mock API, server code, server variables, secrets or demo accounts).\n`);
+  process.stdout.write(`scan-bundle: ${dist} is clean (no demo accounts, server code, server variables or secrets).\n`);
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {

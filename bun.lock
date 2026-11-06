@@ -6,6 +6,7 @@
       "name": "claimsiq",
       "dependencies": {
         "@supabase/supabase-js": "^2.117.2",
+        "decimal.js": "^10.6.0",
         "hono": "^4.13.11",
         "kysely": "^0.29.6",
         "pg": "^8.23.0",

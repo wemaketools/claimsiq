@@ -1,14 +1,16 @@
 /**
- * The Redux store: session and filters slices. `createAppStore` builds a fresh store (tests use it with a preloaded
+ * The Redux store: session, data context and filters slices. `createAppStore` builds a fresh store (tests use it with a preloaded
  * state); `store` is the application's instance.
  */
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
 
+import { dataContextReducer } from './slices/dataContext';
 import { filtersReducer } from './slices/filters';
 import { sessionReducer } from './slices/session';
 
 export const rootReducer = combineReducers({
   session: sessionReducer,
+  dataContext: dataContextReducer,
   filters: filtersReducer,
 });
 

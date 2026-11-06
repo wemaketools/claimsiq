@@ -6,9 +6,10 @@ import type { RouteObject } from 'react-router';
 import { vi } from 'vitest';
 
 import { configureApiClient } from '../api/client';
+import type { ApiTransport } from '../api/client';
 import { createAppStore } from '../app/store';
 import type { AppStore, RootState } from '../app/store';
-import { TENANT } from '../app/tenant';
+import { tenantOf } from '../app/tenant';
 import { AuthContext } from '../auth/authContext';
 import type { AuthActions } from '../auth/authContext';
 import { ToastProvider } from '../components/ui/ToastProvider';
@@ -33,6 +34,8 @@ export interface RenderOptions {
   readonly path?: string;
   readonly auth?: AuthActions;
   readonly onUnauthorized?: () => void;
+  /** Sends API calls somewhere other than the global `fetch`, for example to a mock API. */
+  readonly transport?: ApiTransport;
 }
 
 /** Also points the API client's adapters at this test's store and restores them afterwards. */
@@ -42,7 +45,13 @@ export function renderRouteTree(routes: RouteObject[], options: RenderOptions = 
   restoreAfterEach(
     configureApiClient({
       getAccessToken: () => Promise.resolve('test-token'),
-      getTenantId: () => (store.getState().session.authStatus === 'signedIn' ? TENANT.id : null),
+      getTenantId: () =>
+        store.getState().session.authStatus === 'signedIn'
+          ? tenantOf(store.getState().dataContext.dataSet).id
+          : null,
+      getAsOf: () => store.getState().dataContext.asOf,
+      getPersona: () => store.getState().session.persona,
+      ...(options.transport === undefined ? {} : { transport: options.transport }),
       onUnauthorized: options.onUnauthorized ?? (() => undefined),
     }),
   );

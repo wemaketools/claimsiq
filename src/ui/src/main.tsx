@@ -9,6 +9,7 @@ import { RouterProvider } from 'react-router';
 
 import './theme/index.css';
 import { AppProviders } from './app/AppProviders';
+import { createMockTransport } from './api/mockTransport';
 import { createAppRouter } from './app/router';
 import { store } from './app/store';
 import { readStoredTheme } from './lib/storage';
@@ -24,7 +25,7 @@ const router = createAppRouter();
 
 createRoot(container).render(
   <StrictMode>
-    <AppProviders store={store}>
+    <AppProviders store={store} transport={createMockTransport()}>
       <RouterProvider router={router} />
     </AppProviders>
   </StrictMode>,

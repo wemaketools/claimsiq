@@ -28,6 +28,39 @@ export const shellCatalog = {
       'supplier-coordinator': 'Supplier Coordinator',
       finance: 'Finance',
     },
+    data: {
+      label: 'Data controls',
+      dataSet: 'Data set',
+      asOf: 'As of',
+      set: { TEST: 'TEST', DEMO: 'DEMO' },
+      issues: 'Data issues ({count})',
+      issuesUnknown: 'Data issues',
+      reset: 'Reset',
+      resetTitle: 'Reset the {dataSet} data set?',
+      resetScope: 'Every task and other change made in the {dataSet} data set',
+      resetResult:
+        'The changes are removed and the fixture shows exactly as loaded. The data set and the as-of date stay.',
+      resetDone: 'The {dataSet} fixture is back as loaded.',
+      issuesDialog: {
+        title: 'Data issues',
+        summary_one:
+          '{rejected} row was rejected and left out of the data; {warnings} loaded with a warning.',
+        summary_other:
+          '{rejected} rows were rejected and left out of the data; {warnings} loaded with a warning.',
+        none: 'No data issues',
+        noneDescription: 'Every row of the {dataSet} fixture loaded.',
+        caption: 'Data issues of the {dataSet} fixture',
+        kind: { quarantined: 'Rejected', warning: 'Warning' },
+        column: {
+          kind: 'Outcome',
+          file: 'File',
+          row: 'Row',
+          field: 'Field',
+          problem: 'Problem',
+          fix: 'Fix',
+        },
+      },
+    },
     theme: {
       useDark: 'Use dark theme',
       useLight: 'Use light theme',

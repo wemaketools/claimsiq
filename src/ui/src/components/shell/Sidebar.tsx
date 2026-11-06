@@ -6,8 +6,8 @@
 import { NavLink } from 'react-router';
 
 import { features, navItemsFor } from '../../app/featureRegistry';
+import { useTenant } from '../../app/hooks';
 import type { FeatureModule } from '../../app/featureRegistry';
-import { TENANT } from '../../app/tenant';
 import { t } from '../../lib/i18n';
 import { Icon } from '../ui/Icon';
 import { UserCard } from './UserCard';
@@ -22,11 +22,12 @@ export interface SidebarProps {
 
 export function Sidebar({ onNavigate, id, modules = features }: SidebarProps) {
   const items = navItemsFor(modules);
+  const tenant = useTenant();
   return (
     <aside className="ciq-sidebar" id={id} aria-label={t('shell.sidebar.label')}>
       <div className="ciq-brand">
-        <div className="ciq-brand-tenant" title={TENANT.name}>
-          {TENANT.name}
+        <div className="ciq-brand-tenant" title={tenant.name}>
+          {tenant.name}
         </div>
         <div className="ciq-brand-name">
           {t('shell.brand.claims')}

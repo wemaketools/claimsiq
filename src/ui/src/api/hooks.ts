@@ -1,9 +1,9 @@
 /**
  * Data hooks over `call()` for pages and shared widgets.
  *
- * `useApiQuery(endpoint, request)` fetches on mount and whenever the request or the signed-in user changes. While
- * a new request runs, the previous data of the SAME endpoint and user stays visible (`isFetching`), which avoids
- * flicker when paging or filtering. Pass `null` as the request to skip the call.
+ * `useApiQuery(endpoint, request)` fetches on mount and whenever the request, the signed-in user, the data set or the
+ * as-of date changes. While a new request runs, the previous data of the SAME endpoint, user, data set and as-of date
+ * stays visible (`isFetching`), which avoids flicker when paging or filtering. Pass `null` as the request to skip the call.
  *
  * `useApiMutation(endpoint)` runs commands: `pending` disables submit buttons while a request is in flight, and
  * `error` keeps the normalized problem for field errors and banners.
@@ -99,10 +99,12 @@ export function useApiQuery<R>(
   request: EndpointRequest | null,
 ): QueryResult<R> {
   const userId = useAppSelector((state) => state.session.user?.id ?? null);
+  const dataSet = useAppSelector((state) => state.dataContext.dataSet);
+  const asOf = useAppSelector((state) => state.dataContext.asOf);
   const version = useSyncExternalStore(subscribe, getInvalidationVersion);
   const [reloadToken, setReloadToken] = useState(0);
 
-  const scope = JSON.stringify([endpoint.id, userId]);
+  const scope = JSON.stringify([endpoint.id, userId, dataSet, asOf]);
   const requestKey = request === null ? null : JSON.stringify(request);
   const key =
     requestKey === null
@@ -136,7 +138,7 @@ export function useApiQuery<R>(
       },
     );
     return () => controller.abort();
-    // The key captures endpoint, request, user, reload and invalidation.
+    // The key captures endpoint, request, user, data set, as-of date, reload and invalidation.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 

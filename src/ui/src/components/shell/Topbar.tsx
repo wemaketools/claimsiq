@@ -1,6 +1,6 @@
 /**
- * The top bar (64px, sticky): the menu button below 768px, the page title (from PageHeader), the persona switch and
- * the theme toggle. The persona switch and the toggle are always the last items, so they never move between pages.
+ * The top bar (64px, sticky): the menu button below 768px, the page title (from PageHeader), the data controls, the
+ * persona switch and the theme toggle. The persona switch and the toggle are always the last items, so they never move between pages.
  * Pages never put actions here; their primary action renders in the page head (PageHeader).
  */
 import type { Ref } from 'react';
@@ -9,6 +9,7 @@ import { PERSONA_IDS, isPersonaId } from '../../app/personas';
 import { useAppDispatch, usePersona } from '../../app/hooks';
 import { choosePersona } from '../../app/sessionActions';
 import { t } from '../../lib/i18n';
+import { DataControls } from './DataControls';
 import { IconButton } from '../ui/Button';
 import { useThemeToggle } from './useThemeToggle';
 
@@ -43,6 +44,7 @@ export function Topbar({ titleRef, onOpenMenu, menuOpen, sidebarId, menuButtonRe
       />
       <h1 className="ciq-topbar-title" ref={titleRef} />
       <div className="ciq-topbar-spacer" />
+      <DataControls />
       <div className="ciq-persona-switch">
         <label htmlFor={SWITCH_ID} className="ciq-persona-switch-label">
           {t('shell.persona.label')}

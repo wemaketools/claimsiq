@@ -1,6 +1,6 @@
 # Testing and CI
 
-Status: as built (scaffold). The decisions behind it (CI and checks, Bun) are in `docs/plan/design-decisions.md`.
+Status: as built (scaffold and data layer). The decisions behind it (CI and checks, Bun) are in `docs/plan/design-decisions.md`.
 
 ## Test projects
 
@@ -20,7 +20,12 @@ Conventions: fewer, broader tests. A test sets up once and walks a realistic flo
 - `restoreAfterEach(restore)`: registers the restore function returned by `configureApiClient` or `configureScreenLoader` to run after the current test, so no test leaks global state.
 - `installFetch`: route-keyed `fetch` stub that records requests.
 - `signedInSession` / `signedOutSession`: session states for a preloaded store.
+- `renderRouteTree` and `renderWithProviders` take a `transport`, so a test can send API calls to the real mock API (`createMockTransport()` over `localStorage`) or to a canned answer.
 - `readSourceFile`: reads a stylesheet for the contract in `theme/components.test.ts`, which asserts the few layout and accessibility rules jsdom cannot measure.
+
+## Data-layer tests
+
+`src/contracts/contracts.test.ts` (the 17 entities and their keys, endpoint ids, decimal money, times), `src/mock-api/fixtures/load.test.ts` (TEST 6 claims and 6 invoices, DEMO 30 and 36, no mixing, TEST reconciles to `expected_metrics.json`; a fixture with bad rows is quarantined with row, field, problem and fix and the good rows load) and `src/mock-api/api.test.ts` (tenant filtering, as-of reads, create task, refresh over the same storage, Reset). Their helpers are in `src/mock-api/test-support` (they read `fixtures/v1` from disk). The SPA side is `components/shell/dataControls.test.tsx`.
 
 ## The local-stack skip
 
@@ -28,7 +33,7 @@ Conventions: fewer, broader tests. A test sets up once and walks a realistic flo
 
 ## Count floors
 
-`bun run ci:test:ui` and `ci:test:unit` write a Vitest JSON report and run `scripts/ci/assert-test-run.ts`, which fails when the run did not succeed, when any test failed or was skipped, or when fewer than `--min-tests` tests ran (it catches silently dropped suites). The floors in `package.json` are sized to what exists: SPA 40, unit 13. Raise them in the same change that adds tests. `ci:test:unit` also fails on the skipped local-stack test, so it is only meaningful where the stack is up; CI runs `test:unit` for that reason and `ci:test:ui` for the SPA.
+`bun run ci:test:ui` and `ci:test:unit` write a Vitest JSON report and run `scripts/ci/assert-test-run.ts`, which fails when the run did not succeed, when any test failed or was skipped, or when fewer than `--min-tests` tests ran (it catches silently dropped suites). The floors in `package.json` are sized to what exists: SPA 43, unit 18. Raise them in the same change that adds tests. `ci:test:unit` also fails on the skipped local-stack test, so it is only meaningful where the stack is up; CI runs `test:unit` for that reason and `ci:test:ui` for the SPA.
 
 ## End-to-end
 
@@ -38,7 +43,7 @@ Prerequisites: Docker running, `bun run supabase:start`, `.env.local` written, `
 
 ## Security scans
 
-`bun run ci:security` runs two scans. `scan-secrets` checks every file git would commit for JWT-shaped strings, Supabase secret keys, private keys and connection URLs with an inline password. `scan-bundle` builds the SPA and fails when `src/ui/dist` contains mock-API code or demo-account e-mails, `src/server` code, a server-only variable name, a service-role key, the marker of the development-only demo-accounts quick-pick, or a production Content-Security-Policy with development relaxations.
+`bun run ci:security` runs two scans. `scan-secrets` checks every file git would commit for JWT-shaped strings, Supabase secret keys, private keys and connection URLs with an inline password. `scan-bundle` builds the SPA and fails when `src/ui/dist` contains demo-account e-mails or mock-api source paths (the in-browser mock API itself ships in Stage A), `src/server` code, a server-only variable name, a service-role key, the marker of the development-only demo-accounts quick-pick, or a production Content-Security-Policy with development relaxations.
 
 ## CI
 

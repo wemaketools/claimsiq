@@ -3,6 +3,8 @@
  */
 import { useDispatch, useSelector } from 'react-redux';
 
+import type { Tenant } from './tenant';
+import { tenantOf } from './tenant';
 import type { PersonaId } from './personas';
 import type { AppDispatch, RootState } from './store';
 import { filtersChanged, filtersCleared } from './slices/filters';
@@ -14,6 +16,12 @@ export const useAppSelector = useSelector.withTypes<RootState>();
 /** The persona the shell is showing. */
 export function usePersona(): PersonaId {
   return useAppSelector((state) => state.session.persona);
+}
+
+/** The tenant of the selected data set. */
+export function useTenant(): Tenant {
+  const dataSet = useAppSelector((state) => state.dataContext.dataSet);
+  return tenantOf(dataSet);
 }
 
 const NO_FILTERS: ScreenFilters = {};

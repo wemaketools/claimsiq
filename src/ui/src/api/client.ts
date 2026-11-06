@@ -3,15 +3,19 @@
  * and for every request:
  * - reads the access token PER REQUEST from the supabase-js session and sends `Authorization: Bearer` (not on
  *   public endpoints);
- * - sends `X-Tenant-Id` with the tenant of the signed-in user (not on public endpoints);
+ * - sends `X-Tenant-Id` with the tenant of the selected data set, `X-As-Of` with the as-of date and `X-Persona` with
+ *   the persona view (not on public endpoints);
  * - sends an `Idempotency-Key` on idempotent commands, generated unless the caller passes one;
  * - normalizes problem+json into `ApiError` (`status`, `title`, `code`, `fieldErrors`, `correlationId`);
  * - on 401 signs the user out (through the adapter installed by AuthProvider) and rejects;
  * - in development builds parses the body with the endpoint's response schema, so drift between the UI and the API
  *   fails loudly.
  *
- * The client never imports supabase-js or the store: AuthProvider installs the adapters (`configureApiClient`).
+ * The client never imports supabase-js or the store: AuthProvider installs the adapters (`configureApiClient`). The
+ * adapters also carry the transport: Stage A sends every request to the mock API running in the browser, a real
+ * server later is the platform `fetch` with no change to the callers.
  */
+import { AS_OF_HEADER, PERSONA_HEADER, TENANT_HEADER } from '../../../contracts/index';
 import { t } from '../lib/i18n';
 import { buildPath, buildQuery } from './endpoint';
 import type { ApiEndpoint, EndpointRequest } from './endpoint';
@@ -26,7 +30,15 @@ export interface ApiClientAdapters {
   getTenantId(): string | null;
   /** Called once per 401 response: signs the user out. */
   onUnauthorized(): void;
+  /** The as-of date every read uses, or `null` to leave it to the API's default. */
+  getAsOf?(): string | null;
+  /** The persona view, recorded as the actor of commands. */
+  getPersona?(): string | null;
+  /** Sends the request; the platform `fetch` when omitted. */
+  transport?: ApiTransport;
 }
+
+export type ApiTransport = (url: string, init: RequestInit) => Promise<Response>;
 
 const signedOutAdapters: ApiClientAdapters = {
   getAccessToken: () => Promise.resolve(null),
@@ -181,7 +193,15 @@ export async function call<R>(
   if (endpoint.public !== true) {
     const tenantId = adapters.getTenantId();
     if (tenantId !== null) {
-      headers['X-Tenant-Id'] = tenantId;
+      headers[TENANT_HEADER] = tenantId;
+    }
+    const asOf = adapters.getAsOf?.() ?? null;
+    if (asOf !== null) {
+      headers[AS_OF_HEADER] = asOf;
+    }
+    const persona = adapters.getPersona?.() ?? null;
+    if (persona !== null) {
+      headers[PERSONA_HEADER] = persona;
     }
     const token = await adapters.getAccessToken();
     if (token !== null) {
@@ -199,7 +219,7 @@ export async function call<R>(
 
   let response: Response;
   try {
-    response = await fetch(url, {
+    response = await (adapters.transport ?? fetch)(url, {
       method: endpoint.method,
       headers,
       body: payload,

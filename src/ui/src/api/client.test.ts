@@ -13,6 +13,8 @@ function adapters(
     configureApiClient({
       getAccessToken: () => Promise.resolve(options.token === undefined ? 'jwt-1' : options.token),
       getTenantId: () => (options.tenant === undefined ? 'tenant-a' : options.tenant),
+      getAsOf: () => '2026-10-21',
+      getPersona: () => 'finance',
       onUnauthorized: options.onUnauthorized ?? (() => undefined),
     }),
   );
@@ -42,7 +44,7 @@ const closeClaim: ApiEndpoint<{ closed: boolean }> = {
 };
 
 describe('call', () => {
-  it('builds the request: path, query, bearer token, tenant, idempotency key; leaves token and tenant off public calls', async () => {
+  it('builds the request: path, query, bearer token, tenant, as-of date, persona, idempotency key; leaves them off public calls; sends through the installed transport', async () => {
     adapters();
     const { requests } = installFetch({
       'GET /api/v1/test-claims/3': () => ({ body: { id: 3 } }),
@@ -62,11 +64,32 @@ describe('call', () => {
     expect(requests[0]?.search).toBe('?stage=new&stage=triage&q=roof');
     expect(requests[0]?.headers.authorization).toBe('Bearer jwt-1');
     expect(requests[0]?.headers['x-tenant-id']).toBe('tenant-a');
+    expect(requests[0]?.headers['x-as-of']).toBe('2026-10-21');
+    expect(requests[0]?.headers['x-persona']).toBe('finance');
     expect(requests[1]?.headers.authorization).toBeUndefined();
     expect(requests[1]?.headers['x-tenant-id']).toBeUndefined();
+    expect(requests[1]?.headers['x-as-of']).toBeUndefined();
     expect(requests[2]?.headers['idempotency-key']).toBe('key-1');
     expect(requests[3]?.headers['idempotency-key']).toMatch(/^[0-9a-f-]{36}$/);
     await expect(call(claim)).rejects.toThrow('Missing path parameter "claimId"');
+
+    const transport = vi.fn(() =>
+      Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 })),
+    );
+    restoreAfterEach(
+      configureApiClient({
+        getAccessToken: () => Promise.resolve(null),
+        getTenantId: () => null,
+        onUnauthorized: () => undefined,
+        transport,
+      }),
+    );
+    await call(health);
+    expect(transport).toHaveBeenCalledWith(
+      '/api/v1/test-health',
+      expect.objectContaining({ method: 'GET' }),
+    );
+    expect(requests).toHaveLength(4);
   });
 
   it('normalizes failures: problem+json with field errors, 401 sign-out, 204, schema drift, network and plain server errors', async () => {

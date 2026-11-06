@@ -74,3 +74,41 @@ ClaimsIQ uses Bun as package manager and script runner, unlike TenderIQ, which u
 - Every package script uses `bun run`, `bun run --filter <workspace> <script>`, `bunx` for CLIs and `bun <file>` for TypeScript and `.mjs` scripts. Nothing calls npm, npx or `node <file>`; `tsx` is gone because Bun runs the files. The `supabase` package is listed in `trustedDependencies` so Bun runs its postinstall, which downloads the CLI binary.
 - The test runner stays Vitest (`vitest run`), not `bun test`; Vitest, Vite, ESLint and `tsc` run as their own binaries.
 - `.nvmrc` and the Node `engines` entries are removed (this replaces the Node 24 pin of DD-02). Node is not a project requirement; the CI runner's Node, if present, is only what some binary's shebang finds, and Bun supplies a `node` shim when there is none.
+
+## Data layer (Stage A, item 2)
+
+### DD-14 Money uses decimal.js, as strings
+
+Amounts are BWP strings with exactly 2 decimals (`"14000.00"`) in the contracts, the fixtures after loading, and every API answer. Arithmetic goes through `decimal.js` in `src/contracts/money.ts` (`sumMoney`, `addMoney`, `compareMoney`, `normalizeMoney`); a JS number never holds an amount. The CSV amounts without decimals (`14000`) are padded to 2 decimals before validation; anything else that is not a plain non-negative amount is rejected.
+
+Why: SF §5 forbids float sums; `decimal.js` has its own types, rounds half-up by default and is already a transitive dependency of the chart library. The contracts' import rule now allows `decimal.js` beside `zod` (the folder stays pure TypeScript). Replaces the open question in DD-05 about money formatting: formatting from these strings is built with the screens.
+
+### DD-15 Fixtures: versioned CSV folders, the tenant follows the data set
+
+The spec's CSV files live in `fixtures/v1/test` and `fixtures/v1/demo`, next to `expected_metrics.json`, `proposed_rule_config.json` and the README of the spec pack; a changed fixture becomes `fixtures/v2`. The SPA bundles the CSV text with Vite and the loader (`src/mock-api/fixtures`) parses it in the browser. TEST is tenant `TEST` "Fixture validation", DEMO is tenant `DEMO` "Fictional Botswana insurer demo"; the shell takes both from `DATA_SETS` in `src/contracts/datasets.ts` (a test checks they equal `tenants.csv`). The default data set is DEMO. A row whose `tenant_id` is not the data set's tenant is rejected, so the two never mix. Replaces the fixed tenant constant of DD-10.
+
+### DD-16 The mock API runs in the browser behind the client's transport
+
+Stage A has no server. `src/mock-api` implements the typed endpoints of `src/contracts/endpoints.ts` as a `fetch`-shaped function and `src/ui/src/api/mockTransport.ts` hands it to the API client as the `transport` adapter (the platform `fetch` when no transport is installed). The context of a call travels in headers, as it would to a server: `X-Tenant-Id` (the data set's tenant), `X-As-Of` and `X-Persona` (the actor of a command). Answers are `application/problem+json` on failure. The API client keeps validating every answer against the endpoint's schema in development builds, so the mock cannot drift from the contract.
+
+Lint boundaries: `src/mock-api` takes no Node module outside its tests and `test-support`; in the SPA only `src/api/mockTransport.ts` and tests import it. Stage B replaces `mockTransport.ts` with the real `fetch` and nothing else in the SPA. Reads are raw records; metrics and rules are not computed by the API (that is the rules engine's).
+
+### DD-17 Validation: reject, warn, never coerce
+
+The loader checks every row against the contracts and keeps a list of data issues `{ file, row, record_id, field, problem, fix }`. A bad row is **quarantined** (left out of the data) for: a value of the wrong form (date, amount, enum, boolean), a missing required field, a tenant other than the data set's, a duplicate id (the first row stays, later ones are rejected), a reference to a parent that is missing or itself rejected (so a rejected claim takes its events with it), a column count that does not match the header, a date before the one it must follow (policy end, due date, report, closure) and an allocation that would over-allocate an invoice or a receipt. A row with **missing evidence** (a claim event without a time, an invoice without a due date, a supplier request without a request time, a claim without a reported date, a closed claim without a closed date) loads with that field `null` and a warning, because the spec says missing evidence is UNKNOWN, never good or bad (SF §5, CL §7). The shell shows the issues under "Data issues (n)".
+
+### DD-18 What "as of" does to a read
+
+Every read takes the as-of date (default 2026-10-21, switchable in the shell and remembered in the browser). A read returns the records whose own date is on or before it: claims by reported date, claim events, reserve events, payments, supplier requests, receipts, allocations and payment attempts by their event dates; a record with an unknown date stays (unknown is not "later"). Values are never rewritten: a claim's `stage`, `status`, `current_outstanding_reserve` and `closed_at` stay as imported, and the rules engine derives the state at the as-of date from the events (CL §7). Not filtered: master data (clients, brokers, products, policies, suppliers, users), invoices (a scheduled instalment whose issue date lies after the as-of date is still a valid due item, and the fixtures hold such invoices) and tasks (workflow records stamped with the real time of the change, not the demo date). Every answer says its `tenant_id` and `as_of`.
+
+### DD-19 Changes in browser storage; Reset
+
+What the user changes (tasks and their audit trail) is kept in `localStorage` under `ciq.mock.v1.<data set>.<tenant>`, apart from the fixture, and is merged over it on every read, so a refresh keeps it and the fixture itself is never modified. Reset (a confirm dialog, then `POST /api/v1/demo/reset`) removes the key of the selected data set: the fixture shows exactly as loaded. The data set and the as-of date are views and stay. The mock reads storage on every call, so a second client over the same storage sees the same state (the refresh test relies on it); a failed write answers 507 and the change is not shown as done.
+
+### DD-20 Tasks: shape, actor and audit trail
+
+A task has module (`CLAIMS`, `COLLECTIONS`), subject type (`CLAIM`, `POLICY`, `INVOICE`, `SUPPLIER`) and id, assignee (a user of the tenant or none), due time, priority (`LOW`, `MEDIUM`, `HIGH`), status (`OPEN`, `IN_PROGRESS`, `DONE`), a note and `updated_at`. The endpoints are create, assign and set status; each records an audit entry with the actor (the active persona, from `X-Persona`), the time (Africa/Gaborone, `+02:00`, from the API's clock) and the old and new value. The subject and the assignee must exist in the tenant (422 with the field otherwise). A create carries an `Idempotency-Key`, so a repeated submit returns the same task. Ids are `TASK-0001` and up. The fixtures' `tasks.csv` files are empty, so the statuses and priorities are ours.
+
+### DD-21 Shell controls
+
+The top bar carries the data set switch (TEST, DEMO), the as-of date, "Data issues (n)" (a dialog listing every issue with its file, row, field, problem and fix) and Reset, before the persona switch. Below 1280px the field labels stay for assistive technology only; below 768px the controls wrap onto a second row. Changing the data set clears the screens' filters (the ids differ) and every mounted query reads again.

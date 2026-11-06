@@ -641,6 +641,18 @@ button:disabled {
   width: auto;
   min-width: 190px;
 }
+.ciq-data-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--ciq-space-3);
+  flex: none;
+}
+.ciq-data-controls select {
+  min-width: 0;
+}
+.ciq-data-controls input[type='date'] {
+  width: auto;
+}
 .ciq-topbar-menu-btn {
   display: none;
 }
@@ -727,6 +739,25 @@ button:disabled {
     right: auto;
     width: 240px;
   }
+  /* The top bar is narrower: the data controls keep their labels for assistive technology only. */
+  .ciq-data-controls-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+  .ciq-data-controls,
+  .ciq-topbar {
+    gap: var(--ciq-space-2);
+  }
+  .ciq-persona-switch select {
+    min-width: 150px;
+  }
+  .ciq-data-controls select {
+    min-width: 0;
+  }
 }
 
 /* Drawer below 768px */
@@ -761,8 +792,16 @@ button:disabled {
     z-index: 75;
   }
   .ciq-topbar {
-    padding: 0 var(--ciq-space-3);
+    padding: var(--ciq-space-2) var(--ciq-space-3);
     gap: var(--ciq-space-2);
+    height: auto;
+    min-height: var(--ciq-topbar-height);
+    flex-wrap: wrap;
+  }
+  .ciq-data-controls {
+    order: 10;
+    flex: 1 0 100%;
+    flex-wrap: wrap;
   }
   .ciq-topbar-menu-btn {
     display: inline-grid;

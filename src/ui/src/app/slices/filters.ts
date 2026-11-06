@@ -1,10 +1,11 @@
 /**
  * Filters slice: the filter and sort state of each screen, keyed by a stable screen id (for example `CLM-02`).
- * It resets when the user signs out.
+ * It resets when the user signs out or switches data set (the ids to filter by differ).
  */
 import { createSlice, isAnyOf } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
 
+import { dataSetChanged } from './dataContext';
 import { userBoundaryActions } from './session';
 
 /** A JSON-serializable filter value. `null` means "no filter". */
@@ -35,7 +36,7 @@ const filtersSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    builder.addMatcher(isAnyOf(...userBoundaryActions), () => initialState);
+    builder.addMatcher(isAnyOf(...userBoundaryActions, dataSetChanged), () => initialState);
   },
 });
 

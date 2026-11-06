@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { chooseAsOf, chooseDataSet } from './dataContextActions';
 import { chooseTheme, choosePersona } from './sessionActions';
 import { filtersChanged, filtersCleared, filtersReplaced } from './slices/filters';
 import { authSignedIn, signedOut } from './slices/session';
@@ -43,5 +44,30 @@ describe('store', () => {
 
     window.localStorage.setItem('ciq.persona', 'ceo');
     expect(createAppStore().getState().session.persona).toBe('head-of-claims');
+  });
+
+  it('keeps the data set and as-of date across visits, clears screen filters when the data set changes, and ignores stored values that are not valid', () => {
+    const store = createAppStore();
+    expect(store.getState().dataContext).toEqual({ dataSet: 'DEMO', asOf: '2026-10-21' });
+
+    store.dispatch(filtersChanged({ screen: 'CLM-02', values: { broker: 'BRK-01' } }));
+    store.dispatch(chooseAsOf('2026-10-05'));
+    expect(store.getState().filters.byScreen['CLM-02']).toEqual({ broker: 'BRK-01' });
+    store.dispatch(chooseDataSet('TEST'));
+
+    expect(store.getState().filters.byScreen).toEqual({});
+    expect(createAppStore().getState().dataContext).toEqual({
+      dataSet: 'TEST',
+      asOf: '2026-10-05',
+    });
+
+    store.dispatch(chooseAsOf('2026-10-21'));
+    expect(window.localStorage.getItem('ciq.asOf')).toBeNull();
+    window.localStorage.setItem('ciq.dataSet', 'PROD');
+    window.localStorage.setItem('ciq.asOf', '2026-02-30');
+    expect(createAppStore().getState().dataContext).toEqual({
+      dataSet: 'DEMO',
+      asOf: '2026-10-21',
+    });
   });
 });

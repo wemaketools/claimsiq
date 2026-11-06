@@ -6,7 +6,9 @@
  *   root `.env.local`. Those two are the only browser-safe variables.
  * - The Content-Security-Policy meta tag in index.html is filled in here, because it names the Supabase URL for auth
  *   and differs between the dev server and production builds (see `contentSecurityPolicy`).
- * - The dev server only serves files from the SPA and node_modules (`server.fs.allow`).
+ * - The SPA bundles the shared contracts (`src/contracts`), the in-browser mock API (`src/mock-api`) and the CSV
+ *   fixtures (`fixtures/`), which sit outside `src/ui`, so the dev server may serve the repository root
+ *   (`server.fs.allow`).
  */
 import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
@@ -98,7 +100,7 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 5273,
       strictPort: true,
-      fs: { strict: true, allow: [uiDir, rootNodeModules] },
+      fs: { strict: true, allow: [repoRoot, rootNodeModules] },
       warmup: { clientFiles: ['./src/main.tsx'] },
     },
     preview: {

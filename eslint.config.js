@@ -10,9 +10,11 @@
  * - `process.env` is read ONLY by src/server/lib/config/index.ts. Everything else receives typed config from
  *   getConfig()/loadConfig(). Member access, destructuring (`no-restricted-properties` covers both) and
  *   `import { env } from 'node:process'` are blocked.
- * - src/contracts is pure TypeScript + zod shared by the SPA, the mock API and the backend: no Node or browser APIs,
- *   no imports other than zod and sibling contract files. Contract tests (*.test.ts) may use Node APIs.
- * - The mock API is dev/test only and never reachable from src/server or api/.
+ * - src/contracts is pure TypeScript + zod (+ decimal.js for money) shared by the SPA, the mock API and the backend:
+ *   no Node or browser APIs, no imports other than those and sibling contract files. Contract tests (*.test.ts) may
+ *   use Node APIs.
+ * - The mock API runs in the browser for Stage A (no Node modules outside its tests and test-support) and is never
+ *   reachable from src/server or api/.
  */
 import js from '@eslint/js';
 import { defineConfig, globalIgnores } from 'eslint/config';
@@ -40,9 +42,13 @@ const SPA_BOUNDARY = {
   message: 'Backend code never imports the SPA.',
 };
 const CONTRACTS_PURITY = {
-  regex: '^(?!zod(?:/|$)|\\.{1,2}/)',
+  regex: '^(?!zod(?:/|$)|decimal\\.js$|\\.{1,2}/)',
   message:
-    'src/contracts is pure: import only zod and sibling contract files. No Node, browser or server modules.',
+    'src/contracts is pure: import only zod, decimal.js and sibling contract files. No Node, browser or server modules.',
+};
+const BROWSER_SAFE = {
+  regex: '^(node:|fs$|path$|os$|child_process$)',
+  message: 'src/mock-api runs in the browser: no Node modules outside its tests and test-support.',
 };
 
 export default defineConfig([
@@ -109,6 +115,14 @@ export default defineConfig([
           message: 'src/contracts is pure: no Node or browser APIs.',
         })),
       ],
+    },
+  },
+  {
+    name: 'claimsiq/mock-api-browser-safe',
+    files: ['src/mock-api/**/*.ts'],
+    ignores: ['src/mock-api/**/*.test.ts', 'src/mock-api/test-support/**'],
+    rules: {
+      'no-restricted-imports': ['error', { paths: processEnvImportPaths, patterns: [BROWSER_SAFE] }],
     },
   },
   {
