@@ -29,7 +29,7 @@ export const PROJECTS = [
   },
   {
     name: 'prototype',
-    testMatch: ['prototype.spec.ts'],
+    testMatch: ['prototype.spec.ts', 'acceptance.spec.ts'],
     origin: `http://127.0.0.1:${prototypePort}`,
     server: {
       // The build goes to its own folder, so a developer's `dist` is left alone.
