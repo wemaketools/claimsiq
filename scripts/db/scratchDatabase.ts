@@ -7,11 +7,12 @@ import { randomBytes } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import pg from 'pg';
+import type pg from 'pg';
 
 import { tryGetConfig } from '../../src/server/lib/config/index.js';
 import { createDb } from '../../src/server/lib/db/index.js';
 import type { Db } from '../../src/server/lib/db/index.js';
+import { withClient } from './connection.js';
 
 const MIGRATIONS = fileURLToPath(new URL('../../supabase/migrations/', import.meta.url));
 
@@ -22,15 +23,11 @@ export async function reachableDatabaseUrl(): Promise<string | null> {
   if (url === null) {
     return null;
   }
-  const client = new pg.Client({ connectionString: url, connectionTimeoutMillis: 2000 });
   try {
-    await client.connect();
-    await client.query('select 1');
+    await withClient(url, (client) => client.query('select 1'), { connectionTimeoutMillis: 2000 });
     return url;
   } catch {
     return null;
-  } finally {
-    await client.end().catch(() => undefined);
   }
 }
 
@@ -44,14 +41,7 @@ export interface ScratchDatabase {
 
 export async function createScratchDatabase(serverUrl: string): Promise<ScratchDatabase> {
   const name = `claimsiq_scratch_${randomBytes(6).toString('hex')}`;
-  const admin = new pg.Client({ connectionString: serverUrl });
-  try {
-    await admin.connect();
-    await admin.query(`create database ${name}`);
-  } catch (error) {
-    await admin.end().catch(() => undefined);
-    throw error;
-  }
+  await withClient(serverUrl, (admin) => admin.query(`create database ${name}`));
 
   const url = new URL(serverUrl);
   url.pathname = `/${name}`;
@@ -59,19 +49,10 @@ export async function createScratchDatabase(serverUrl: string): Promise<ScratchD
   const database: ScratchDatabase = {
     url: scratchUrl,
     db: createDb(scratchUrl, 2),
-    async withClient(work) {
-      const client = new pg.Client({ connectionString: scratchUrl });
-      await client.connect();
-      try {
-        return await work(client);
-      } finally {
-        await client.end();
-      }
-    },
+    withClient: (work) => withClient(scratchUrl, work),
     async drop() {
       await database.db.destroy();
-      await admin.query(`drop database if exists ${name} with (force)`);
-      await admin.end();
+      await withClient(serverUrl, (admin) => admin.query(`drop database if exists ${name} with (force)`));
     },
   };
 

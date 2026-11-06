@@ -9,9 +9,10 @@
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-import pg from 'pg';
+import type pg from 'pg';
 
 import { getConfig } from '../../src/server/lib/config/index.js';
+import { withClient } from './connection.js';
 
 export const SCHEMA_FILE = fileURLToPath(new URL('../../src/server/lib/db/generated/schema.ts', import.meta.url));
 
@@ -101,13 +102,8 @@ async function main(): Promise<void> {
   if (url === null) {
     throw new Error('DATABASE_URL is not set (see .env.local.example).');
   }
-  const client = new pg.Client({ connectionString: url });
-  await client.connect();
-  try {
-    writeFileSync(SCHEMA_FILE, await renderSchema(client), 'utf8');
-  } finally {
-    await client.end();
-  }
+  const schema = await withClient(url, (client) => renderSchema(client));
+  writeFileSync(SCHEMA_FILE, schema, 'utf8');
   process.stdout.write(`Wrote ${SCHEMA_FILE}\n`);
 }
 

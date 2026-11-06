@@ -14,7 +14,7 @@ Status: as built (scaffold, data layer, rules engine and, from Stage B, the data
 | `src/server/lib/` | `config` (the one reader of `process.env`, including `DATABASE_URL`), `supabase` (server clients, JWKS cache), `auth/verify.ts` (access-token verification), `db` (the Kysely client, the generated table types, `withTenant` and the tenant scope, DD-50) and `tenancy` (`resolveTenantAccess`: which tenant a signed-in user may enter) |
 | `src/server/tests/unit/` | Tests of the platform modules; the ones that verify real tokens need the local Supabase stack and skip themselves without it |
 | `scripts/ci/` | `scan-secrets`, `scan-bundle`, `assert-test-run` (the CI checks) |
-| `scripts/db/` | `reset.ts` (`db:reset`), `seed.ts` (`db:seed`), `generate-types.ts` (`db:types`), `local.ts` (the local-only guard), `scratchDatabase.ts` and the database tests (`seed.test.ts`, `isolation.test.ts`); `ensure-signing-keys.mjs`: the git-ignored ES256 key set the local Auth stack signs with |
+| `scripts/db/` | `reset.ts` (`db:reset`), `seed.ts` (`db:seed`), `generate-types.ts` (`db:types`), `local.ts` and `localHost.ts` (the local-only guard), `connection.ts` (plain connections, always closed), `scratchDatabase.ts` and the database tests (`seed.test.ts`, `isolation.test.ts`); `ensure-signing-keys.mjs`: the git-ignored ES256 key set the local Auth stack signs with |
 | `scripts/dev/` | `seed-auth-personas.ts`: the four demo accounts |
 | `supabase/` | `config.toml` of the local stack (project id `claimsiq`, default ports plus 100) and `migrations/`, the schema as plain SQL |
 | `e2e_tests/` | Playwright + axe workspace `@claimsiq/e2e` |

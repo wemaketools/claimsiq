@@ -22,7 +22,7 @@ import type { DemoAccount } from '../../src/ui/src/auth/demoAccountList.js';
 import { ConfigurationError, getConfig } from '../../src/server/lib/config/index.js';
 import type { AppConfig } from '../../src/server/lib/config/index.js';
 import { getAdminClient } from '../../src/server/lib/supabase/index.js';
-import { isLocalUrl } from '../db/local.js';
+import { isLocalUrl } from '../db/localHost.js';
 
 export function isLocalTarget(config: Pick<AppConfig, 'appEnv' | 'supabase'>): boolean {
   return config.appEnv === 'local' && isLocalUrl(config.supabase.url);
