@@ -11,6 +11,11 @@ export function momentMs(moment: string): number {
   return Date.parse(moment.length === 10 ? `${moment}T00:00:00${GABORONE_OFFSET}` : moment);
 }
 
+/** The last second of a date in Africa/Gaborone: no moment of that date orders after it, so an event stamped here is the latest of its day. */
+export function endOfDay(date: string): string {
+  return `${date}T23:59:59${GABORONE_OFFSET}`;
+}
+
 /** Oldest first; two events at the same time are ordered by id, so the order never depends on the input order. The one order of events, shared by the rules and the screens. */
 export function chronological<T>(items: readonly T[], at: (item: T) => string, id: (item: T) => string): T[] {
   return [...items].sort((a, b) => momentMs(at(a)) - momentMs(at(b)) || (id(a) < id(b) ? -1 : id(a) > id(b) ? 1 : 0));

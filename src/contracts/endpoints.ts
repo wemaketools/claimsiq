@@ -1,7 +1,7 @@
 /**
  * The typed endpoints of the API, shared by the SPA (which calls them), the mock API (which implements them in the
  * browser for the prototype build) and the server (`/api/v1`, from the database). Reads return raw records of the active tenant, limited by the as-of date
- * where the read model (`src/read-model`, which the mock API and the server share) says so; the computed reads are `claims.facts` and `suppliers.insights`, which run the rules engine over those records, and
+ * where the read model (`src/read-model`, which the mock API and the server share) says so; the computed reads are `claims.facts`, `claims.whatIf` and `suppliers.insights`, which run the rules engine over those records, and
  * the `overdue` flag of `tasks.list`.
  *
  * Request context travels in headers: `X-Tenant-Id`, `X-As-Of` (a date, default 2026-10-21) and, on commands,

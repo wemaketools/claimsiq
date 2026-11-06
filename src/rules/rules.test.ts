@@ -348,11 +348,18 @@ describe('the claims rules engine on the TEST fixture', () => {
     const now = computeClaimFacts(triaged, contextOf());
     const moved = computeClaimFacts(withHypotheticalStage(triaged, 'Assessment', 'Triage', AS_OF), contextOf());
     expect(now.sla?.status).toBe('breached');
-    expect(moved).toMatchObject({ current_stage: 'Assessment', stage_started_at: AS_OF, stage_check: 'MATCHES', is_open: true });
+    expect(moved).toMatchObject({ current_stage: 'Assessment', stage_started_at: `${AS_OF}T23:59:59+02:00`, stage_check: 'MATCHES', is_open: true });
     expect(moved.sla).toMatchObject({ status: 'within', stage: 'Assessment', business_days_in_stage: 0, target_business_days: 5 });
     expect(moved.severity_reasons.map((reason) => reason.rule)).not.toContain('SLA_BREACH');
     expect(JSON.stringify(triaged)).toBe(before);
     expect(triaged.events).toHaveLength(2);
+
+    // A real event timed later on the as-of date does not outrank the what-if: it is still the latest event.
+    const late: ClaimRecord = { ...triaged, events: [...triaged.events, event(triaged, 'EVT-LATE', `${AS_OF}T17:30:00+02:00`, 'Approved')] };
+    expect(computeClaimFacts(late, contextOf()).current_stage).toBe('Approved');
+    const overLate = computeClaimFacts(withHypotheticalStage(late, 'Assessment', 'Approved', AS_OF), contextOf());
+    expect(overLate).toMatchObject({ current_stage: 'Assessment', stage_check: 'MATCHES' });
+    expect(overLate.sla).toMatchObject({ status: 'within', stage: 'Assessment', business_days_in_stage: 0 });
 
     // Closing ends the clock; a closed claim can only be reopened, and Reopened has no target, so its SLA is unknown.
     expect(computeClaimFacts(withHypotheticalStage(triaged, 'Closed', 'Triage', AS_OF), contextOf())).toMatchObject({ is_open: false, sla: null, severity: null, closed_at: AS_OF });

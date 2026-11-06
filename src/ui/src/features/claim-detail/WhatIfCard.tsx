@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 
-import { endpoints } from '../../../../contracts/index';
+import { dateOf, endpoints } from '../../../../contracts/index';
 import type { ClaimFacts } from '../../../../contracts/index';
 import { useApiQuery } from '../../api/hooks';
 import {
@@ -57,7 +57,7 @@ const ROWS: readonly Row[] = [
   {
     key: 'started',
     label: t('claim-detail.whatIf.row.started'),
-    show: (f) => formatMoment(f.stage_started_at),
+    show: (f) => formatMoment(f.stage_started_at === null ? null : dateOf(f.stage_started_at)),
   },
 ];
 
