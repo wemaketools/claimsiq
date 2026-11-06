@@ -30,7 +30,7 @@ The wordmark is `Claims` plus the accent `IQ` (`Claims<span class="ciq-brand-iq"
 
 ### DD-05 What was copied and what was left out
 
-Kept, because it is generic: the theme (tokens, components, global CSS), the `components/ui` library, the charts, the shell (AppShell, Sidebar, Topbar, UserCard), authentication (AuthProvider, sign-in, forgot and reset password, the development-only demo-accounts list), the app store, the route guard, the feature registry, the API client that sends `X-Tenant-Id`, the i18n file, the CSP meta tag, the self-hosted fonts with their OFL licences, `src/server/lib/{config,supabase,auth}`, the CI workflow and `scripts/ci`.
+Kept, because it is generic: the theme (tokens, components, global CSS), the `components/ui` library, the charts, the shell (AppShell, Sidebar, Topbar, UserCard), authentication (the auth providers, sign-in, forgot and reset password, the development-only demo-accounts list; since then a prototype mode with its own provider, DD-45 to DD-47), the app store, the route guard, the feature registry, the API client that sends `X-Tenant-Id`, the i18n file, the CSP meta tag, the self-hosted fonts with their OFL licences, `src/server/lib/{config,supabase,auth}`, the CI workflow and `scripts/ci`.
 
 Left out: every tender-specific feature, route, contract, fixture and shared widget (approvals, documents, audit), the public portal and organization selection, the mock API server and the OpenAPI generator. Money formatting from decimal strings and the contracts-driven enum labels are not copied; they come back with the data layer.
 

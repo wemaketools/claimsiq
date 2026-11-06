@@ -18,7 +18,7 @@ Status: as built (scaffold, data layer, the claim screens: Overview, Stages & Ag
 | `features/claim-tasks/` | No route: what every screen that shows a task shares: the create (claim given or chosen), assign-owner and change-status dialogs, the status chip, the audit trail and the labels |
 | `features/suppliers/`, `features/actions/` | Supplier Insights (`suppliers.insights`, rows and CSV in `rows.ts`) and the Action Queue (`tasks.list` joined to the claim's flags and the owner's name; queue order, filters and CSV in `rows.ts`) |
 | `features/claim-detail/`, `features/invoices/` | Routes without a nav item: `/claims/:claimId` and `/policies/:policyId/invoices` (the stand-in for Premium Collections) |
-| `lib/` | `i18n.ts` (`t()`), `format.ts`, `csv.ts` (CSV text and download), `zonedTime.ts`, `storage.ts` (persona, theme, data set, as-of date, screen filters), `useMediaQuery.ts`, `useNow.ts` |
+| `lib/` | `i18n.ts` (`t()`), `format.ts`, `csv.ts` (CSV text and download), `zonedTime.ts`, `storage.ts` (persona, theme, data set, as-of date, screen filters, the prototype session's role), `useMediaQuery.ts`, `useNow.ts` |
 | `i18n/en.ts` | The shell catalog (namespaces `shell`, `auth`, `ui`, `format`, `charts`, `pages`) |
 
 ## Design system

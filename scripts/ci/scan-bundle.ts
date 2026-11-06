@@ -204,6 +204,13 @@ export function scanBundle(dist: string, inputs: BundleScanInputs): BundleFindin
 
 const CSP_META = /<meta\s+http-equiv="Content-Security-Policy"\s+content="([^"]*)"/i;
 
+function directiveOf(policy: string, name: string): string | undefined {
+  return policy
+    .split(';')
+    .map((directive) => directive.trim())
+    .find((directive) => directive.startsWith(`${name} `));
+}
+
 /**
  * Checks the production Content-Security-Policy of the built index.html: the meta tag is present and filled
  * in, and script-src allows neither inline scripts nor eval (the dev-only relaxations must not ship).
@@ -223,20 +230,14 @@ export function checkProductionCsp(indexHtml: string, prototype = false): Bundle
   if (policy.includes('__CLAIMSIQ_CONTENT_SECURITY_POLICY__')) {
     return [finding('the policy token was not replaced')];
   }
-  const scriptSrc = policy
-    .split(';')
-    .map((directive) => directive.trim())
-    .find((directive) => directive.startsWith('script-src '));
+  const scriptSrc = directiveOf(policy, 'script-src');
   if (scriptSrc === undefined) {
     return [finding('no script-src directive')];
   }
   const sources = scriptSrc.split(/\s+/);
   const relaxed = ["'unsafe-inline'", "'unsafe-eval'", 'ws:'].filter((source) => sources.includes(source));
   const findings = relaxed.map((source) => finding(`script-src allows ${source}`));
-  const connectSrc = policy
-    .split(';')
-    .map((directive) => directive.trim())
-    .find((directive) => directive.startsWith('connect-src '));
+  const connectSrc = directiveOf(policy, 'connect-src');
   if (prototype && connectSrc !== "connect-src 'self'") {
     findings.push(finding(`a prototype build may connect to its own origin only, got "${connectSrc ?? 'no connect-src'}"`));
   }

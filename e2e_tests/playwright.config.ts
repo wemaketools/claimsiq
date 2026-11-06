@@ -8,7 +8,9 @@
  * - `prototype`: a PRODUCTION build in prototype mode (`vite build`, then `vite preview` on PROTOTYPE_PORT, default
  *   5381), the static demo Kwaku deploys. It needs no stack and signs in by clicking a role.
  *
- * Run from the repository root: `bun run test:e2e`, or `bun run test:e2e:prototype` for the second project alone.
+ * Run from the repository root: `bun run test:e2e`, or `bun run test:e2e:prototype` for the second project alone. A
+ * run starts only the servers of the projects it runs (`E2E_PROJECT`, set by `test:e2e:prototype`), so the prototype
+ * run needs no stack and no dev server.
  */
 import { fileURLToPath } from 'node:url';
 import { defineConfig, devices } from '@playwright/test';
@@ -26,10 +28,37 @@ function portFromEnv(name: string, fallback: number): number {
 }
 
 const webPort = portFromEnv('WEB_PORT', 5380);
-const webOrigin = `http://127.0.0.1:${webPort}`;
 const prototypePort = portFromEnv('PROTOTYPE_PORT', 5381);
-const prototypeOrigin = `http://127.0.0.1:${prototypePort}`;
 const isCI = Boolean(process.env.CI);
+
+/** Each project with the server it needs: the one home of both, so a project never starts another's server. */
+const PROJECTS = [
+  {
+    name: 'stack',
+    testMatch: ['claims.spec.ts', 'shell.spec.ts'],
+    origin: `http://127.0.0.1:${webPort}`,
+    server: {
+      command: `bun run dev --host 127.0.0.1 --port ${webPort} --strictPort`,
+      timeout: 120_000,
+    },
+  },
+  {
+    name: 'prototype',
+    testMatch: ['prototype.spec.ts'],
+    origin: `http://127.0.0.1:${prototypePort}`,
+    server: {
+      // The build goes to its own folder, so a developer's `dist` is left alone.
+      command: `bun run build:prototype --outDir dist-prototype && bunx vite preview --outDir dist-prototype --host 127.0.0.1 --port ${prototypePort} --strictPort`,
+      timeout: 180_000,
+    },
+  },
+] as const;
+
+const selected = process.env.E2E_PROJECT;
+const running = PROJECTS.filter((project) => selected === undefined || project.name === selected);
+if (running.length === 0) {
+  throw new Error(`E2E_PROJECT must be one of ${PROJECTS.map((project) => project.name).join(', ')}, got "${selected}".`);
+}
 
 export default defineConfig({
   testDir: './specs',
@@ -43,18 +72,11 @@ export default defineConfig({
   reporter: isCI
     ? [['github'], ['html', { open: 'never', outputFolder: 'playwright-report' }]]
     : [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
-  projects: [
-    {
-      name: 'stack',
-      testMatch: ['claims.spec.ts', 'shell.spec.ts'],
-      use: { baseURL: webOrigin },
-    },
-    {
-      name: 'prototype',
-      testMatch: 'prototype.spec.ts',
-      use: { baseURL: prototypeOrigin },
-    },
-  ],
+  projects: running.map((project) => ({
+    name: project.name,
+    testMatch: [...project.testMatch],
+    use: { baseURL: project.origin },
+  })),
   use: {
     ...devices['Desktop Chrome'],
     viewport: { width: 1440, height: 900 },
@@ -64,25 +86,13 @@ export default defineConfig({
     actionTimeout: 15_000,
     navigationTimeout: 30_000,
   },
-  webServer: [
-    {
-      command: `bun run dev --host 127.0.0.1 --port ${webPort} --strictPort`,
-      cwd: uiDir,
-      url: webOrigin,
-      reuseExistingServer: false,
-      timeout: 120_000,
-      stdout: 'ignore',
-      stderr: 'pipe',
-    },
-    {
-      // The build goes to its own folder, so a developer's `dist` is left alone.
-      command: `bun run build:prototype --outDir dist-prototype && bunx vite preview --outDir dist-prototype --host 127.0.0.1 --port ${prototypePort} --strictPort`,
-      cwd: uiDir,
-      url: prototypeOrigin,
-      reuseExistingServer: false,
-      timeout: 180_000,
-      stdout: 'ignore',
-      stderr: 'pipe',
-    },
-  ],
+  webServer: running.map((project) => ({
+    command: project.server.command,
+    cwd: uiDir,
+    url: project.origin,
+    reuseExistingServer: false,
+    timeout: project.server.timeout,
+    stdout: 'ignore',
+    stderr: 'pipe',
+  })),
 });

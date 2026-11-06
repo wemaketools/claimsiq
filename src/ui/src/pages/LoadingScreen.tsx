@@ -1,5 +1,6 @@
 /**
- * The full-page loading state while the session is being established (the supabase-js session).
+ * The full-page loading state while the session is being established (the supabase-js session, or the prototype
+ * session) and, in Supabase builds, while the Supabase provider's chunk loads (AppProviders' Suspense fallback).
  */
 import { Wordmark } from '../auth/AuthLayout';
 import { t } from '../lib/i18n';
