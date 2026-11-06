@@ -14,6 +14,7 @@ describe('dialogs', () => {
     function Harness() {
       const [open, setOpen] = useState(false);
       const [removed, setRemoved] = useState(false);
+      const [useTarget, setUseTarget] = useState(false);
       const result = useRef<HTMLParagraphElement>(null);
       return (
         <main id="ciq-main" tabIndex={-1}>
@@ -22,10 +23,24 @@ describe('dialogs', () => {
               open
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => {
+              setUseTarget(true);
+              setOpen(true);
+            }}
+          >
+            open with target
+          </button>
           <p ref={result} tabIndex={-1}>
             result
           </p>
-          <Dialog open={open} title="Confirm" onClose={() => setOpen(false)}>
+          <Dialog
+            open={open}
+            title="Confirm"
+            onClose={() => setOpen(false)}
+            returnFocusRef={useTarget ? result : undefined}
+          >
             <input aria-label="first field" />
             <button
               type="button"
@@ -54,6 +69,10 @@ describe('dialogs', () => {
     await userEvent.click(screen.getByRole('button', { name: 'remove opener' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(screen.getByRole('main')).toHaveFocus();
+
+    await userEvent.click(screen.getByRole('button', { name: 'open with target' }));
+    await userEvent.keyboard('{Escape}');
+    expect(screen.getByText('result')).toHaveFocus();
   });
 
   it('cannot be dismissed while busy', async () => {
