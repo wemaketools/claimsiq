@@ -73,6 +73,9 @@ export const shellCatalog = {
     loading: {
       session: 'Signing you in…',
     },
+    prototype: {
+      banner: 'Prototype: synthetic demo data',
+    },
     footer: {
       copyright: '© ClaimsIQ',
       currency: 'All amounts in {currency}',
@@ -99,6 +102,11 @@ export const shellCatalog = {
     demo: {
       title: 'Demo accounts (local development only)',
       subtitle: 'Choose a demo account to sign in with its local password ({password}).',
+    },
+    prototype: {
+      subtitle: 'A prototype: no accounts are needed.',
+      title: 'Demo accounts',
+      hint: 'Choose a role to sign in. No password needed.',
     },
     forgot: {
       title: 'Reset your password',

@@ -154,6 +154,7 @@ html[data-theme='dark'] {
   --ciq-sidebar-width: 244px;
   --ciq-sidebar-rail-width: 72px;
   --ciq-topbar-height: 64px;
+  --ciq-prototype-banner-height: 28px;
   --ciq-content-max-width: 1680px;
 
   /* Chart palette, derived from the semantic tokens so it follows the theme */

@@ -1,5 +1,5 @@
 /**
- * Sign-in: email and password through supabase-js. Any failure shows ONE generic message, so the form cannot reveal
+ * Sign-in. Prototype builds show the roles card and no form (PrototypeSignIn). Otherwise: email and password through supabase-js. Any failure shows ONE generic message, so the form cannot reveal
  * which accounts exist. After sign-in the user lands on the page they asked for, or on the first destination.
  *
  * While a request runs the fields are read-only (not disabled), so keyboard focus stays in the form; after a failure
@@ -17,11 +17,12 @@ import { Button } from '../components/ui/Button';
 import { TextField } from '../components/ui/FormFields';
 import { t } from '../lib/i18n';
 import { AuthLayout } from './AuthLayout';
-import { useAuth } from './authContext';
+import { usePasswordAuth, useAuth } from './authContext';
+import { PrototypeSignIn } from './PrototypeSignIn';
 
 // Local development builds only: Vite replaces import.meta.env.DEV with false in production builds, so this lazy
 // import and its module are removed from the bundle (scan-bundle verifies the marker is absent).
-const DemoAccounts = import.meta.env.DEV ? lazy(() => import('./DemoAccounts')) : null;
+const DevDemoAccounts = import.meta.env.DEV ? lazy(() => import('./DevDemoAccounts')) : null;
 
 const PASSWORD_FIELD_ID = 'ciq-signin-password';
 
@@ -32,17 +33,22 @@ interface FromState {
 export function SignInPage() {
   const auth = useAuth();
   const location = useLocation();
+  const authStatus = useAppSelector((state) => state.session.authStatus);
+  const from = (location.state as FromState | null)?.from;
+
+  if (authStatus === 'signedIn') {
+    return <Navigate to={from !== undefined && from !== '/signin' ? from : '/'} replace />;
+  }
+  return auth.mode === 'prototype' ? <PrototypeSignIn auth={auth} /> : <PasswordSignIn />;
+}
+
+function PasswordSignIn() {
+  const auth = usePasswordAuth();
   const session = useAppSelector((state) => state.session);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [failed, setFailed] = useState(false);
-
-  const from = (location.state as FromState | null)?.from;
-
-  if (session.authStatus === 'signedIn') {
-    return <Navigate to={from !== undefined && from !== '/signin' ? from : '/'} replace />;
-  }
 
   const signIn = async (address: string, secret: string): Promise<void> => {
     setSubmitting(true);
@@ -66,9 +72,9 @@ export function SignInPage() {
       title={t('auth.signIn.title')}
       subtitle={t('auth.signIn.subtitle')}
       below={
-        DemoAccounts !== null && session.authStatus === 'signedOut' ? (
+        DevDemoAccounts !== null && session.authStatus === 'signedOut' ? (
           <Suspense fallback={null}>
-            <DemoAccounts
+            <DevDemoAccounts
               disabled={submitting}
               onPick={(pickedEmail, pickedPassword) => {
                 setEmail(pickedEmail);

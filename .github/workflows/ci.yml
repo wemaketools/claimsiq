@@ -88,17 +88,23 @@ jobs:
       - name: SPA tests (fail on skipped tests, enforce the count floor)
         run: bun run ci:test:ui
 
-      - name: Build (backend typecheck + SPA production build, as on Vercel)
+      - name: Build (backend typecheck + SPA production build, Supabase mode)
         run: bun run build
 
-      - name: Security scans (tracked-file secrets, production bundle leaks)
+      - name: Build in prototype mode with no environment file (the Vercel build)
+        run: |
+          mv .env.local .env.local.stash
+          trap 'mv .env.local.stash .env.local' EXIT
+          VITE_AUTH_MODE=prototype bun run build
+
+      - name: Security scans (tracked-file secrets, production bundle leaks, supabase-js in the prototype build)
         run: bun run ci:security
 
       - name: Install the Playwright browser
         working-directory: e2e_tests
         run: bunx playwright install --with-deps chromium
 
-      - name: E2E (Playwright, axe)
+      - name: E2E (Playwright and axe on the local stack, and on the prototype production build)
         run: bun run test:e2e
 
       - name: Upload the Playwright report

@@ -1,17 +1,18 @@
 /**
- * The centred auth surface (`.ciq-auth-page`): wordmark, one card, optional extra content below (the dev-only demo
- * accounts). Sign-in, forgot and reset password render outside the app shell.
+ * The centred auth surface (`.ciq-auth-page`): wordmark, one card, optional extra content below (the demo accounts or
+ * roles). Sign-in, forgot and reset password render outside the app shell.
  */
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';
 
+import { PrototypeBanner } from '../components/shell/PrototypeBanner';
 import { Card } from '../components/ui/Card';
 import { t } from '../lib/i18n';
 
 export interface AuthLayoutProps {
   readonly title: string;
   readonly subtitle?: ReactNode;
-  readonly children: ReactNode;
+  readonly children?: ReactNode;
   readonly below?: ReactNode;
   readonly wide?: boolean;
 }
@@ -31,6 +32,7 @@ export function AuthLayout({ title, subtitle, children, below, wide = false }: A
   }, [title]);
   return (
     <>
+      <PrototypeBanner />
       <main className="ciq-auth-page">
         <div className="ciq-auth-brand">
           <Wordmark />

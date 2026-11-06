@@ -1,37 +1,55 @@
 /**
- * DemoAccounts: the sign-in quick-pick of LOCAL DEVELOPMENT builds. Choosing an account fills its email and the
- * local password and signs in for real through supabase-js. Loaded only behind `import.meta.env.DEV` (see
- * SignInPage), so production builds do not contain it; `scan-bundle` checks the marker.
+ * DemoAccounts: the sign-in card of demo accounts, one two-line button each. It shows what its props say and imports
+ * no account list, so prototype builds can ship it; the local-development quick-pick that fills the Supabase form is
+ * DevDemoAccounts.
  */
 import { Card } from '../components/ui/Card';
-import { t } from '../lib/i18n';
-import { DEMO_ACCOUNTS, DEMO_ACCOUNTS_MARKER, DEMO_PASSWORD } from './demoAccountList';
 
-export interface DemoAccountsProps {
-  readonly onPick: (email: string, password: string) => void;
-  readonly disabled?: boolean;
+export interface DemoAccountEntry<Id extends string> {
+  readonly id: Id;
+  /** First line. */
+  readonly name: string;
+  /** Second line. */
+  readonly detail: string;
 }
 
-export default function DemoAccounts({ onPick, disabled = false }: DemoAccountsProps) {
+export interface DemoAccountsProps<Id extends string> {
+  readonly title: string;
+  readonly subtitle: string;
+  readonly accounts: readonly DemoAccountEntry<Id>[];
+  readonly onPick: (id: Id) => void;
+  readonly disabled?: boolean;
+  /** Set as `data-marker`, so a test or scan can find the card. */
+  readonly marker?: string;
+}
+
+export function DemoAccounts<Id extends string>({
+  title,
+  subtitle,
+  accounts,
+  onPick,
+  disabled = false,
+  marker,
+}: DemoAccountsProps<Id>) {
   return (
     <Card
       className="ciq-demo-accounts"
-      title={t('auth.demo.title')}
-      subtitle={t('auth.demo.subtitle', { password: DEMO_PASSWORD })}
-      data-marker={DEMO_ACCOUNTS_MARKER}
+      title={title}
+      subtitle={subtitle}
+      data-marker={marker}
       headingLevel={2}
     >
       <ul className="ciq-demo-list">
-        {DEMO_ACCOUNTS.map((account) => (
-          <li key={account.email}>
+        {accounts.map((account) => (
+          <li key={account.id}>
             <button
               type="button"
               className="ciq-demo-account"
               disabled={disabled}
-              onClick={() => onPick(account.email, DEMO_PASSWORD)}
+              onClick={() => onPick(account.id)}
             >
-              {account.fullName}
-              <span className="ciq-demo-account-role">{account.email}</span>
+              {account.name}
+              <span className="ciq-demo-account-role">{account.detail}</span>
             </button>
           </li>
         ))}

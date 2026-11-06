@@ -1,5 +1,5 @@
 /**
- * localStorage for conveniences only: the persona view, the theme, the data set, the as-of date and the screen filters. Nothing here is
+ * localStorage for conveniences only: the prototype session's role, the persona view, the theme, the data set, the as-of date and the screen filters. Nothing here is
  * trusted or required (the changes made on top of a fixture are the mock API's, in its own keys).
  * Every access is guarded, because storage can be unavailable (private mode, blocked site data).
  */
@@ -61,6 +61,16 @@ export function readStoredPersona(): PersonaId | null {
 
 export function storePersona(persona: PersonaId): void {
   write('persona', persona);
+}
+
+/** The role a prototype build is signed in as, or `null`; an unknown stored value is ignored. */
+export function readStoredPrototypeRole(): PersonaId | null {
+  const raw = read('prototype.role');
+  return isPersonaId(raw) ? raw : null;
+}
+
+export function storePrototypeRole(role: PersonaId | null): void {
+  write('prototype.role', role);
 }
 
 /** The data set the user last chose, or `null`; an unknown stored value is ignored. */

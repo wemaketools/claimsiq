@@ -2,7 +2,8 @@
  * The route tree, built from the feature registry:
  *
  * - `/` goes to the first sidebar destination; with none registered the router cannot be built.
- * - `/signin`, `/forgot-password`, `/reset-password`: auth pages outside any shell.
+ * - `/signin`, `/forgot-password`, `/reset-password`: auth pages outside any shell. A prototype build has no
+ *   passwords, so the last two go to `/signin`.
  * - Every feature route: signed in, inside AppShell.
  * - Anything else: Not found.
  * - A route that fails to load or throws renders RouteErrorPage: inside the shell for feature routes (the navigation
@@ -13,6 +14,7 @@ import type { ComponentType, ReactNode } from 'react';
 import { Navigate, createBrowserRouter } from 'react-router';
 import type { RouteObject } from 'react-router';
 
+import { authMode } from '../auth/authMode';
 import { ForgotPasswordPage } from '../auth/ForgotPasswordPage';
 import { ResetPasswordPage } from '../auth/ResetPasswordPage';
 import { SignInPage } from '../auth/SignInPage';
@@ -52,6 +54,10 @@ function featureRoutes(modules: readonly FeatureModule[]): RouteObject[] {
   );
 }
 
+function passwordPage(page: ReactNode): ReactNode {
+  return authMode() === 'prototype' ? <Navigate to="/signin" replace /> : page;
+}
+
 /** The route objects for a set of feature modules (exported for tests). */
 export function buildRoutes(modules: readonly FeatureModule[]): RouteObject[] {
   const home = navItemsFor(modules)[0]?.to;
@@ -67,8 +73,8 @@ export function buildRoutes(modules: readonly FeatureModule[]): RouteObject[] {
       children: [
         { path: '/', element: <Navigate to={home} replace /> },
         { path: '/signin', element: <SignInPage /> },
-        { path: '/forgot-password', element: <ForgotPasswordPage /> },
-        { path: '/reset-password', element: <ResetPasswordPage /> },
+        { path: '/forgot-password', element: passwordPage(<ForgotPasswordPage />) },
+        { path: '/reset-password', element: passwordPage(<ResetPasswordPage />) },
         {
           element: (
             <RouteGuard>

@@ -606,6 +606,31 @@ button:disabled {
   gap: var(--ciq-space-3);
   padding: 0 var(--ciq-space-5);
 }
+/* Prototype builds: the strip sticks above the top bar, which then sticks below it. */
+.ciq-prototype-banner {
+  height: var(--ciq-prototype-banner-height);
+  position: sticky;
+  top: 0;
+  z-index: 31;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ciq-space-2);
+  padding: 0 var(--ciq-space-3);
+  background: var(--ciq-info-soft);
+  color: var(--ciq-info-text);
+  border-bottom: 1px solid var(--ciq-border-subtle);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ciq-prototype-banner + .ciq-topbar {
+  top: var(--ciq-prototype-banner-height);
+}
+.ciq-prototype-banner + .ciq-auth-page {
+  min-height: calc(100vh - var(--ciq-prototype-banner-height));
+}
+
 .ciq-topbar-title {
   font-size: 20px;
   font-weight: 600;

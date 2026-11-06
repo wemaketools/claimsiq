@@ -9,10 +9,10 @@ Status: as built (scaffold, data layer, the claim screens: Overview, Stages & Ag
 | `theme/` | `tokens.css` (the `--ciq-*` custom properties for light and dark), `components.css` (the `.ciq-*` classes), `index.css` (self-hosted Inter and JetBrains Mono from `public/fonts`, imports) |
 | `components/ui/` | The design-system components (Button, Card, Chip, DataTable, Dialog, forms, KpiCard, Menu, Tabs, Timeline, EmptyState/ErrorState/RestrictedState, …). Features import from `components/ui` |
 | `components/charts/` | Recharts wrappers on token colours; every chart has a table alternative for assistive technology |
-| `components/shell/` | `AppShell`, `Sidebar`, `Topbar`, `UserCard` |
+| `components/shell/` | `AppShell`, `Sidebar`, `Topbar`, `UserCard`, `PrototypeBanner` |
 | `app/` | Store and slices (`session`, `dataContext`, `filters`), `dataContextActions.ts`, `router.tsx`, `RouteGuard`, the feature registry, `personas.ts`, `tenant.ts` |
 | `api/` | `client.ts` (`call(endpoint)`), `hooks.ts` (`useApiQuery`, `useApiMutation`, `invalidateApiQueries`), `endpoint.ts`, `problem.ts`, `mockTransport.ts` (Stage A: the in-browser mock API as the transport) |
-| `auth/` | `AuthProvider`, sign-in, forgot and reset password, the development-only `DemoAccounts` |
+| `auth/` | `authMode` (the build-time mode), `SupabaseAuthProvider` and `PrototypeAuthProvider` (the shared effects are in `sessionEffects.ts`), sign-in (`PrototypeSignIn` in prototype builds), forgot and reset password, `DemoAccounts` (the card of demo accounts, shared) and the development-only `DevDemoAccounts` |
 | `features/<feature>/` | `routes.tsx`, the page, `i18n/en.ts` |
 | `features/claim-scope/` | No route: what the claim screens share (see Claim screens) |
 | `features/claim-tasks/` | No route: what every screen that shows a task shares: the create (claim given or chosen), assign-owner and change-status dialogs, the status chip, the audit trail and the labels |
@@ -23,7 +23,7 @@ Status: as built (scaffold, data layer, the claim screens: Overview, Stages & Ag
 
 ## Design system
 
-Tokens and classes are the suite's, with the prefix `ciq`. Components use tokens only: no raw hex, no literal pixel gaps (half steps are tokens: `space-0-5`, `space-1-5`, `space-2-5`). The theme is the `data-theme` attribute on `<html>` (`light` or `dark`), set by `AuthProvider` from the session slice and remembered under `ciq.theme`. Text colours on tinted surfaces use the AA `-text` tokens; solid fills use `accent-fill` with `on-solid`.
+Tokens and classes are the suite's, with the prefix `ciq`. Components use tokens only: no raw hex, no literal pixel gaps (half steps are tokens: `space-0-5`, `space-1-5`, `space-2-5`). The theme is the `data-theme` attribute on `<html>` (`light` or `dark`), set by the auth provider from the session slice and remembered under `ciq.theme`. Text colours on tinted surfaces use the AA `-text` tokens; solid fills use `accent-fill` with `on-solid`.
 
 ## Shell
 
@@ -55,7 +55,7 @@ Every screen has a loading, an empty and an error state, and a restricted state 
 
 ## API client
 
-`call(endpoint, { params, query, body }, options)` sends the bearer token (read per request from the supabase-js session), `X-Tenant-Id`, `X-As-Of` and `X-Persona` (none of them on `public` endpoints), an `Idempotency-Key` on idempotent commands, normalizes `application/problem+json` to `ApiError`, signs the user out on 401 and, in development builds, parses the response with the endpoint's zod schema so drift fails loudly. `AuthProvider` installs the adapters with `configureApiClient`, including the `transport` that `main.tsx` passes (the mock API in Stage A; the platform `fetch` when none is given). The endpoints are the typed contracts of `src/contracts` (`endpoints.claimsList`, `endpoints.tasksCreate`, …); screens call them with `useApiQuery` and `useApiMutation` and never import the mock API.
+`call(endpoint, { params, query, body }, options)` sends the bearer token (read per request from the supabase-js session), `X-Tenant-Id`, `X-As-Of` and `X-Persona` (none of them on `public` endpoints), an `Idempotency-Key` on idempotent commands, normalizes `application/problem+json` to `ApiError`, signs the user out on 401 and, in development builds, parses the response with the endpoint's zod schema so drift fails loudly. The auth provider of the build's mode installs the adapters with `configureApiClient` (a prototype build sends no token), including the `transport` that `main.tsx` passes (the mock API in Stage A; the platform `fetch` when none is given). The endpoints are the typed contracts of `src/contracts` (`endpoints.claimsList`, `endpoints.tasksCreate`, …); screens call them with `useApiQuery` and `useApiMutation` and never import the mock API.
 
 ## Tests
 

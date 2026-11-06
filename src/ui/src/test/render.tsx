@@ -11,12 +11,13 @@ import { createAppStore } from '../app/store';
 import type { AppStore, RootState } from '../app/store';
 import { tenantOf } from '../app/tenant';
 import { AuthContext } from '../auth/authContext';
-import type { AuthActions } from '../auth/authContext';
+import type { AuthActions, PasswordAuthActions } from '../auth/authContext';
 import { ToastProvider } from '../components/ui/ToastProvider';
 import { restoreAfterEach } from './restoreAfterEach';
 
-export function stubAuth(overrides: Partial<AuthActions> = {}): AuthActions {
+export function stubAuth(overrides: Partial<PasswordAuthActions> = {}): PasswordAuthActions {
   return {
+    mode: 'supabase',
     signIn: vi.fn(() => Promise.resolve({ ok: true })),
     signOut: vi.fn(() => Promise.resolve()),
     requestPasswordReset: vi.fn(() => Promise.resolve()),

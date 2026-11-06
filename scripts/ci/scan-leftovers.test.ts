@@ -12,7 +12,7 @@ import { describe, expect, it } from 'vitest';
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const SELF = 'scripts/ci/scan-leftovers.test.ts';
 const SCANNED_DIRS = ['src', 'scripts', 'e2e_tests/specs'];
-const SKIPPED_DIRS = new Set(['node_modules', 'dist', 'public']);
+const SKIPPED_DIRS = new Set(['node_modules', 'dist', 'dist-prototype', 'public']);
 
 const LEFTOVERS: ReadonlyArray<{ readonly name: string; readonly pattern: RegExp }> = [
   { name: 'a tender, TenderIQ or QuoteIQ reference', pattern: /tender|quoteiq/i },

@@ -7,9 +7,10 @@
  * Prerequisites: the local Supabase stack is running and the demo accounts exist (`bun run auth:personas`).
  * Playwright starts Vite on its own port (playwright.config.ts).
  */
-import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
+
+import { expectNoAxeViolations, expectNoHorizontalScroll } from './support';
 
 const PASSWORD = 'test1234';
 const DESTINATIONS = [
@@ -29,24 +30,6 @@ async function signIn(page: Page, localPart: string): Promise<void> {
   await page.getByLabel('Email address').fill(`${localPart}@claimsiq.local`);
   await page.getByLabel('Password').fill(PASSWORD);
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-}
-
-async function expectNoHorizontalScroll(page: Page): Promise<void> {
-  const overflow = await page.evaluate(
-    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-  );
-  expect(overflow).toBeLessThanOrEqual(0);
-}
-
-async function expectNoAxeViolations(page: Page): Promise<void> {
-  const results = await new AxeBuilder({ page })
-    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-    .analyze();
-  const summary = results.violations.map(
-    (violation) =>
-      `${violation.id} (${violation.impact ?? 'n/a'}): ${violation.nodes.map((node) => node.target.join(' ')).join(', ')}`,
-  );
-  expect(summary).toEqual([]);
 }
 
 test.describe('shell', () => {

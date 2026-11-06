@@ -17,7 +17,7 @@ export type AuthStatus = 'initializing' | 'signedOut' | 'signedIn';
 export type SignOutReason = 'user' | 'expired';
 
 export interface SessionUser {
-  /** The Supabase Auth user id. */
+  /** The Supabase Auth user id; `prototype-<role>` in a prototype build. */
   readonly id: string;
   readonly email: string | null;
   readonly fullName: string;

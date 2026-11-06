@@ -1,17 +1,17 @@
 /**
  * The single API client. `call(endpoint, { params, query, body }, options?)` builds the URL from the endpoint path
  * and for every request:
- * - reads the access token PER REQUEST from the supabase-js session and sends `Authorization: Bearer` (not on
- *   public endpoints);
+ * - reads the access token PER REQUEST from the auth provider (the supabase-js session; none in a prototype build) and
+ *   sends `Authorization: Bearer` when there is one (not on public endpoints);
  * - sends `X-Tenant-Id` with the tenant of the selected data set, `X-As-Of` with the as-of date and `X-Persona` with
  *   the persona view (not on public endpoints);
  * - sends an `Idempotency-Key` on idempotent commands, generated unless the caller passes one;
  * - normalizes problem+json into `ApiError` (`status`, `title`, `code`, `fieldErrors`, `correlationId`);
- * - on 401 signs the user out (through the adapter installed by AuthProvider) and rejects;
+ * - on 401 signs the user out (through the adapter installed by the auth provider) and rejects;
  * - in development builds parses the body with the endpoint's response schema, so drift between the UI and the API
  *   fails loudly.
  *
- * The client never imports supabase-js or the store: AuthProvider installs the adapters (`configureApiClient`). The
+ * The client never imports supabase-js or the store: the auth provider installs the adapters (`configureApiClient`). The
  * adapters also carry the transport: Stage A sends every request to the mock API running in the browser, a real
  * server later is the platform `fetch` with no change to the callers.
  */
@@ -48,7 +48,7 @@ const signedOutAdapters: ApiClientAdapters = {
 
 let adapters: ApiClientAdapters = signedOutAdapters;
 
-/** Installs the adapters (AuthProvider does this once). Returns a function restoring the previous ones. */
+/** Installs the adapters (the auth provider does this once). Returns a function restoring the previous ones. */
 export function configureApiClient(next: ApiClientAdapters): () => void {
   const previous = adapters;
   adapters = next;

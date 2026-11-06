@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:prototype": "VITE_AUTH_MODE=prototype vite",
     "build": "vite build",
+    "build:prototype": "VITE_AUTH_MODE=prototype vite build",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.app.json && tsc -p tsconfig.node.json",
     "lint": "eslint . --max-warnings 0 && prettier --check . --ignore-path ../../.gitignore --ignore-path .prettierignore",

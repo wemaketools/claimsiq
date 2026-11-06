@@ -12,12 +12,12 @@ import { Button, ButtonLink } from '../components/ui/Button';
 import { TextField } from '../components/ui/FormFields';
 import { t } from '../lib/i18n';
 import { AuthLayout } from './AuthLayout';
-import { useAuth } from './authContext';
+import { usePasswordAuth } from './authContext';
 
 const MIN_LENGTH = 8;
 
 export function ResetPasswordPage() {
-  const auth = useAuth();
+  const auth = usePasswordAuth();
   const signedIn = useAppSelector((state) => state.session.authStatus === 'signedIn');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');

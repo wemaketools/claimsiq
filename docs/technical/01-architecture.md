@@ -38,9 +38,11 @@ Sign-in is email and password through supabase-js against Supabase Auth in the l
 
 The persona switch is not authentication (DD-07).
 
+A **prototype build** (`VITE_AUTH_MODE=prototype`, DD-45 to DD-47) has no Supabase at all: the session is the demo role picked on the sign-in page, kept in `localStorage`; the API is the in-browser mock API; supabase-js is not in the bundle (`scan-bundle --prototype` proves it). It needs no environment variable and is what `vercel.json` builds.
+
 ## Environment
 
-`.env.example` (deployed catalog) and `.env.local.example` (local) list exactly the variables of `src/server/lib/config/schema.ts` plus the browser-safe `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`; a unit test enforces that and that no value is a real key. Vite reads `.env.local` from the repository root (`envDir`). Nothing but the two `VITE_` values may reach the browser; `scan-bundle` fails the build if a server variable name, server code, a service-role key or the demo-accounts marker is in `src/ui/dist`.
+`.env.example` (deployed catalog) and `.env.local.example` (local) list exactly the variables of `src/server/lib/config/schema.ts` plus the browser-safe `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`; a unit test enforces that and that no value is a real key. Vite reads `.env.local` from the repository root (`envDir`). Nothing but the `VITE_` values (`VITE_AUTH_MODE` and the two Supabase ones) may reach the browser; a prototype build needs none of them set; `scan-bundle` fails the build if a server variable name, server code, a service-role key or the demo-accounts marker is in `src/ui/dist`.
 
 ## Checks and CI
 
@@ -48,4 +50,4 @@ The persona switch is not authentication (DD-07).
 
 ## Deployment
 
-Vercel installs with `bun install --frozen-lockfile`, builds with `bun run build` (typecheck, then the SPA build) and serves `src/ui/dist` with an SPA rewrite. The Content-Security-Policy is a meta tag filled in by `vite.config.ts`: production allows scripts from the app's own origin and network to the app and the Supabase URL only; the development server adds `'unsafe-inline'` scripts and websockets for hot reload.
+Vercel installs with `bun install --frozen-lockfile`, builds with `VITE_AUTH_MODE=prototype bun run build` (typecheck, then the SPA build in prototype mode: static files, no environment variables) and serves `src/ui/dist` with an SPA rewrite so deep links such as `/claims/CLM-101` open. The Content-Security-Policy is a meta tag filled in by `vite.config.ts`: production allows scripts from the app's own origin and network to the app and the Supabase URL only (the app alone in a prototype build); the development server adds `'unsafe-inline'` scripts and websockets for hot reload.

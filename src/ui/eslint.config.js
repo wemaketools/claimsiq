@@ -37,7 +37,7 @@ const SUPABASE_AUTH_ONLY = {
 };
 
 export default defineConfig([
-  globalIgnores(['dist/', 'node_modules/', 'public/']),
+  globalIgnores(['dist/', 'dist-prototype/', 'node_modules/', 'public/']),
   {
     name: 'claimsiq-ui/base',
     files: ['**/*.{ts,tsx}'],

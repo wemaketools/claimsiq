@@ -14,6 +14,7 @@ import { DRAWER_QUERY, useMediaQuery } from '../../lib/useMediaQuery';
 import { MAIN_REGION_ID } from '../ui/focusReturn';
 import { PageSlotsContext } from '../ui/pageSlots';
 import type { PageSlots } from '../ui/pageSlots';
+import { PrototypeBanner } from './PrototypeBanner';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 
@@ -71,6 +72,7 @@ export function AppShell({ modules = features }: { readonly modules?: readonly F
           <div className="ciq-drawer-scrim" aria-hidden="true" onClick={closeToMenuButton} />
         )}
         <div className="ciq-main">
+          <PrototypeBanner />
           <Topbar
             titleRef={setTitleSlot}
             onOpenMenu={() => setDrawerOpen((current) => !current)}

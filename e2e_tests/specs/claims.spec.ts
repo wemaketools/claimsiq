@@ -9,31 +9,11 @@
  */
 import { readFileSync } from 'node:fs';
 
-import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
-import type { Page } from '@playwright/test';
+
+import { expectNoAxeViolations, expectNoHorizontalScroll } from './support';
 
 const PASSWORD = 'test1234';
-
-async function expectNoAxeViolations(page: Page): Promise<void> {
-  // Axe reads colours, so let any running colour transition (theme switch, active link) finish first.
-  await page.evaluate(() => Promise.all(document.getAnimations().map((animation) => animation.finished)));
-  const results = await new AxeBuilder({ page })
-    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-    .analyze();
-  expect(
-    results.violations.map(
-      (violation) => `${violation.id}: ${violation.nodes.map((node) => node.target.join(' ')).join(', ')}`,
-    ),
-  ).toEqual([]);
-}
-
-async function expectNoHorizontalScroll(page: Page): Promise<void> {
-  const overflow = await page.evaluate(
-    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-  );
-  expect(overflow).toBeLessThanOrEqual(0);
-}
 
 test.describe('claim screens', () => {
   test('Overview, its click-through, filters, CSV and Stages & Aging work with the keyboard at 1366px and pass axe in both themes', async ({

@@ -24,7 +24,7 @@ The work is tracked as GitHub issues of `wemaketools/claimsiq` under the Stage A
 
 ## Delivery stage
 
-**Stage A (current):** the P0 proof of concept on the spec's synthetic fixtures. SPA, typed zod contracts, a mock API over versioned fixtures, a rules engine (`src/rules`, served by `claims.facts`), mutations (tasks, status) kept in browser storage until Reset. Sign-in is real against the local Supabase stack; the persona switch is a view and not authentication. No AI features, no P1 (CLM-FR-19/20). A real database and API is a later epic and starts only with the owner's written approval.
+**Stage A (current):** the P0 proof of concept on the spec's synthetic fixtures. SPA, typed zod contracts, a mock API over versioned fixtures, a rules engine (`src/rules`, served by `claims.facts`), mutations (tasks, status) kept in browser storage until Reset. Sign-in is real against the local Supabase stack, except in prototype builds (the hosted demo: a role click, no Supabase); the persona switch is a view and not authentication. No AI features, no P1 (CLM-FR-19/20). A real database and API is a later epic and starts only with the owner's written approval.
 
 ## Rules for every agent
 
@@ -55,13 +55,14 @@ The work is tracked as GitHub issues of `wemaketools/claimsiq` under the Stage A
 | `bun run supabase:start` / `supabase:stop` / `supabase:status` | Local Supabase stack in Docker (generates the git-ignored ES256 signing key first) |
 | `bun run auth:personas` | Creates or updates the four demo accounts in local Supabase Auth (password `test1234`, local only) |
 | `bun run dev` | The SPA on http://localhost:5273 (needs `.env.local`; `run.ps1` writes it) |
+| `bun run dev:prototype` / `build:prototype` | The same in prototype mode (`VITE_AUTH_MODE=prototype`): sign in by clicking a role, no Supabase, no env; Vercel builds this way |
 | `bun run typecheck` / `typecheck:ui` | Backend, scripts and root config / SPA |
 | `bun run lint` / `lint:ui` / `format:ui` | Backend lint / SPA lint + Prettier check / SPA Prettier write |
 | `bun run test` / `test:unit` / `test:ui` | All root projects / root unit project / SPA suite |
 | `bun run ci:test:ui` / `ci:test:unit` | The suites with the skip and count-floor assertions |
 | `bun run build:ui` / `build` | SPA production build / backend typecheck + SPA build (Vercel's build command) |
 | `bun run ci:security` | Secret scan of tracked files + production bundle leak scan |
-| `bun run test:e2e` | Playwright (starts its own Vite on 5380; needs the stack and the demo accounts) |
+| `bun run test:e2e` / `test:e2e:prototype` | Playwright (starts its own Vite on 5380 and a prototype preview on 5381; the first project needs the stack and the demo accounts) |
 | `bun run verify` | typecheck → typecheck:ui → lint → lint:ui → test → test:ui → build:ui |
 
 Local services: Supabase API http://127.0.0.1:54421, Studio http://127.0.0.1:54423, Mailpit http://127.0.0.1:54424. Setup and the sign-in walkthrough: `README.md`.

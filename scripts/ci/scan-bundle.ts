@@ -12,12 +12,16 @@
  * - the marker string of the dev-only demo-accounts quick-pick, which renders only under `import.meta.env.DEV`.
  *   The marker is read from `DEMO_ACCOUNTS_MARKER = '…'` in `src/ui/src/auth/**`; a missing declaration
  *   fails the scan, because the check could otherwise never fail.
+ * With `--prototype` it builds (or, with `--no-build`, scans) a PROTOTYPE build instead (`VITE_AUTH_MODE=prototype`,
+ * into `src/ui/dist-prototype`), applies the same rules and also fails on supabase-js: its code, a chunk named
+ * after it, or a Supabase origin in the Content-Security-Policy. That is the proof that a prototype build needs no
+ * Supabase at run time.
  * It also checks that `index.html` carries the production Content-Security-Policy and that its script-src
  * has none of the dev-only relaxations (`'unsafe-inline'`, `'unsafe-eval'`, `ws:`).
  *
  * Findings print the file, the rule and a short context with secrets masked.
  *
- * Usage: bun scripts/ci/scan-bundle.ts [--no-build] [--dist <dir>]
+ * Usage: bun scripts/ci/scan-bundle.ts [--prototype] [--no-build] [--dist <dir>]
  */
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
@@ -28,6 +32,7 @@ import { SERVER_ENV_KEYS, tryGetConfig } from '../../src/server/lib/config/index
 
 const repoRoot = fileURLToPath(new URL('../../', import.meta.url));
 export const DEFAULT_DIST = join(repoRoot, 'src', 'ui', 'dist');
+export const PROTOTYPE_DIST = join(repoRoot, 'src', 'ui', 'dist-prototype');
 export const UI_AUTH_DIR = join(repoRoot, 'src', 'ui', 'src', 'auth');
 
 /** Server variables of the planned backend that must never reach the browser either. */
@@ -53,6 +58,8 @@ export interface BundleScanInputs {
   readonly serviceRoleKey: string | null;
   /** The demo-accounts marker string, when declared. */
   readonly demoAccountsMarker: string | null;
+  /** True for a prototype build, which must not contain supabase-js. */
+  readonly prototype?: boolean;
 }
 
 function escapeRegExp(value: string): string {
@@ -85,6 +92,13 @@ export function bundleRules(inputs: BundleScanInputs): BundleRule[] {
       id: 'demo-accounts-marker',
       description: 'the dev-only demo-accounts quick-pick',
       pattern: new RegExp(escapeRegExp(inputs.demoAccountsMarker), 'g'),
+    });
+  }
+  if (inputs.prototype === true) {
+    rules.push({
+      id: 'supabase-js',
+      description: 'supabase-js in a prototype build',
+      pattern: /GoTrueClient|supabase-js|gotrue-js|@supabase\/|PASSWORD_RECOVERY/g,
     });
   }
   return rules;
@@ -172,6 +186,14 @@ export function scanBundle(dist: string, inputs: BundleScanInputs): BundleFindin
   const rules = bundleRules(inputs);
   const findings: BundleFinding[] = [];
   for (const file of listFiles(dist)) {
+    if (inputs.prototype === true && /supabase/i.test(relative(dist, file))) {
+      findings.push({
+        file: relative(dist, file),
+        rule: 'supabase-js',
+        description: 'a supabase chunk in a prototype build',
+        context: relative(dist, file),
+      });
+    }
     if (statSync(file).size > 20 * 1024 * 1024 || /\.(png|jpe?g|gif|webp|ico|woff2?|ttf)$/i.test(file)) {
       continue;
     }
@@ -186,7 +208,7 @@ const CSP_META = /<meta\s+http-equiv="Content-Security-Policy"\s+content="([^"]*
  * Checks the production Content-Security-Policy of the built index.html: the meta tag is present and filled
  * in, and script-src allows neither inline scripts nor eval (the dev-only relaxations must not ship).
  */
-export function checkProductionCsp(indexHtml: string): BundleFinding[] {
+export function checkProductionCsp(indexHtml: string, prototype = false): BundleFinding[] {
   const finding = (context: string): BundleFinding => ({
     file: 'index.html',
     rule: 'production-csp',
@@ -210,16 +232,27 @@ export function checkProductionCsp(indexHtml: string): BundleFinding[] {
   }
   const sources = scriptSrc.split(/\s+/);
   const relaxed = ["'unsafe-inline'", "'unsafe-eval'", 'ws:'].filter((source) => sources.includes(source));
-  return relaxed.map((source) => finding(`script-src allows ${source}`));
+  const findings = relaxed.map((source) => finding(`script-src allows ${source}`));
+  const connectSrc = policy
+    .split(';')
+    .map((directive) => directive.trim())
+    .find((directive) => directive.startsWith('connect-src '));
+  if (prototype && connectSrc !== "connect-src 'self'") {
+    findings.push(finding(`a prototype build may connect to its own origin only, got "${connectSrc ?? 'no connect-src'}"`));
+  }
+  return findings;
 }
 
-function parseArgs(argv: readonly string[]): { build: boolean; dist: string } {
+function parseArgs(argv: readonly string[]): { build: boolean; dist: string; prototype: boolean } {
   let build = true;
-  let dist = DEFAULT_DIST;
+  let prototype = false;
+  let dist: string | null = null;
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === '--no-build') {
       build = false;
+    } else if (arg === '--prototype') {
+      prototype = true;
     } else if (arg === '--dist') {
       const value = argv[index + 1];
       if (value === undefined) {
@@ -228,17 +261,20 @@ function parseArgs(argv: readonly string[]): { build: boolean; dist: string } {
       dist = resolve(value);
       index += 1;
     } else {
-      throw new Error(`Unknown argument "${arg ?? ''}". Usage: scan-bundle.ts [--no-build] [--dist <dir>]`);
+      throw new Error(`Unknown argument "${arg ?? ''}". Usage: scan-bundle.ts [--prototype] [--no-build] [--dist <dir>]`);
     }
   }
-  return { build, dist };
+  return { build, dist: dist ?? (prototype ? PROTOTYPE_DIST : DEFAULT_DIST), prototype };
 }
 
 function main(): void {
-  const { build, dist } = parseArgs(process.argv.slice(2));
+  const { build, dist, prototype } = parseArgs(process.argv.slice(2));
   if (build) {
-    process.stdout.write('scan-bundle: building the SPA (bun run build:ui)...\n');
-    const result = spawnSync('bun', ['run', 'build:ui'], { cwd: repoRoot, stdio: 'inherit' });
+    const command = prototype
+      ? ['run', '--cwd', 'src/ui', 'build:prototype', '--outDir', dist]
+      : ['run', 'build:ui'];
+    process.stdout.write(`scan-bundle: building the SPA (bun ${command.join(' ')})...\n`);
+    const result = spawnSync('bun', command, { cwd: repoRoot, stdio: 'inherit' });
     if (result.status !== 0) {
       process.stderr.write('scan-bundle: the SPA build failed.\n');
       process.exitCode = 1;
@@ -265,8 +301,9 @@ function main(): void {
     ...scanBundle(dist, {
       serviceRoleKey: configured.ok ? configured.config.supabase.serviceRoleKey : null,
       demoAccountsMarker,
+      prototype,
     }),
-    ...checkProductionCsp(existsSync(indexHtml) ? readFileSync(indexHtml, 'utf8') : ''),
+    ...checkProductionCsp(existsSync(indexHtml) ? readFileSync(indexHtml, 'utf8') : '', prototype),
   ];
   if (findings.length > 0) {
     process.stderr.write(`scan-bundle: ${findings.length} finding(s) in ${dist}:\n`);
@@ -276,7 +313,9 @@ function main(): void {
     process.exitCode = 1;
     return;
   }
-  process.stdout.write(`scan-bundle: ${dist} is clean (no demo accounts, server code, server variables or secrets).\n`);
+  process.stdout.write(
+    `scan-bundle: ${dist} is clean (no demo accounts, server code, server variables or secrets${prototype ? ', no supabase-js' : ''}).\n`,
+  );
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {

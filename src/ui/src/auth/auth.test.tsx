@@ -77,7 +77,7 @@ describe('sign-in', () => {
 });
 
 describe('password recovery', () => {
-  it('always confirms a reset request, and validates and saves a new password in a recovery session', async () => {
+  it('always confirms a reset request, validates and saves a new password in a recovery session, and asks for a new link without one', async () => {
     const auth = stubAuth({ recoverySession: true });
     const { unmount } = renderWithProviders(<ForgotPasswordPage />, {
       state: { session: signedOut },
@@ -89,7 +89,10 @@ describe('password recovery', () => {
     expect(await screen.findByText('Check your email')).toBeInTheDocument();
     unmount();
 
-    renderWithProviders(<ResetPasswordPage />, { state: { session: signedOut }, auth });
+    const reset = renderWithProviders(<ResetPasswordPage />, {
+      state: { session: signedOut },
+      auth,
+    });
     await userEvent.type(screen.getByLabelText(/^New password/), 'short');
     expect(
       screen.getByText('Use at least 8 characters.', { selector: '.ciq-field-error' }),
@@ -104,9 +107,8 @@ describe('password recovery', () => {
 
     expect(auth.updatePassword).toHaveBeenCalledWith('longenough1');
     await waitFor(() => expect(screen.getByText('Password changed')).toBeInTheDocument());
-  });
+    reset.unmount();
 
-  it('asks for a new link when there is no recovery session', () => {
     renderWithProviders(<ResetPasswordPage />, { state: { session: signedOut } });
 
     expect(screen.getByRole('link', { name: 'Request a new link' })).toHaveAttribute(

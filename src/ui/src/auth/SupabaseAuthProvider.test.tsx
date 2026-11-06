@@ -12,7 +12,7 @@ import { createAppStore } from '../app/store';
 import { call } from '../api/client';
 import { installFetch, problem } from '../test/fetchMock';
 import { useAuth } from './authContext';
-import { AuthProvider } from './AuthProvider';
+import { SupabaseAuthProvider } from './SupabaseAuthProvider';
 
 type Listener = (event: AuthChangeEvent, session: Session | null) => void;
 
@@ -69,7 +69,10 @@ function Probe() {
         {status.authStatus} {status.user?.fullName ?? 'nobody'} {status.theme}{' '}
         {status.signOutReason ?? '-'}
       </p>
-      <button type="button" onClick={() => void auth.signIn('a@b.c', 'pw')}>
+      <button
+        type="button"
+        onClick={() => void (auth.mode === 'supabase' ? auth.signIn('a@b.c', 'pw') : undefined)}
+      >
         sign in
       </button>
       <button type="button" onClick={() => void auth.signOut()}>
@@ -86,9 +89,9 @@ function renderProvider() {
   const store = createAppStore();
   render(
     <Provider store={store}>
-      <AuthProvider store={store}>
+      <SupabaseAuthProvider store={store}>
         <Probe />
-      </AuthProvider>
+      </SupabaseAuthProvider>
     </Provider>,
   );
   return store;
@@ -103,7 +106,7 @@ beforeEach(() => {
   mocks.signInWithPassword.mockReset().mockResolvedValue({ error: null });
 });
 
-describe('AuthProvider', () => {
+describe('SupabaseAuthProvider', () => {
   it('follows the Supabase session into the store, sends the token and tenant on API calls and signs out on 401 or on request', async () => {
     window.localStorage.setItem('ciq.theme', 'dark');
     let pings = 0;

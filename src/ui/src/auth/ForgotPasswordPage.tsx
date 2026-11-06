@@ -11,10 +11,10 @@ import { Button } from '../components/ui/Button';
 import { TextField } from '../components/ui/FormFields';
 import { t } from '../lib/i18n';
 import { AuthLayout } from './AuthLayout';
-import { useAuth } from './authContext';
+import { usePasswordAuth } from './authContext';
 
 export function ForgotPasswordPage() {
-  const auth = useAuth();
+  const auth = usePasswordAuth();
   const [email, setEmail] = useState('');
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
