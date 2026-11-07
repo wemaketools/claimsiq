@@ -1,6 +1,6 @@
 /**
  * What the rules engine says about each supplier's work on the open claims in view. Waits are business
- * days; an average is `null` below the minimum sample, so a screen has no average to compare on too few requests.
+ * days; an average or percentile is `null` below the minimum sample, so a screen has nothing to compare on too few requests.
  */
 import { z } from 'zod';
 
@@ -12,12 +12,30 @@ const Count = z.number().int().min(0);
 /** The requests behind an average: how many there were, and the mean when there were enough of them (`null` otherwise). */
 const Sampled = z.object({ sample: Count, average: z.number().nullable() });
 
+/** Where a wait percentile stands against the supplier wait target: at or under it, or over it. */
+export const TargetPosition = z.enum(['within', 'over']);
+export type TargetPosition = z.infer<typeof TargetPosition>;
+
+/**
+ * The median and 90th percentile (nearest rank) of the open waits behind `wait`, in business days. Both are `null`
+ * below the minimum sample: the supplier is shown with its sample size and is not placed against the baseline.
+ */
+export const WaitPercentiles = z.object({
+  sample: Count,
+  median: Count.nullable(),
+  p90: Count.nullable(),
+  median_vs_target: TargetPosition.nullable(),
+  p90_vs_target: TargetPosition.nullable(),
+});
+export type WaitPercentiles = z.infer<typeof WaitPercentiles>;
+
 export const SupplierInsight = z.object({
   supplier_id: Id,
   /** Requests sent to the supplier on open claims that are not completed at the as-of date, with or without a request time. */
   open_requests: Count,
   /** Open requests with a request time, so a wait can be counted; their mean wait in business days. */
   wait: Sampled.extend({ longest: Count.nullable() }),
+  percentiles: WaitPercentiles,
   /** Open requests waiting longer than the supplier target. */
   breaches: Count,
   /** Open requests with no request time: the wait cannot be judged, so they are neither within target nor a breach. */
@@ -34,9 +52,12 @@ export const SupplierInsight = z.object({
 export type SupplierInsight = z.infer<typeof SupplierInsight>;
 
 export const SupplierInsights = z.object({
-  /** An average is shown only from this many requests. */
+  /** An average or percentile is shown only from this many requests. */
   min_sample: Count,
+  /** The baseline a wait is held against. */
   target_business_days: Count,
+  /** The percentiles of every supplier's open waits taken together, with the same minimum sample. */
+  all_suppliers: WaitPercentiles,
   items: z.array(SupplierInsight),
 });
 export type SupplierInsights = z.infer<typeof SupplierInsights>;

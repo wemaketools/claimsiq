@@ -37,9 +37,10 @@ export const shellCatalog = {
       issuesUnknown: 'Data issues',
       reset: 'Reset',
       resetTitle: 'Reset the {dataSet} data set?',
-      resetScope: 'Every task and other change made in the {dataSet} data set',
+      resetScope:
+        'Every task, the saved rules and their change history, and any other change made in the {dataSet} data set',
       resetResult:
-        'The changes are removed and the fixture shows exactly as loaded. The data set and the as-of date stay.',
+        'The changes are removed, the rules go back to the spec’s, and the fixture shows exactly as loaded. The data set and the as-of date stay.',
       resetDone: 'The {dataSet} fixture is back as loaded.',
       issuesDialog: {
         title: 'Data issues',
@@ -100,8 +101,12 @@ export const shellCatalog = {
       forgot: 'Forgot your password?',
     },
     demo: {
-      title: 'Demo accounts (local development only)',
-      subtitle: 'Choose a demo account to sign in with its local password ({password}).',
+      title: 'Demo accounts',
+      subtitle: 'Choose a role to sign in with its demo account.',
+      notConfigured:
+        'Demo sign-in is not set up in this environment. The email is filled in; enter the password of this account.',
+      failed:
+        'Demo sign-in did not work for this account. The email is filled in; enter its password instead.',
     },
     prototype: {
       subtitle: 'A prototype: no accounts are needed.',

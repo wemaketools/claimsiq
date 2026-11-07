@@ -1,13 +1,11 @@
 import { useMemo } from 'react';
 
-import type { ClaimsSummary } from '../../../../contracts/index';
+import type { ClaimsSummary, PaidTrend } from '../../../../contracts/index';
 import { DonutChart, BarList } from '../../components/charts';
 import {
   Card,
   CardLink,
   EmptyState,
-  KpiCard,
-  KpiGrid,
   PageHeader,
   QueryView,
   SkeletonBlock,
@@ -23,8 +21,11 @@ import {
   useClaimScope,
 } from '../claim-scope';
 import { overviewFigures } from './figures';
+import { FigureGroups } from './FigureGroups';
+import { PaidTrendCard } from './PaidTrendCard';
+import { trendRows, usePaidTrend } from './trends';
 
-function overviewTable(summary: ClaimsSummary): string[][] {
+function overviewTable(summary: ClaimsSummary, trend: PaidTrend): string[][] {
   const groups = overviewFigures(summary);
   const section = (name: string, rows: { label: string; count: number }[]) =>
     rows.map((row) => [name, row.label, String(row.count), '', '']);
@@ -50,6 +51,7 @@ function overviewTable(summary: ClaimsSummary): string[][] {
     ]),
     ...section(t('overview.stage.title'), stageRows(summary)),
     ...section(t('overview.age.title'), ageRows(summary)),
+    ...trendRows(trend),
   ];
 }
 
@@ -96,9 +98,14 @@ function Breakdowns({ summary }: { readonly summary: ClaimsSummary }) {
 export default function OverviewPage() {
   const scope = useClaimScope();
   const summary = scope.facts.data?.summary;
+  const trend = usePaidTrend(scope.filters);
+  const trendData = trend.data;
   const table = useMemo(
-    () => (summary === undefined ? undefined : overviewTable(summary)),
-    [summary],
+    () =>
+      summary === undefined || trendData === undefined
+        ? undefined
+        : overviewTable(summary, trendData),
+    [summary, trendData],
   );
 
   return (
@@ -106,7 +113,7 @@ export default function OverviewPage() {
       <PageHeader
         title={t('overview.title')}
         subtitle={t('overview.subtitle')}
-        actions={<ExportCsvButton screen="overview" queries={[scope.facts]} table={table} />}
+        actions={<ExportCsvButton screen="overview" queries={[scope.facts, trend]} table={table} />}
       />
       <ClaimFilterBar scope={scope} withPeriod />
       <QueryView
@@ -133,24 +140,8 @@ export default function OverviewPage() {
       >
         {(data) => (
           <div className="ciq-page" aria-busy={scope.facts.isFetching}>
-            {overviewFigures(data.summary).map((group) => (
-              <section key={group.heading} className="ciq-stack">
-                <h2 className="ciq-card-title">{group.heading}</h2>
-                <KpiGrid>
-                  {group.figures.map((figure) => (
-                    <KpiCard
-                      key={figure.id}
-                      label={figure.label}
-                      value={figure.shown}
-                      hint={figure.hint}
-                      icon={figure.icon}
-                      tone={figure.tone}
-                      to={claimsLink(figure.criterion)}
-                    />
-                  ))}
-                </KpiGrid>
-              </section>
-            ))}
+            <FigureGroups summary={data.summary} Heading="h2" headingClassName="ciq-card-title" />
+            <PaidTrendCard query={trend} />
             <Breakdowns summary={data.summary} />
           </div>
         )}

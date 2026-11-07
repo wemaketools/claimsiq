@@ -16,31 +16,63 @@ function portFromEnv(name: string, fallback: number): number {
 
 const webPort = portFromEnv('WEB_PORT', 5380);
 const prototypePort = portFromEnv('PROTOTYPE_PORT', 5381);
+const apiPort = portFromEnv('E2E_API_PORT', 5382);
+
+export interface ServerSpec {
+  readonly command: string;
+  /** `ui` is `src/ui`, `root` the repository root. */
+  readonly cwd: 'ui' | 'root';
+  /** Playwright waits until this answers. */
+  readonly url: string;
+  readonly timeout: number;
+  readonly env?: Readonly<Record<string, string>>;
+}
+
+// The API runs on its own port, so a developer's `bun run dev` is left alone; the Vite dev server proxies `/api` to it.
+const apiEnv = { API_PORT: String(apiPort) };
 
 export const PROJECTS = [
   {
     name: 'stack',
-    testMatch: ['claims.spec.ts', 'shell.spec.ts'],
+    testMatch: ['claims.spec.ts', 'shell.spec.ts', 'acceptance.spec.ts'],
     origin: `http://127.0.0.1:${webPort}`,
-    server: {
-      command: `bun run dev --host 127.0.0.1 --port ${webPort} --strictPort`,
-      timeout: 120_000,
-    },
+    servers: [
+      {
+        command: 'bun scripts/dev/serve-api.ts',
+        cwd: 'root',
+        url: `http://127.0.0.1:${apiPort}/api/v1/health`,
+        timeout: 60_000,
+        env: apiEnv,
+      },
+      {
+        command: `bun run dev --host 127.0.0.1 --port ${webPort} --strictPort`,
+        cwd: 'ui',
+        url: `http://127.0.0.1:${webPort}`,
+        timeout: 120_000,
+        env: apiEnv,
+      },
+    ],
   },
   {
     name: 'prototype',
     testMatch: ['prototype.spec.ts', 'acceptance.spec.ts'],
     origin: `http://127.0.0.1:${prototypePort}`,
-    server: {
-      // The build goes to its own folder, so a developer's `dist` is left alone.
-      command: `bun run build:prototype --outDir dist-prototype && bunx vite preview --outDir dist-prototype --host 127.0.0.1 --port ${prototypePort} --strictPort`,
-      timeout: 180_000,
-    },
+    servers: [
+      {
+        // The build goes to its own folder, so a developer's `dist` is left alone.
+        command: `bun run build:prototype --outDir dist-prototype && bunx vite preview --outDir dist-prototype --host 127.0.0.1 --port ${prototypePort} --strictPort`,
+        cwd: 'ui',
+        url: `http://127.0.0.1:${prototypePort}`,
+        timeout: 180_000,
+      },
+    ],
   },
-] as const;
+] as const satisfies readonly { name: string; testMatch: readonly string[]; origin: string; servers: readonly ServerSpec[] }[];
 
 const selected = envValue('E2E_PROJECT');
 export const running = PROJECTS.filter((project) => selected === undefined || project.name === selected);
+/** The stack project's specs all change the one local database (TEST and DEMO, Reset), so they must not overlap. */
+export const sharesDatabase = running.some((project) => project.name === 'stack');
 if (running.length === 0) {
   throw new Error(`E2E_PROJECT must be one of ${PROJECTS.map((project) => project.name).join(', ')}, got "${selected}".`);
 }

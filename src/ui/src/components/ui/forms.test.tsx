@@ -68,6 +68,14 @@ function Form({ onChange }: { readonly onChange: (value: FormValue) => void }) {
         placeholder="All statuses"
         options={[{ value: 'open', label: 'Open' }]}
       />
+      <Select
+        label="Owner"
+        value=""
+        onChange={() => undefined}
+        loading
+        placeholder="Choose an owner"
+        options={[]}
+      />
       <Checkbox label="My items only" checked={value.mine} onChange={(mine) => update({ mine })} />
       <MultiSelect
         label="Lots"
@@ -128,6 +136,11 @@ describe('form fields', () => {
     const radiogroup = screen.getByRole('radiogroup', { name: /Claim type/ });
     expect(radiogroup).toHaveAttribute('aria-required', 'true');
     expect(screen.getByRole('group', { name: /Claim type/ })).not.toHaveAttribute('aria-required');
+
+    // Options still on their way: the select is disabled and says so, instead of offering an empty list.
+    const owner = screen.getByLabelText('Owner');
+    expect(owner).toBeDisabled();
+    expect(owner).toHaveDisplayValue('Loading…');
 
     await userEvent.type(title, 'Roof');
     await userEvent.selectOptions(screen.getByLabelText('Status'), 'open');

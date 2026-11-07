@@ -1,10 +1,10 @@
 /**
- * The changes made on top of a fixture (tasks and their audit trail), kept in browser storage under one key per
+ * The changes made on top of a fixture (tasks and their audit trail, the saved rule config and its audit), kept in browser storage under one key per
  * data set and tenant. Reset removes the key and the fixture shows again, exactly.
  */
 import { z } from 'zod';
 
-import { TaskRecord } from '../contracts/index.js';
+import { ClaimsRuleConfig, Instant, PersonaId, RuleConfigAuditEntry, TaskRecord } from '../contracts/index.js';
 import type { DataSetId } from '../contracts/index.js';
 import type { KeyValueStore } from './storage.js';
 
@@ -14,14 +14,24 @@ const ChangesState = z.object({
   tasks: z.array(TaskRecord),
   /** Idempotency-Key of a create to the task it made, so a retried create does not make a second task. */
   created_by_key: z.record(z.string(), z.string()),
+  /** The rule config saved over the spec's, with the version it reached; null while the spec's config is in force. */
+  rule_config: z
+    .object({
+      claims: ClaimsRuleConfig,
+      version: z.number().int().min(2),
+      saved_at: Instant,
+      saved_by: PersonaId,
+      audit: z.array(RuleConfigAuditEntry),
+    })
+    .nullable()
+    .default(null),
 });
 export type Changes = z.infer<typeof ChangesState>;
+export type SavedRuleConfig = NonNullable<Changes['rule_config']>;
 
 export function emptyChanges(): Changes {
-  return { version: 1, next_task_number: 1, tasks: [], created_by_key: {} };
+  return { version: 1, next_task_number: 1, tasks: [], created_by_key: {}, rule_config: null };
 }
-
-export const taskIdOf = (number: number): string => `TASK-${String(number).padStart(4, '0')}`;
 
 export function changesKey(dataSet: DataSetId, tenantId: string): string {
   return `ciq.mock.v1.${dataSet}.${tenantId}`;

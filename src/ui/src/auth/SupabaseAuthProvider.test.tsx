@@ -11,6 +11,12 @@ import { useAppSelector } from '../app/hooks';
 import { createAppStore } from '../app/store';
 import { call } from '../api/client';
 import { installFetch, problem } from '../test/fetchMock';
+import { useState } from 'react';
+
+import {
+  DEMO_SIGN_IN_NOT_CONFIGURED_CODE,
+  DEMO_SIGN_IN_REFUSED_CODE,
+} from '../../../contracts/index';
 import { useAuth } from './authContext';
 import { SupabaseAuthProvider } from './SupabaseAuthProvider';
 
@@ -20,6 +26,7 @@ const mocks = vi.hoisted(() => ({
   listeners: [] as Array<(event: string, session: unknown) => void>,
   signOut: vi.fn(),
   signInWithPassword: vi.fn(),
+  setSession: vi.fn(),
   resetPasswordForEmail: vi.fn(),
   updateUser: vi.fn(),
 }));
@@ -33,6 +40,7 @@ vi.mock('./supabase', () => ({
       },
       signOut: mocks.signOut,
       signInWithPassword: mocks.signInWithPassword,
+      setSession: mocks.setSession,
       resetPasswordForEmail: mocks.resetPasswordForEmail,
       updateUser: mocks.updateUser,
     },
@@ -63,8 +71,22 @@ const ping: ApiEndpoint<{ ok: boolean }> = {
 function Probe() {
   const auth = useAuth();
   const status = useAppSelector((state) => state.session);
+  const [demo, setDemo] = useState('none');
   return (
     <>
+      <p data-testid="demo">{demo}</p>
+      <button
+        type="button"
+        onClick={() =>
+          void (auth.mode === 'supabase'
+            ? auth
+                .signInAsDemo('finance@claimsiq.local')
+                .then((result) => setDemo(result.ok ? 'ok' : result.reason))
+            : undefined)
+        }
+      >
+        demo
+      </button>
       <p data-testid="status">
         {status.authStatus} {status.user?.fullName ?? 'nobody'} {status.theme}{' '}
         {status.signOutReason ?? '-'}
@@ -104,6 +126,7 @@ beforeEach(() => {
     return Promise.resolve({ error: null });
   });
   mocks.signInWithPassword.mockReset().mockResolvedValue({ error: null });
+  mocks.setSession.mockReset().mockResolvedValue({ error: null });
 });
 
 describe('SupabaseAuthProvider', () => {
@@ -148,5 +171,48 @@ describe('SupabaseAuthProvider', () => {
     await waitFor(() =>
       expect(screen.getByTestId('status')).toHaveTextContent('signedOut nobody dark user'),
     );
+  });
+});
+
+describe('SupabaseAuthProvider demo sign-in', () => {
+  it('sends only the email to the server, adopts the session it returns, and reports a missing password and a refusal apart', async () => {
+    let answer = 0;
+    const { requests } = installFetch({
+      'POST /api/v1/auth/demo-sign-in': () =>
+        [
+          {
+            body: {
+              access_token: 'server-access',
+              refresh_token: 'server-refresh',
+              expires_at: 1_900_000_000,
+            },
+          },
+          problem(503, 'Demo sign-in is not configured in this environment.', {
+            code: DEMO_SIGN_IN_NOT_CONFIGURED_CODE,
+          }),
+          problem(403, 'Demo sign-in is not available for this account.', {
+            code: DEMO_SIGN_IN_REFUSED_CODE,
+          }),
+        ][answer++] ?? problem(500, 'Unexpected'),
+    });
+    renderProvider();
+    act(() => emit('INITIAL_SESSION', null));
+    const demo = screen.getByRole('button', { name: 'demo' });
+
+    act(() => demo.click());
+    await waitFor(() => expect(screen.getByTestId('demo')).toHaveTextContent('ok'));
+    expect(requests[0]?.body).toEqual({ email: 'finance@claimsiq.local' });
+    expect(requests[0]?.headers.authorization).toBeUndefined();
+    expect(requests[0]?.headers['x-tenant-id']).toBeUndefined();
+    expect(mocks.setSession).toHaveBeenCalledWith({
+      access_token: 'server-access',
+      refresh_token: 'server-refresh',
+    });
+
+    act(() => demo.click());
+    await waitFor(() => expect(screen.getByTestId('demo')).toHaveTextContent('not_configured'));
+    act(() => demo.click());
+    await waitFor(() => expect(screen.getByTestId('demo')).toHaveTextContent('failed'));
+    expect(mocks.setSession).toHaveBeenCalledTimes(1);
   });
 });

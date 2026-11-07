@@ -35,6 +35,14 @@ export function getVerificationClient(config: AppConfig = getConfig()): Supabase
   return getSupabaseClient(config.supabase.url, config.supabase.anonKey);
 }
 
+/**
+ * A client of its own for one password sign-in. Signing in leaves the session in the client's memory even with
+ * `persistSession` off, so the shared clients are never used for it.
+ */
+export function createSignInClient(config: AppConfig = getConfig()): SupabaseClient {
+  return createClient(config.supabase.url, config.supabase.anonKey, SERVER_AUTH_OPTIONS);
+}
+
 /** The service-role client for the Auth Admin API (and Storage later). Server only. */
 export function getAdminClient(config: AppConfig = getConfig()): SupabaseClient {
   return getSupabaseClient(config.supabase.url, config.supabase.serviceRoleKey);

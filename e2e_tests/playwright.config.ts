@@ -1,12 +1,16 @@
 /**
  * Playwright configuration, two projects:
- * - `stack`: the SPA on the Vite dev server, signing in with REAL Supabase Auth. Playwright starts the dev server
- *   itself on WEB_PORT (default 5380), so a run never collides with a developer's `bun run dev` on 5273. A stale
- *   server on that port fails the run loudly instead of silently serving old code. Prerequisites: Docker running,
- *   the local Supabase stack started (`bun run supabase:start`), the root `.env.local` written, and the demo accounts
- *   created (`bun run auth:personas`).
+ * - `stack`: the SPA on the Vite dev server, signing in with REAL Supabase Auth and reading and writing through the
+ *   REAL API (`scripts/dev/serve-api.ts`) and the local database. Playwright starts both itself, the dev server on
+ *   WEB_PORT (default 5380) and the API on E2E_API_PORT (default 5382), so a run never collides with a developer's
+ *   `bun run dev` on 5273 and 5274. A stale server on a port fails the run loudly instead of silently serving old
+ *   code. Prerequisites: Docker running, the local Supabase stack started (`bun run supabase:start`), the root
+ *   `.env.local` written, and the database built (`bun run db:reset`, which also creates the demo accounts). The specs
+ *   change TEST and DEMO data and end with Reset.
  * - `prototype`: a PRODUCTION build in prototype mode (`vite build`, then `vite preview` on PROTOTYPE_PORT, default
  *   5381), the static demo Kwaku deploys. It needs no stack and signs in by clicking a role.
+ *
+ * Both projects run `acceptance.spec.ts` (CLM-AT-01 to 16); where they differ the spec branches on the project name.
  *
  * Run from the repository root: `bun run test:e2e`, or `bun run test:e2e:prototype` for the second project alone. A
  * run starts only the servers of the projects it runs (`E2E_PROJECT`, set by `test:e2e:prototype`), so the prototype
@@ -16,9 +20,11 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig, devices } from '@playwright/test';
 
 import { envValue } from './env';
-import { running } from './projects';
+import { running, sharesDatabase } from './projects';
+import type { ServerSpec } from './projects';
 
 const uiDir = fileURLToPath(new URL('../src/ui', import.meta.url));
+const rootDir = fileURLToPath(new URL('..', import.meta.url));
 const isCI = envValue('CI') !== undefined;
 
 export default defineConfig({
@@ -29,7 +35,8 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: isCI,
   retries: isCI ? 1 : 0,
-  ...(isCI ? { workers: 2 } : {}),
+  // One worker when the stack project runs: its specs share the local database, and Reset in one would reset the other's data.
+  ...(sharesDatabase ? { workers: 1 } : isCI ? { workers: 2 } : {}),
   reporter: isCI
     ? [['github'], ['html', { open: 'never', outputFolder: 'playwright-report' }]]
     : [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
@@ -47,13 +54,16 @@ export default defineConfig({
     actionTimeout: 15_000,
     navigationTimeout: 30_000,
   },
-  webServer: running.map((project) => ({
-    command: project.server.command,
-    cwd: uiDir,
-    url: project.origin,
-    reuseExistingServer: false,
-    timeout: project.server.timeout,
-    stdout: 'ignore',
-    stderr: 'pipe',
-  })),
+  webServer: running.flatMap((project) =>
+    (project.servers as readonly ServerSpec[]).map((server) => ({
+      command: server.command,
+      cwd: server.cwd === 'ui' ? uiDir : rootDir,
+      url: server.url,
+      reuseExistingServer: false,
+      timeout: server.timeout,
+      ...(server.env === undefined ? {} : { env: { ...server.env } }),
+      stdout: 'ignore' as const,
+      stderr: 'pipe' as const,
+    })),
+  ),
 });

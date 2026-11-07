@@ -75,6 +75,7 @@ export function CreateTaskDialog({ claimId, defaultPriority, onClose }: CreateTa
           label={t('claim-tasks.create.claim')}
           placeholder={t('claim-tasks.create.chooseClaim')}
           required
+          loading={claims.status === 'loading'}
           value={chosen}
           hint={claims.error === null ? undefined : t('claim-tasks.create.claimsFailed')}
           options={(claims.data?.items ?? [])
@@ -86,6 +87,7 @@ export function CreateTaskDialog({ claimId, defaultPriority, onClose }: CreateTa
       <Select
         label={t('claim-tasks.create.assignee')}
         placeholder={t('claim-tasks.create.unassigned')}
+        loading={users.status === 'loading'}
         value={assignee}
         options={(users.data?.items ?? []).map((user) => ({
           value: user.user_id,

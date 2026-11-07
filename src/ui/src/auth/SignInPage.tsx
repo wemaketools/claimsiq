@@ -5,7 +5,9 @@
  * While a request runs the fields are read-only (not disabled), so keyboard focus stays in the form; after a failure
  * focus returns to the password field.
  *
- * In local development builds only, the demo-accounts quick-pick is loaded below the card.
+ * Below the card, the demo accounts: a click sends the account's email to the server, which signs it in with the demo
+ * password of its environment (the browser holds no password). When the server cannot (no password configured, or it
+ * refuses), the email is filled into the form and a short message says why.
  */
 import { Suspense, lazy, useState } from 'react';
 import type { FormEvent } from 'react';
@@ -20,9 +22,12 @@ import { AuthLayout } from './AuthLayout';
 import { usePasswordAuth, useAuth } from './authContext';
 import { PrototypeSignIn } from './PrototypeSignIn';
 
-// Local development builds only: Vite replaces import.meta.env.DEV with false in production builds, so this lazy
-// import and its module are removed from the bundle (scan-bundle verifies the marker is absent).
-const DevDemoAccounts = import.meta.env.DEV ? lazy(() => import('./DevDemoAccounts')) : null;
+// The bundler folds the comparison to a literal, so a prototype build holds neither this import nor the account
+// e-mails (a call to `authMode()` would not fold; see auth/authMode.ts).
+const DemoSignInAccounts =
+  import.meta.env.VITE_AUTH_MODE === 'prototype'
+    ? null
+    : lazy(() => import('./DemoSignInAccounts'));
 
 const PASSWORD_FIELD_ID = 'ciq-signin-password';
 
@@ -49,15 +54,31 @@ function PasswordSignIn() {
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [demoNotice, setDemoNotice] = useState<'not_configured' | 'failed' | null>(null);
 
   const signIn = async (address: string, secret: string): Promise<void> => {
     setSubmitting(true);
     setFailed(false);
+    setDemoNotice(null);
     const result = await auth.signIn(address.trim(), secret);
     setSubmitting(false);
     if (!result.ok) {
       setFailed(true);
       // Keyboard users continue where they were: back in the password field, next to the error message.
+      document.getElementById(PASSWORD_FIELD_ID)?.focus();
+    }
+  };
+
+  const signInAsDemo = async (address: string): Promise<void> => {
+    setSubmitting(true);
+    setFailed(false);
+    setDemoNotice(null);
+    const result = await auth.signInAsDemo(address);
+    setSubmitting(false);
+    if (!result.ok) {
+      setEmail(address);
+      setPassword('');
+      setDemoNotice(result.reason);
       document.getElementById(PASSWORD_FIELD_ID)?.focus();
     }
   };
@@ -72,15 +93,11 @@ function PasswordSignIn() {
       title={t('auth.signIn.title')}
       subtitle={t('auth.signIn.subtitle')}
       below={
-        DevDemoAccounts !== null && session.authStatus === 'signedOut' ? (
+        DemoSignInAccounts !== null && session.authStatus === 'signedOut' ? (
           <Suspense fallback={null}>
-            <DevDemoAccounts
+            <DemoSignInAccounts
               disabled={submitting}
-              onPick={(pickedEmail, pickedPassword) => {
-                setEmail(pickedEmail);
-                setPassword(pickedPassword);
-                void signIn(pickedEmail, pickedPassword);
-              }}
+              onPick={(address) => void signInAsDemo(address)}
             />
           </Suspense>
         ) : undefined
@@ -91,6 +108,11 @@ function PasswordSignIn() {
           <Banner tone="info">{t('auth.signIn.expired')}</Banner>
         )}
         {failed && <Banner tone="error">{t('auth.signIn.failed')}</Banner>}
+        {demoNotice !== null && (
+          <Banner tone="info">
+            {demoNotice === 'not_configured' ? t('auth.demo.notConfigured') : t('auth.demo.failed')}
+          </Banner>
+        )}
         <TextField
           label={t('auth.field.email')}
           type="email"

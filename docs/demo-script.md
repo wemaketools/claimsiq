@@ -1,4 +1,4 @@
-# Head of Claims demo script (7 to 9 minutes)
+# Head of Claims demo script (7 to 9 minutes, plus 4 for the P1 features)
 
 The Head of Claims journey of the requirements (CL §10), as clicks you can follow in the hosted prototype. Every figure below was read from the running prototype build on the data set named in the step. All data is synthetic.
 
@@ -83,6 +83,36 @@ Money is BWP ("P9,000.00"). The times in a task's history are the real clock tim
 1. Open **CLM-106** and click **View policy invoices**. The page is marked "A stand-in for Premium Collections" and says it joins on the policy identifier only, never on a name.
 2. Policy SYN-BW-00006 (POL-006), Naledi Engineering (fictional), Property All Risk, cover 1 Jan 2026 to 31 Dec 2026. One invoice: INV-006, issued 27 May 2026, due 1 Jun 2026, P7,000.00, allocated P0.00, outstanding P7,000.00, Issued, receipts none allocated.
 3. In the top bar click **Reset** and confirm. The toast reads "The TEST fixture is back as loaded." Open **Action Queue**: "No actions in the queue". The demo is ready to run again.
+
+## The P1 features (about 4 minutes)
+
+Four additions after step 8, in the same TEST session (Reset has just put the data set back, so the rule version counts from 1). Stay **Viewing as: Head of Claims**; the rule editor is read-only for the other personas. The same clicks work in the local API build, where the changes are kept in the database until Reset.
+
+### 9. What-if: move CLM-102 to Assessment (about 1 minute)
+
+1. Open **CLM-102** (Sidebar, **Claims**). It is Triage and "Stage SLA Breached: Triage, 31 business days over a 3-day target", severity High.
+2. Scroll to **Stage what-if** ("What-if: not saved"). Under **Move the claim to** only the stages the claim may move to are listed. Choose **Assessment**.
+3. The table sets the real view beside the preview: Stage SLA "Breached" against "Within target, Assessment: 0 of 5 business days used"; Severity High against None; Stage clock started 3 Sep 2026 against 21 Oct 2026.
+4. Say: the preview adds one event dated the as-of date, runs the same rules, and changes nothing ("No claim, event or task was changed"). Press **Reset** in the card, or reload, and it is gone.
+
+### 10. The rule editor (about 1.5 minutes)
+
+1. Sidebar, **Rules**. Note the **High-value line** is 25000 and **Supplier sample minimum** is 2.
+2. Set **High-value line** to 40000 and **Supplier sample minimum** to 3. **Save changes**, confirm in the dialog (it lists each old and new value): "The rules were saved (version 2)."
+3. Sidebar, **Overview**: **High-value claims** is now 0 (it was 1: CLM-106, P30,000.00, is under the new line). Sidebar, **Suppliers**: Mma-Motor Repairs now reads "Not enough data: 2 of 3 needed" in the percentile table instead of a placement.
+4. Back on **Rules**, "History of changes to the rules" lists each changed value with who and when. Switch **Viewing as** to Claims Handler: "Read-only for this persona", no fields. Switch back to Head of Claims.
+5. **Restore defaults**, confirm: "The spec’s rules are back (version 3)." Overview shows High-value claims 1 again. Say: a change is audited, a stale save is refused, and **Reset** also clears the history.
+
+### 11. Trends and percentiles (about 1 minute)
+
+1. **Overview**, card **Paid by month**: Sep 2026 P5,000.00 and Oct 2026 P4,000.00, "P9,000.00 posted on 2 payments over 2 months", equal to the Paid to date card. Only posted payments count; the chart has the same figures as a table.
+2. **Suppliers**, **Waits against the baseline**: Mma-Motor Repairs and the all-suppliers baseline both show median 11 and 90th percentile 13 business days, "Over the target" (5 days), from 2 requests. A supplier with fewer requests than the sample minimum shows its count and no percentile. Say: a percentile is an observed wait (nearest rank), and the table is the alphabetical list, not a ranking.
+
+### 12. The digest (about 1 minute)
+
+1. Sidebar, **Digest**. One page: Data set TEST, As of 21 Oct 2026, Filters "None, all claims"; the headline figures are the Overview cards (5 open, P9,000.00 paid, P68,000.00 reserve, P77,000.00 incurred); then Top exceptions (CLM-102, CLM-106, CLM-101, CLM-105), the one material reserve movement (CLM-101, P8,000.00 to P11,000.00, 37.5%), Supplier delays (Mma-Motor Repairs, median 11, 90th percentile 13) and Open actions.
+2. Choose **Broker: Kopano Brokers (fictional)**: the header says so and the sheet follows (2 open claims). **Clear filters**.
+3. **Print or save as PDF**: the sheet prints light on one A4 page whatever the screen theme, with no sidebar or controls. Say: it adds no figure of its own; every number is the one the other screens show.
 
 ## If there is time
 

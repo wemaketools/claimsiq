@@ -6,8 +6,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 
+import { call, isApiError } from '../api/client';
 import type { ApiTransport } from '../api/client';
 import { useAppDispatch } from '../app/hooks';
+import { DEMO_SIGN_IN_NOT_CONFIGURED_CODE, publicEndpoints } from '../../../contracts/index';
 import { authSignedIn, signedOut } from '../app/slices/session';
 import type { SignOutReason } from '../app/slices/session';
 import type { AppStore } from '../app/store';
@@ -71,6 +73,20 @@ export function SupabaseAuthProvider({ store, children, transport }: SupabaseAut
           return { ok: error === null };
         } catch {
           return { ok: false };
+        }
+      },
+      async signInAsDemo(email) {
+        try {
+          const session = await call(publicEndpoints.authDemoSignIn, { body: { email } });
+          const { error } = await supabase.auth.setSession({
+            access_token: session.access_token,
+            refresh_token: session.refresh_token,
+          });
+          return error === null ? { ok: true } : { ok: false, reason: 'failed' };
+        } catch (error) {
+          const notConfigured =
+            isApiError(error) && error.code === DEMO_SIGN_IN_NOT_CONFIGURED_CODE;
+          return { ok: false, reason: notConfigured ? 'not_configured' : 'failed' };
         }
       },
       async signOut() {

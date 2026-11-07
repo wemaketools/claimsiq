@@ -1,35 +1,32 @@
 /**
- * Shell journeys: real sign-in against local Supabase Auth, the six destinations (the claim screens show the shared
- * filter bar, the Action Queue its task filters), a supplier's figures, a task created, assigned and moved on in the Action
- * Queue and kept across a reload, the persona switch and the theme toggle (both survive a reload), sign-out,
+ * Shell journeys: real sign-in against local Supabase Auth (a click on a demo role signs in through the server's demo
+ * sign-in endpoint; an e-mail off the list is refused), the eight destinations (the claim screens show the shared
+ * filter bar, the Action Queue its task filters, Rules none), a supplier's figures, the Digest printed light on one A4 page, a task created, assigned and moved on in the Action
+ * Queue and kept across a reload (in the database, through the real API), the persona switch and the theme toggle (both survive a reload), sign-out,
  * and axe accessibility checks.
  *
- * Prerequisites: the local Supabase stack is running and the demo accounts exist (`bun run auth:personas`).
- * Playwright starts Vite on its own port (playwright.config.ts).
+ * Prerequisites: the local Supabase stack is running and the database is built (`bun run db:reset`).
+ * Playwright starts the API and Vite on their own ports (playwright.config.ts). The walk changes DEMO data, so it starts
+ * and ends with Reset, which is also the proof that Reset restores the fixture.
  */
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
-import { expectNoAxeViolations, expectNoHorizontalScroll } from './support';
+import {
+  DESTINATIONS,
+  FILTERS,
+  expectNoAxeViolations,
+  expectNoHorizontalScroll,
+  expectOneLightA4Page,
+  resetData,
+} from './support';
 
-const PASSWORD = 'test1234';
-const DESTINATIONS = [
-  'Overview',
-  'Stages & Aging',
-  'Exceptions & SLA',
-  'Claims',
-  'Suppliers',
-  'Action Queue',
-];
-
-/** Every screen has a filter bar; the Action Queue's is its own. */
-const FILTERS = (name: string): string => (name === 'Action Queue' ? 'Task filters' : 'Claim filters');
-
-async function signIn(page: Page, localPart: string): Promise<void> {
+/** A click on a demo role: the browser sends the email to the server, which signs the account in (no password in the page). */
+async function signInAsRole(page: Page, role: string, localPart: string): Promise<void> {
   await page.goto('/signin');
-  await page.getByLabel('Email address').fill(`${localPart}@claimsiq.local`);
-  await page.getByLabel('Password').fill(PASSWORD);
-  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  const signInRequest = page.waitForRequest('**/api/v1/auth/demo-sign-in');
+  await page.getByRole('button', { name: new RegExp(role) }).click();
+  expect((await signInRequest).postDataJSON()).toEqual({ email: `${localPart}@claimsiq.local` });
 }
 
 test.describe('shell', () => {
@@ -40,9 +37,13 @@ test.describe('shell', () => {
     await expect(page).toHaveURL(/\/signin$/);
     await expect(page.getByRole('heading', { name: 'Sign in', level: 1 })).toBeVisible();
     await expect(
-      page.getByRole('heading', { name: 'Demo accounts (local development only)' }),
+      page.getByRole('heading', { name: 'Demo accounts' }),
     ).toBeVisible();
     await expectNoAxeViolations(page);
+
+    const refused = await page.request.post('/api/v1/auth/demo-sign-in', { data: { email: 'someone.else@example.com' } });
+    expect(refused.status()).toBe(403);
+    expect(await refused.json()).toMatchObject({ code: 'DEMO_SIGN_IN_REFUSED' });
 
     await page.getByLabel('Email address').fill('head.of.claims@claimsiq.local');
     await page.getByLabel('Password').fill('not-the-password');
@@ -54,12 +55,13 @@ test.describe('shell', () => {
     await expect(page).toHaveURL(/\/signin$/);
   });
 
-  test('a demo account signs in to Overview, walks the six destinations, keeps persona and theme across a reload, and signs out', async ({
+  test('a demo account signs in to Overview, walks the eight destinations, keeps persona and theme across a reload, and signs out', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1366, height: 768 });
-    await signIn(page, 'finance');
+    await signInAsRole(page, 'Finance', 'finance');
     await expect(page).toHaveURL(/\/overview$/);
+    await resetData(page, 'DEMO');
     const sidebar = page.getByRole('complementary', { name: 'Main navigation and account' });
     await expect(sidebar.locator('.ciq-brand-name')).toHaveText('ClaimsIQ');
     await expect(sidebar.getByText('Claims Intelligence')).toBeVisible();
@@ -68,7 +70,8 @@ test.describe('shell', () => {
     for (const name of DESTINATIONS) {
       await nav.getByRole('link', { name }).click();
       await expect(page.getByRole('heading', { name, level: 1 })).toBeVisible();
-      await expect(page.getByRole('region', { name: FILTERS(name) })).toBeVisible();
+      const filters = FILTERS(name);
+      if (filters !== null) await expect(page.getByRole('region', { name: filters })).toBeVisible();
     }
     await expectNoAxeViolations(page);
 
@@ -145,6 +148,23 @@ test.describe('shell', () => {
     );
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     await expectNoAxeViolations(page);
+
+    // Digest: in the dark theme it prints light on one A4 page.
+    await nav.getByRole('link', { name: 'Digest' }).click();
+    const sheet = page.getByRole('article', { name: 'Claims digest' });
+    await expect(sheet).toContainText('Data setDEMO');
+    await expect(sheet.getByRole('region', { name: 'Open claims', exact: true })).toContainText(/\d/);
+    await expect(sheet.getByRole('table', { name: 'Open actions' })).toBeVisible();
+    await expect(sheet.getByRole('table', { name: 'Open actions' })).not.toHaveAttribute('aria-busy', 'true');
+    await expectNoHorizontalScroll(page);
+    await expectNoAxeViolations(page);
+    await expectOneLightA4Page(page);
+
+    await nav.getByRole('link', { name: 'Action Queue' }).click();
+    const queueRows = page.getByRole('table', { name: 'Action Queue' }).getByRole('row').filter({ hasText: 'DCLM-016' });
+    await expect(queueRows).toHaveCount(1);
+    await resetData(page, 'DEMO');
+    await expect(queueRows).toHaveCount(0);
 
     await page.getByRole('button', { name: /^Finance/ }).click();
     await page.getByRole('menuitem', { name: 'Sign out' }).click();

@@ -2,16 +2,18 @@
  * Production bundle leak scan (`bun run ci:security`).
  *
  * Builds the SPA (`bun run build:ui`; skip with `--no-build`) and fails if any file in `src/ui/dist` contains:
- * - persona e-mails (`@claimsiq.local`) and mock-api source paths or messages in plain text (the in-browser mock API
- *   ships in the bundle on purpose in Stage A, over the synthetic CSV fixtures);
+ * - mock-api source paths or messages in plain text (the in-browser mock API ships only in the prototype build, over
+ *   the synthetic CSV fixtures; any other build calls the real API and must not carry it);
+ * - in a prototype build, the demo-account e-mails (`@claimsiq.local`): the other builds list them on the sign-in page,
+ *   a prototype build lists roles;
  * - `src/server` code (paths and messages unique to the server platform modules);
  * - a server-only environment variable name (the keys of src/server/lib/config plus the keys of the planned
  *   backend; the browser-safe `VITE_` names are allowed);
  * - the service-role key (the configured value, any `sb_secret_` key, or any JWT whose payload role is
  *   `service_role`);
- * - the marker string of the dev-only demo-accounts quick-pick, which renders only under `import.meta.env.DEV`.
- *   The marker is read from `DEMO_ACCOUNTS_MARKER = '…'` in `src/ui/src/auth/**`; a missing declaration
- *   fails the scan, because the check could otherwise never fail.
+ * - the local demo password (`LOCAL_DEMO_PASSWORD`): demo accounts sign in on the server, so no build holds a demo
+ *   password. Only that committed local value is a rule: a deployed password is never written into the repository,
+ *   not even into a scan.
  * With `--prototype` it builds (or, with `--no-build`, scans) a PROTOTYPE build instead (`VITE_AUTH_MODE=prototype`,
  * into `src/ui/dist-prototype`), applies the same rules and also fails on supabase-js: its code, a chunk named
  * after it, or a Supabase origin in the Content-Security-Policy. That is the proof that a prototype build needs no
@@ -28,13 +30,13 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
+import { LOCAL_DEMO_PASSWORD } from '../../src/server/lib/config/demo-password.js';
 import { SERVER_ENV_KEYS, tryGetConfig } from '../../src/server/lib/config/index.js';
 import { directiveOf } from './csp.js';
 
 const repoRoot = fileURLToPath(new URL('../../', import.meta.url));
 export const DEFAULT_DIST = join(repoRoot, 'src', 'ui', 'dist');
 export const PROTOTYPE_DIST = join(repoRoot, 'src', 'ui', 'dist-prototype');
-export const UI_AUTH_DIR = join(repoRoot, 'src', 'ui', 'src', 'auth');
 
 /** Server variables of the planned backend that must never reach the browser either. */
 export const PLANNED_SERVER_KEYS = [
@@ -57,8 +59,6 @@ export interface BundleRule {
 export interface BundleScanInputs {
   /** The configured service-role key, when available. */
   readonly serviceRoleKey: string | null;
-  /** The demo-accounts marker string, when declared. */
-  readonly demoAccountsMarker: string | null;
   /** True for a prototype build, which must not contain supabase-js. */
   readonly prototype?: boolean;
 }
@@ -71,7 +71,6 @@ function escapeRegExp(value: string): string {
 export function bundleRules(inputs: BundleScanInputs): BundleRule[] {
   const serverKeys = [...new Set<string>([...SERVER_ENV_KEYS, ...PLANNED_SERVER_KEYS])];
   const rules: BundleRule[] = [
-    { id: 'mock-fixture', description: 'a persona e-mail', pattern: /@claimsiq\.local\b/g },
     { id: 'mock-code', description: 'mock-api source paths or messages', pattern: /mock-api[\\/]|handler module skipped|No fixture persona|fixture drift/g },
     {
       id: 'server-code',
@@ -84,22 +83,24 @@ export function bundleRules(inputs: BundleScanInputs): BundleRule[] {
       pattern: new RegExp(`(?<![A-Za-z0-9_])(?<!VITE_)(?:${serverKeys.map(escapeRegExp).join('|')})(?![A-Za-z0-9_])`, 'g'),
     },
     { id: 'service-role-literal', description: 'Supabase secret key', pattern: /sb_secret_[A-Za-z0-9_-]{6,}|service_role_key/g },
+    { id: 'demo-password', description: 'the local demo password', pattern: new RegExp(escapeRegExp(LOCAL_DEMO_PASSWORD), 'g') },
   ];
   if (inputs.serviceRoleKey !== null && inputs.serviceRoleKey.length >= 16) {
     rules.push({ id: 'service-role-key', description: 'the configured service-role key', pattern: new RegExp(escapeRegExp(inputs.serviceRoleKey), 'g') });
   }
-  if (inputs.demoAccountsMarker !== null) {
-    rules.push({
-      id: 'demo-accounts-marker',
-      description: 'the dev-only demo-accounts quick-pick',
-      pattern: new RegExp(escapeRegExp(inputs.demoAccountsMarker), 'g'),
-    });
-  }
   if (inputs.prototype === true) {
+    rules.push({ id: 'demo-account-email', description: 'a demo-account e-mail in a prototype build', pattern: /@claimsiq\.local\b/g });
     rules.push({
       id: 'supabase-js',
       description: 'supabase-js in a prototype build',
       pattern: /GoTrueClient|supabase-js|gotrue-js|@supabase\/|PASSWORD_RECOVERY/g,
+    });
+  }
+  if (inputs.prototype !== true) {
+    rules.push({
+      id: 'mock-api-in-api-build',
+      description: 'the in-browser mock API in a build that calls the real API',
+      pattern: /The mock API failed on this request/g,
     });
   }
   return rules;
@@ -136,7 +137,7 @@ export function scanBundleText(file: string, text: string, rules: readonly Bundl
   for (const rule of rules) {
     rule.pattern.lastIndex = 0;
     for (const match of text.matchAll(rule.pattern)) {
-      const masked = rule.id === 'service-role-key' ? '[service-role key]' : contextOf(text, match.index, match[0].length);
+      const masked = rule.id === 'service-role-key' ? '[service-role key]' : rule.id === 'demo-password' ? '[demo password]' : contextOf(text, match.index, match[0].length);
       findings.push({ file, rule: rule.id, description: rule.description, context: masked });
     }
   }
@@ -161,25 +162,6 @@ export function listFiles(dir: string): string[] {
     }
   }
   return out;
-}
-
-const MARKER_DECLARATION = /DEMO_ACCOUNTS_MARKER\s*(?::\s*[A-Za-z]+\s*)?=\s*(['"`])([^'"`]{8,})\1/;
-
-/** Reads the demo-accounts marker declared in the SPA auth sources (`null` when none is declared). */
-export function findDemoAccountsMarker(authDir: string = UI_AUTH_DIR): string | null {
-  if (!existsSync(authDir)) {
-    return null;
-  }
-  for (const file of listFiles(authDir)) {
-    if (!/\.(ts|tsx)$/.test(file) || /\.test\.tsx?$/.test(file)) {
-      continue;
-    }
-    const match = MARKER_DECLARATION.exec(readFileSync(file, 'utf8'));
-    if (match?.[2] !== undefined) {
-      return match[2];
-    }
-  }
-  return null;
 }
 
 /** Scans a dist directory. */
@@ -281,21 +263,11 @@ function main(): void {
     process.exitCode = 1;
     return;
   }
-  const demoAccountsMarker = findDemoAccountsMarker();
-  if (demoAccountsMarker === null) {
-    process.stderr.write(
-      'scan-bundle: no DEMO_ACCOUNTS_MARKER declaration found in src/ui/src/auth. The dev-only demo-accounts quick-pick ' +
-        'must declare its unique marker string.\n',
-    );
-    process.exitCode = 1;
-    return;
-  }
   const configured = tryGetConfig();
   const indexHtml = join(dist, 'index.html');
   const findings = [
     ...scanBundle(dist, {
       serviceRoleKey: configured.ok ? configured.config.supabase.serviceRoleKey : null,
-      demoAccountsMarker,
       prototype,
     }),
     ...checkProductionCsp(existsSync(indexHtml) ? readFileSync(indexHtml, 'utf8') : '', prototype),
@@ -309,7 +281,7 @@ function main(): void {
     return;
   }
   process.stdout.write(
-    `scan-bundle: ${dist} is clean (no demo accounts, server code, server variables or secrets${prototype ? ', no supabase-js' : ''}).\n`,
+    `scan-bundle: ${dist} is clean (no demo password, server code, server variables or secrets${prototype ? ', no supabase-js' : ''}).\n`,
   );
 }
 

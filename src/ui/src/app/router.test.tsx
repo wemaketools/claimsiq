@@ -16,12 +16,14 @@ const PAGES = [
   ['Stages & Aging', 'Age detail'],
   ['Exceptions & SLA', 'Why it needs review'],
   ['Claims', 'Showing 1–6 of 6'],
-  ['Suppliers', 'Mma-Motor Repairs (fictional)'],
+  ['Suppliers', 'Waits against the baseline'],
   ['Action Queue', 'No actions in the queue'],
+  ['Digest', 'Headline figures'],
+  ['Rules', 'Change history'],
 ] as const;
 
 describe('the application routes', () => {
-  it('lands a signed-in user on Overview and walks the six pages through the sidebar, then an unknown address', async () => {
+  it('lands a signed-in user on Overview and walks the eight pages through the sidebar, then an unknown address', async () => {
     expect(() => buildRoutes([])).toThrow('No navigation destination is registered');
     const { router } = renderRouteTree(buildRoutes(features), {
       state: { session: signedInSession(), dataContext: { dataSet: 'TEST', asOf: '2026-10-21' } },
@@ -104,6 +106,6 @@ describe('the application routes', () => {
 
     expect(await screen.findByRole('button', { name: 'Try again' })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
-    expect(await screen.findByText('Mma-Motor Repairs (fictional)')).toBeInTheDocument();
+    expect(await screen.findByText('Waits against the baseline')).toBeInTheDocument();
   });
 });

@@ -42,6 +42,7 @@ export default defineConfig({
             'src/server/tests/unit/**/*.test.ts',
             'src/contracts/**/*.test.ts',
             'src/mock-api/**/*.test.ts',
+            'src/read-model/**/*.test.ts',
             'src/rules/**/*.test.ts',
             'scripts/**/*.test.ts',
           ],

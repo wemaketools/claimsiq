@@ -8,8 +8,11 @@
  *   `resolveAuthMode` for what an unset value means).
  * - The Content-Security-Policy meta tag in index.html is filled in here, because it names the Supabase URL for auth
  *   (not in prototype builds) and differs between the dev server and production builds (see `contentSecurityPolicy`).
- * - The SPA bundles the shared contracts (`src/contracts`), the in-browser mock API (`src/mock-api`) and the CSV
- *   fixtures (`fixtures/`), which sit outside `src/ui`, so the dev server may serve the repository root
+ * - In Supabase mode the dev server proxies `/api` to the local API server (`bun run dev:api`), so the SPA calls
+ *   `/api/v1` on its own origin, as it will once deployed. `API_PORT` (root `.env.local` or the environment) moves it;
+ *   it is read here with `loadEnv` and never reaches the bundle.
+ * - The SPA bundles the shared contracts (`src/contracts`) and, in prototype builds, the in-browser mock API
+ *   (`src/mock-api`, `src/read-model`) and the CSV fixtures (`fixtures/`), which sit outside `src/ui`, so the dev server may serve the repository root
  *   (`server.fs.allow`).
  */
 import { fileURLToPath } from 'node:url';
@@ -113,8 +116,10 @@ function contentSecurityPolicy(authMode: AuthMode, supabaseUrl: string | undefin
 }
 
 export default defineConfig(({ mode, command }) => {
-  const env = loadEnv(mode, repoRoot, 'VITE_');
+  const env = loadEnv(mode, repoRoot, ['VITE_', 'API_PORT']);
   const authMode = resolveAuthMode(command, env);
+  // The same default as `API_PORT` in src/server/lib/config/schema.ts (the SPA config cannot import the server).
+  const apiOrigin = `http://127.0.0.1:${env.API_PORT ?? '5274'}`;
 
   return {
     root: uiDir,
@@ -131,6 +136,7 @@ export default defineConfig(({ mode, command }) => {
       strictPort: true,
       fs: { strict: true, allow: [repoRoot, rootNodeModules] },
       warmup: { clientFiles: ['./src/main.tsx'] },
+      ...(authMode === 'supabase' ? { proxy: { '/api': { target: apiOrigin } } } : {}),
     },
     preview: {
       port: 4273,

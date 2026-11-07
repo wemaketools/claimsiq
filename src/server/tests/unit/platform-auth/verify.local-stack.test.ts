@@ -9,7 +9,8 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { verifyAccessToken } from '../../../lib/auth/verify.js';
-import { getConfig, tryGetConfig } from '../../../lib/config/index.js';
+import { getConfig } from '../../../lib/config/index.js';
+import { passwordGrant, stackIsReachable } from '../../helpers/localStack.js';
 import {
   decodeJwt,
   generateEs256KeyPair,
@@ -23,42 +24,13 @@ import {
 
 const PERSONA = 'head.of.claims@claimsiq.local';
 
-async function passwordGrant(email: string, password: string): Promise<string> {
-  const config = getConfig();
-  const response = await fetch(`${config.supabase.url}/auth/v1/token?grant_type=password`, {
-    method: 'POST',
-    headers: { apikey: config.supabase.anonKey, 'content-type': 'application/json' },
-    body: JSON.stringify({ email, password }),
-  });
-  if (!response.ok) {
-    throw new Error(`Sign-in failed (${response.status}); run bun run supabase:start and bun run auth:personas.`);
-  }
-  return ((await response.json()) as { access_token: string }).access_token;
-}
-
-async function stackIsReachable(): Promise<boolean> {
-  const loaded = tryGetConfig();
-  if (!loaded.ok) {
-    return false;
-  }
-  try {
-    const response = await fetch(`${loaded.config.supabase.url}/auth/v1/health`, {
-      headers: { apikey: loaded.config.supabase.anonKey },
-      signal: AbortSignal.timeout(2000),
-    });
-    return response.ok;
-  } catch {
-    return false;
-  }
-}
-
 const stackUp = await stackIsReachable();
 
 let realToken: string;
 
 beforeAll(async () => {
   if (stackUp) {
-    realToken = await passwordGrant(PERSONA, 'test1234');
+    realToken = await passwordGrant(PERSONA);
   }
 });
 

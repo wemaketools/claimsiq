@@ -27,6 +27,7 @@ import { CreateTaskDialog, suggestedPriority } from '../claim-tasks';
 import { ClaimCard, FlagCard, MoneyCard } from './ClaimCards';
 import { PaymentsCard, ReserveCard, SuppliersCard, TimelineCard } from './HistoryCards';
 import { TasksCard } from './TasksCard';
+import { WhatIfCard } from './WhatIfCard';
 import { useClaimNames } from './names';
 import { useClaimDetail } from './useClaimDetail';
 
@@ -40,6 +41,8 @@ function Loaded({
   readonly detail: ReturnType<typeof useClaimDetail>;
 }) {
   const names = useClaimNames(detail);
+  const dataSet = useAppSelector((state) => state.dataContext.dataSet);
+  const asOf = useAppSelector((state) => state.dataContext.asOf);
   const [creating, setCreating] = useState(false);
   const policy = names.policy(claim.policy_id);
   const client = policy === undefined ? undefined : names.client(policy.client_id);
@@ -104,6 +107,8 @@ function Loaded({
         <ClaimCard claim={claim} facts={facts} names={names} />
         <FlagCard facts={facts} />
       </div>
+      {/* A new data set, date or claim starts without the old preview: its stage may not be a legal move there. */}
+      <WhatIfCard key={`${dataSet}|${asOf}|${claim.claim_id}`} claimId={claim.claim_id} />
       <div className="ciq-grid ciq-grid--2">
         <TimelineCard claimId={claim.claim_id} events={claim.events} facts={facts} names={names} />
         <TasksCard tasks={detail.tasks} names={names} onCreate={() => setCreating(true)} />

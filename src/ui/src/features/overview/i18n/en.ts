@@ -51,6 +51,25 @@ const en = {
     none: 'No open claims at this date',
     link: 'Aging detail',
   },
+  trend: {
+    title: 'Paid by month',
+    subtitle:
+      'Posted payments by the month of their paid date, up to {date}; the latest month stops at that date. The period above does not narrow it.',
+    chart: 'Posted paid by month',
+    month: 'Month',
+    series: 'Posted paid (BWP)',
+    summary: '{total} posted on {payments} over {months}.',
+    payments_one: '{count} payment',
+    payments_other: '{count} payments',
+    months_one: '{count} month',
+    months_other: '{count} months',
+    total: 'Posted paid to date',
+    error: 'Paid by month could not be loaded',
+    empty: {
+      title: 'No posted payments yet',
+      description: 'No payment is posted up to this date for the claims in view.',
+    },
+  },
   csv: {
     section: 'Section',
     measure: 'Measure',

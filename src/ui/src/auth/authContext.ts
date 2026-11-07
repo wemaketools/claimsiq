@@ -11,6 +11,10 @@ export interface SignInResult {
   readonly ok: boolean;
 }
 
+/** `not_configured`: the server has no demo password for this environment. `failed`: any other refusal or failure. */
+export type DemoSignInResult =
+  { readonly ok: true } | { readonly ok: false; readonly reason: 'not_configured' | 'failed' };
+
 interface CommonAuthActions {
   /** Ends the session; the session slice resets and the guard sends the visitor to sign-in. */
   signOut(): Promise<void>;
@@ -20,6 +24,8 @@ export interface PasswordAuthActions extends CommonAuthActions {
   readonly mode: 'supabase';
   /** Email + password sign-in. Any failure yields `{ ok: false }` (one generic message). */
   signIn(email: string, password: string): Promise<SignInResult>;
+  /** Signs in as a demo account through the server (only the email is sent); the server holds the demo password. */
+  signInAsDemo(email: string): Promise<DemoSignInResult>;
   /** Sends the password-reset email (always resolves: the page never reveals whether the account exists). */
   requestPasswordReset(email: string): Promise<void>;
   /** Sets a new password during a recovery session. */

@@ -89,6 +89,21 @@ export function sortRows(rows: readonly ExceptionRow[], sort: DataTableSort): Ex
   );
 }
 
+/** The sentence above the queue: how many claims need review by severity, and how many are flagged with none; `null` when there are none. */
+export function exceptionsSummary(rows: readonly ExceptionRow[]): string | null {
+  if (rows.length === 0) return null;
+  const countOf = (severity: Severity): number =>
+    rows.filter((row) => row.severity === severity).length;
+  const unranked = rows.filter((row) => row.severity === null).length;
+  const counted = t('exceptions.summary', {
+    count: rows.length,
+    high: countOf('High'),
+    medium: countOf('Medium'),
+    low: countOf('Low'),
+  });
+  return unranked > 0 ? `${counted} ${t('exceptions.summaryOther', { count: unranked })}` : counted;
+}
+
 export const reasonsText = (reasons: readonly ClaimReason[]): string =>
   reasons.map((reason) => `${reason.label} (${reason.key}): ${reason.text}`).join('; ');
 

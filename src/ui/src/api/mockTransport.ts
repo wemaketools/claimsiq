@@ -1,6 +1,6 @@
 /**
- * Stage A transport: the mock API runs in the browser over the bundled CSV fixtures and keeps the changes made on top
- * of them in localStorage. A real server replaces this one module (the transport becomes the platform `fetch`).
+ * The prototype build's transport: the mock API runs in the browser over the bundled CSV fixtures and keeps the changes
+ * made on top of them in localStorage. Only `main.tsx`, behind the prototype comparison, and tests import it.
  */
 import { createMockApi } from '../../../mock-api/index';
 import type { KeyValueStore } from '../../../mock-api/index';

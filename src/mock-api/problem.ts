@@ -1,10 +1,6 @@
 /** `application/problem+json` answers, the shape the SPA's API client normalizes. */
 
-export interface FieldProblem {
-  readonly field: string;
-  readonly code: string;
-  readonly message: string;
-}
+import type { FieldProblem } from '../read-model/index.js';
 
 export class HttpProblem extends Error {
   readonly status: number;

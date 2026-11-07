@@ -161,6 +161,7 @@ describe('Exceptions & SLA', () => {
     expect(within(tasks).getByText('Chase the repair estimate')).toBeInTheDocument();
     expect(within(tasks).getByText(/Assigned to: Mpho Demo/)).toBeInTheDocument();
     expect(within(tasks).getByText('Created as Open')).toBeInTheDocument();
-    expect(within(tasks).getByText(/Head of Claims · /)).toBeInTheDocument();
+    expect(within(tasks).getByText('Assigned to Mpho Demo')).toBeInTheDocument();
+    expect(within(tasks).getAllByText(/Head of Claims · /)).toHaveLength(2);
   });
 });

@@ -1,7 +1,6 @@
 /**
  * DemoAccounts: the sign-in card of demo accounts, one two-line button each. It shows what its props say and imports
- * no account list, so prototype builds can ship it; the local-development quick-pick that fills the Supabase form is
- * DevDemoAccounts.
+ * no account list: a prototype build lists the roles, the password page the accounts of `src/contracts/demoAccounts.ts`.
  */
 import { Card } from '../components/ui/Card';
 
@@ -19,8 +18,6 @@ export interface DemoAccountsProps<Id extends string> {
   readonly accounts: readonly DemoAccountEntry<Id>[];
   readonly onPick: (id: Id) => void;
   readonly disabled?: boolean;
-  /** Set as `data-marker`, so a test or scan can find the card. */
-  readonly marker?: string;
 }
 
 export function DemoAccounts<Id extends string>({
@@ -29,16 +26,9 @@ export function DemoAccounts<Id extends string>({
   accounts,
   onPick,
   disabled = false,
-  marker,
 }: DemoAccountsProps<Id>) {
   return (
-    <Card
-      className="ciq-demo-accounts"
-      title={title}
-      subtitle={subtitle}
-      data-marker={marker}
-      headingLevel={2}
-    >
+    <Card className="ciq-demo-accounts" title={title} subtitle={subtitle} headingLevel={2}>
       <ul className="ciq-demo-list">
         {accounts.map((account) => (
           <li key={account.id}>

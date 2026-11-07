@@ -2,8 +2,8 @@
 # Reference: https://supabase.com/docs/guides/local-development/cli/config
 #
 # Ports are the Supabase CLI defaults plus 100, so this stack can run beside another project's default stack.
-# - Only Supabase Auth is used for now: the SPA signs in with supabase-js. The schema (migrations), Postgres and
-#   Storage come with the backend.
+# - Auth signs the SPA in with supabase-js; Postgres holds the application schema (supabase/migrations, applied by
+#   `bun run db:migrate` and `db:reset`). Storage is not used yet.
 # - Email (Auth resets and invites) is caught by Mailpit.
 #
 # Local addresses: API gateway http://127.0.0.1:54421, Postgres 127.0.0.1:54422, Studio http://127.0.0.1:54423,
@@ -14,7 +14,7 @@ project_id = "claimsiq"
 [api]
 enabled = true
 port = 54421
-# The Data API is locked down by migration once the schema exists (anon/authenticated hold no privileges on public).
+# The Data API is locked down by the migrations (anon and authenticated hold no privileges on public tables).
 # The browser never uses it; supabase-js is for authentication only.
 schemas = ["public", "graphql_public"]
 extra_search_path = ["public", "extensions"]
@@ -45,9 +45,10 @@ enabled = true
 schema_paths = []
 
 [db.seed]
-# Baseline seed: code-owned reference data only, no users. Written with the backend.
-enabled = true
-sql_paths = ["./seed.sql"]
+# No SQL seed: the fixtures load through the TypeScript loader (`bun run db:seed`), because they must pass the same
+# validation and quarantine as the mock API's.
+enabled = false
+sql_paths = []
 
 [db.network_restrictions]
 enabled = false

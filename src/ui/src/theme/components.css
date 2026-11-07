@@ -2457,3 +2457,208 @@ ol.ciq-stack {
   color: var(--ciq-text-primary);
   font-size: 24px;
 }
+
+/* ============================================================
+   Digest: a one-page summary that prints as a single A4 sheet in the light theme
+   ============================================================ */
+
+.ciq-digest-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ciq-space-4);
+}
+.ciq-digest-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ciq-space-2);
+  padding-bottom: var(--ciq-space-3);
+  border-bottom: 1px solid var(--ciq-border-strong);
+}
+.ciq-digest-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+.ciq-digest-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ciq-space-2) var(--ciq-space-5);
+  margin: 0;
+}
+.ciq-digest-meta dt {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ciq-text-secondary);
+  font-weight: 650;
+}
+.ciq-digest-meta dd {
+  margin: 0;
+  font-weight: 600;
+}
+.ciq-digest-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ciq-space-3);
+}
+.ciq-digest-group {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ciq-text-secondary);
+}
+.ciq-digest-note {
+  margin: 0;
+  font-size: 12px;
+}
+/* A cell that may wrap even in print, where the other cells stay on one line. */
+.ciq-digest-wrap {
+  display: inline;
+}
+
+@page {
+  size: A4;
+  margin: 7mm;
+}
+
+@media print {
+  /* Only the digest takes over the page: the shell, the controls and every link arrow go, the sheet fills the paper. */
+  body:has(.ciq-digest) {
+    background: var(--ciq-surface-card);
+  }
+  body:has(.ciq-digest) .ciq-sidebar,
+  body:has(.ciq-digest) .ciq-topbar,
+  body:has(.ciq-digest) .ciq-prototype-banner,
+  body:has(.ciq-digest) .ciq-skip-link,
+  body:has(.ciq-digest) .ciq-drawer-scrim,
+  body:has(.ciq-digest) .ciq-toasts,
+  .ciq-digest .ciq-page-head,
+  .ciq-digest .ciq-digest-controls,
+  .ciq-digest .ciq-card-head-actions,
+  .ciq-digest .ciq-kpi-halo,
+  .ciq-digest .ciq-kpi-hint {
+    display: none;
+  }
+  body:has(.ciq-digest) .ciq-app {
+    display: block;
+    min-height: 0;
+  }
+  body:has(.ciq-digest) .ciq-main {
+    min-height: 0;
+  }
+  body:has(.ciq-digest) .ciq-content {
+    padding: 0;
+  }
+  body:has(.ciq-digest) .ciq-content > * {
+    max-width: none;
+  }
+  .ciq-digest {
+    font-size: 8pt;
+    line-height: 1.3;
+    color: var(--ciq-text-primary);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .ciq-digest,
+  .ciq-digest .ciq-digest-sheet,
+  .ciq-digest .ciq-stack,
+  .ciq-digest .ciq-digest-section {
+    gap: var(--ciq-space-2);
+  }
+  .ciq-digest .ciq-digest-header {
+    gap: var(--ciq-space-1);
+    padding-bottom: var(--ciq-space-2);
+  }
+  .ciq-digest .ciq-digest-title {
+    font-size: 14pt;
+  }
+  .ciq-digest .ciq-card {
+    box-shadow: none;
+    padding: var(--ciq-space-2) var(--ciq-space-3);
+    break-inside: avoid;
+  }
+  .ciq-digest .ciq-card-head {
+    margin-bottom: var(--ciq-space-1);
+  }
+  .ciq-digest .ciq-card-title {
+    font-size: 10pt;
+  }
+  .ciq-digest .ciq-card-sub,
+  .ciq-digest .ciq-digest-headline {
+    display: none;
+  }
+  .ciq-digest .ciq-digest-note,
+  .ciq-digest .ciq-text-muted,
+  .ciq-digest .ciq-digest-group {
+    font-size: 7.5pt;
+  }
+  .ciq-digest .ciq-kpi-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--ciq-space-2);
+  }
+  .ciq-digest .ciq-kpi-grid > .ciq-card {
+    padding: var(--ciq-space-1) var(--ciq-space-3);
+  }
+  .ciq-digest .ciq-kpi {
+    gap: 0;
+  }
+  .ciq-digest .ciq-kpi-label {
+    font-size: 7.5pt;
+  }
+  .ciq-digest .ciq-kpi-value {
+    font-size: 11pt;
+  }
+  .ciq-digest .ciq-cell-sub {
+    font-size: 6.5pt;
+  }
+  .ciq-digest .ciq-table-wrap {
+    overflow: visible;
+  }
+  .ciq-digest table {
+    font-size: 7.5pt;
+  }
+  .ciq-digest th {
+    font-size: 6.5pt;
+    padding: var(--ciq-space-0-5) var(--ciq-space-2);
+  }
+  .ciq-digest td {
+    padding: var(--ciq-space-0-5) var(--ciq-space-2);
+  }
+  .ciq-digest td .ciq-cell-sub {
+    display: inline;
+    margin-left: var(--ciq-space-1);
+  }
+  .ciq-digest tr {
+    break-inside: avoid;
+  }
+  .ciq-digest td {
+    white-space: nowrap;
+  }
+  .ciq-digest td .ciq-digest-wrap {
+    display: block;
+    min-width: 45mm;
+    white-space: normal;
+  }
+  .ciq-digest .ciq-empty {
+    flex-direction: row;
+    gap: var(--ciq-space-2);
+    padding: var(--ciq-space-2) var(--ciq-space-3);
+    font-size: 7.5pt;
+  }
+  .ciq-digest .ciq-empty > .ciq-icon {
+    display: none;
+  }
+  .ciq-digest .ciq-empty p {
+    margin: 0;
+  }
+  .ciq-digest .ciq-empty .ciq-empty-title {
+    font-size: 8pt;
+  }
+  .ciq-digest .ciq-table-state {
+    padding: 0;
+  }
+  .ciq-digest a {
+    color: inherit;
+    text-decoration: none;
+  }
+}

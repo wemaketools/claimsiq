@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 
 import { SEVERITIES, endpoints, formatMoney } from '../../../../contracts/index';
-import type { Severity } from '../../../../contracts/index';
 import { useApiQuery } from '../../api/hooks';
 import { useScreenFilters } from '../../app/hooks';
 import {
@@ -29,7 +28,7 @@ import {
 } from '../claim-scope';
 import type { ReasonKey } from '../claim-scope';
 import { CreateTaskDialog, suggestedPriority } from '../claim-tasks';
-import { exceptionRows, exceptionsTable, filterRows, sortRows } from './rows';
+import { exceptionRows, exceptionsSummary, exceptionsTable, filterRows, sortRows } from './rows';
 import type { ExceptionRow } from './rows';
 
 const SCREEN = 'exceptions';
@@ -77,9 +76,7 @@ export default function ExceptionsPage() {
   const visible = rows?.slice((current - 1) * pageSize, current * pageSize);
   const queryError = scope.facts.error ?? scope.lookups.error;
   const narrowed = scope.filtered || severity !== null || reason !== null;
-  const countOf = (value: Severity): number =>
-    rows?.filter((row) => row.severity === value).length ?? 0;
-  const unranked = rows?.filter((row) => row.severity === null).length ?? 0;
+  const summary = rows === undefined ? null : exceptionsSummary(rows);
 
   const columns: DataTableColumn<ExceptionRow>[] = [
     {
@@ -201,15 +198,9 @@ export default function ExceptionsPage() {
           ),
         }}
       />
-      {rows !== undefined && rows.length > 0 && (
+      {summary !== null && (
         <p className="ciq-text-muted" role="status">
-          {t('exceptions.summary', {
-            count: rows.length,
-            high: countOf('High'),
-            medium: countOf('Medium'),
-            low: countOf('Low'),
-          })}
-          {unranked > 0 && ` ${t('exceptions.summaryOther', { count: unranked })}`}
+          {summary}
         </p>
       )}
       {tasks.error !== null && tasks.data === undefined && (

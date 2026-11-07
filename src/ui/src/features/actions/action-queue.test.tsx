@@ -201,6 +201,7 @@ describe('Action Queue', () => {
       .map((item) => item.textContent ?? '');
     expect(trail).toEqual([
       expect.stringMatching(/^Created as OpenHead of Claims · \d/),
+      expect.stringMatching(/^Assigned to Mpho DemoHead of Claims · \d/),
       expect.stringMatching(/^Status changed from Open to In progressHead of Claims · \d/),
       expect.stringMatching(
         /^Status changed from In progress to DoneClaims Handler · \d.*Note: Estimate received$/,

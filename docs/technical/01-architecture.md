@@ -1,40 +1,78 @@
 # Architecture and stack
 
-Status: as built (scaffold, data layer and rules engine). The decisions behind it are in `docs/plan/design-decisions.md`. Product behaviour: `ai/specs/`.
+Status: as built (scaffold, data layer, rules engine and, from Stage B, the database and the API). The decisions behind it are in `docs/plan/design-decisions.md`. Product behaviour: `ai/specs/`.
 
 ## Repository layout
 
 | Path | Contents |
 |---|---|
 | `src/ui/` | The SPA, Bun workspace `@claimsiq/ui` (see [02-frontend.md](02-frontend.md)) |
-| `src/contracts/` | Pure TypeScript + zod (+ decimal.js for money), shared by the SPA, the mock API and the backend later: the 17 entities keyed (tenant_id, id), the typed endpoints, the data sets, the personas, the money and time helpers |
-| `src/rules/` | The claims rules engine: pure functions over the contracts (`config.ts` the validated rule config, `calendar.ts` business days, `claimFacts.ts` the facts of one claim, `summary.ts` portfolio totals, `suppliers.ts` per-supplier figures, `tasks.ts` the overdue rule). Imports only zod, decimal.js and `src/contracts` (lint-enforced); see DD-22 to DD-27, DD-40 to DD-42 |
-| `src/mock-api/` | The Stage A mock API: `fixtures/` (CSV reader, loader, validation and quarantine), `api.ts` (the endpoints as a `fetch`-shaped function, including `claims.facts`, which runs `src/rules`), `asOfViews.ts` (claims and invoices as an as-of date sees them), `changes.ts` (tasks kept in browser storage; the API refuses status changes the contracts' `TASK_STATUS_TRANSITIONS` do not allow), `test-support/` (fixture readers and the generated claims fixture of DD-31, for tests). It takes no Node module outside its tests and `test-support` |
+| `src/contracts/` | Pure TypeScript + zod (+ decimal.js for money), shared by the SPA, the mock API and the server: the 17 entities keyed (tenant_id, id), the typed endpoints, the data sets, the personas, the rule config schema (`ruleConfig.ts`), the money and time helpers |
+| `src/rules/` | The claims rules engine: pure functions over the contracts (`config.ts` the rule config schema's re-export and `parseRuleConfig`, `calendar.ts` business days, `claimFacts.ts` the facts of one claim, `summary.ts` portfolio totals, `suppliers.ts` per-supplier figures and wait percentiles, `percentile.ts` nearest-rank percentiles, `trend.ts` posted paid per month, `tasks.ts` the overdue rule, `transitions.ts` the stage map and the what-if event). Imports only zod, decimal.js and `src/contracts` (lint-enforced); see DD-22 to DD-27, DD-40 to DD-42, DD-60, DD-62 |
+| `src/read-model/` | The record sets and the reads both transports answer through (DD-55), pure like the rules: `fixtures/` (CSV reader, loader, validation and quarantine), `asOfViews.ts` (claims and invoices as an as-of date sees them), `reads.ts` (the answer of every read endpoint over a `ReadModel`, including `claims.facts`, `claims.paidTrend`, `claims.whatIf` and `suppliers.insights`, which run `src/rules`), `taskRules.ts` (create, assign and change status, audit entry included), `ruleConfigEdits.ts` (save and restore the rule config: who may, which version, the audit entry per changed value; DD-61), `problems.ts` (field problems and `InvalidValues`, the 422 both transports give), `test-support/` (`withEdit` and the generated claims fixture of DD-31, for tests). Imports only zod, decimal.js, `src/contracts` and `src/rules` (lint-enforced) |
+| `src/mock-api/` | The prototype's API, in the browser: `api.ts` (the endpoints as a `fetch`-shaped function; it builds a `ReadModel` from the fixtures and the changes kept in browser storage and answers through `src/read-model`), `changes.ts` (tasks and the saved rule config, with their audit, kept in browser storage). It takes no Node module outside its tests |
 | `fixtures/v1/` | The spec's synthetic data: `test/` and `demo/` CSV folders, `expected_metrics.json`, `proposed_rule_config.json`, the README |
-| `src/server/lib/` | Platform modules only: `config` (the one reader of `process.env`), `supabase` (server clients, JWKS cache), `auth/verify.ts` (access-token verification) |
-| `src/server/tests/unit/` | Tests of those modules; the ones that verify real tokens need the local Supabase stack and skip themselves without it |
+| `src/server/lib/` | `config` (the one reader of `process.env`, including `DATABASE_URL`, `API_PORT` and `DEMO_SEED_PASSWORD`, with `resolveDemoPassword`), `supabase` (server clients, JWKS cache), `auth` (`verify.ts`: access-token verification; `middleware.ts`: the session middleware), `db` (the Kysely client, the generated table types, `withTenant` and the tenant scope, DD-50), `tenancy` (`resolveTenantAccess` and the tenant middleware), `errors` (problem+json), `router` (`app.ts`: the Hono app and its middleware; `contract.ts`: one route per contract endpoint, `mountPublicEndpoints` for the public ones), `read-model` (database rows into the shared `ReadModel`) and `seed` (the fixture readers and `replaceDataSetRows`, which the seed and Reset share) |
+| `src/server/domains/` | The handlers by area: `reads` (every read endpoint), `tasks` (create, assign, status), `rules` (rule config read, save, restore), `demo` (Reset) |
+| `api/v1/index.ts` | The Vercel function for the whole of `/api/v1`, the same Hono app (DD-54); kept out of the deploy until a hosted database exists (DD-59) |
+| `src/server/tests/unit/` | Tests of the platform modules; the ones that verify real tokens need the local Supabase stack and skip themselves without it |
 | `scripts/ci/` | `scan-secrets`, `scan-bundle`, `assert-test-run` (the CI checks) |
-| `scripts/db/` | `ensure-signing-keys.mjs`: the git-ignored ES256 key set the local Auth stack signs with |
-| `scripts/dev/` | `seed-auth-personas.ts`: the four demo accounts |
-| `supabase/` | `config.toml` of the local stack (project id `claimsiq`, default ports plus 100) |
+| `scripts/db/` | `reset.ts` (`db:reset`), `seed.ts` (`db:seed`), `generate-types.ts` (`db:types`), `local.ts` and `localHost.ts` (the local-only guard), `connection.ts` (plain connections, always closed), `scratchDatabase.ts` and the database tests (`seed.test.ts`, `isolation.test.ts`); `ensure-signing-keys.mjs`: the git-ignored ES256 key set the local Auth stack signs with |
+| `scripts/dev/` | `seed-auth-personas.ts` (the four demo accounts), `serve-api.ts` (`dev:api`: the Hono app over `node:http`) and `dev-all.ts` (`dev`: the API and the SPA together) |
+| `supabase/` | `config.toml` of the local stack (project id `claimsiq`, default ports plus 100) and `migrations/`, the schema as plain SQL |
 | `e2e_tests/` | Playwright + axe workspace `@claimsiq/e2e` |
 | `.github/workflows/ci.yml` | The single `verify` job |
 
-`api/` (Vercel functions) comes with the backend. The lint config guards `src/contracts` and `src/rules` (pure), `src/mock-api` (browser-safe, never imported by `src/server` or `api/`) and the SPA's use of the mock API (only `src/ui/src/api/mockTransport.ts`).
+The lint config guards `src/contracts`, `src/rules` and `src/read-model` (pure), `src/mock-api` (browser-safe, never imported by `src/server` or `api/`) and the SPA's use of the mock API (only `src/ui/src/api/mockTransport.ts`).
 
-## Data flow (Stage A)
+## Data flow
 
-The SPA calls typed endpoints through `call()`; the transport adapter sends the request to the mock API in the browser, which answers from the parsed CSV fixtures (selected by `X-Tenant-Id`, limited by `X-As-Of`) plus the changes kept in `localStorage`. Stage B replaces the transport with the platform `fetch` and the mock API with the server; contracts and screens stay (DD-16).
+The SPA calls typed endpoints through `call()`; which transport answers is chosen when the app is built (DD-58).
+
+- **Prototype build:** the transport adapter sends the request to the mock API in the browser, which answers from the parsed CSV fixtures (selected by `X-Tenant-Id`, limited by `X-As-Of`) plus the changes kept in `localStorage`.
+- **Every other build (Supabase mode):** the platform `fetch` sends it to `/api/v1` on the app's own origin (Vite proxies it to the API server in development; a Vercel function once a hosted database exists, DD-59), with the session's bearer token. The Hono app verifies the token, checks `X-Tenant-Id` against the user's memberships on every request, validates the query and body with the contract's zod schemas and runs the handler inside `withTenant`. Reads load the tenant's rows into the shared `ReadModel` and answer through `src/read-model`, which runs the rules engine; commands apply the shared task rules and write the row and its audit entry in one transaction. The answer is checked against the contract's response schema before it leaves.
+
+The two transports answer through the same `src/read-model`, so contracts, screens and figures are identical; `scripts/db/api-parity.test.ts` proves it on every read endpoint.
+
+## P1 features
+
+Four P1 requirements (CL §2, CLM-FR-19 and CLM-FR-20) are built on the two transports alike. None adds a store of its own: each is a read or a command over the shared `src/read-model` and the rules engine, so the in-browser mock API and the Hono API answer identically (`scripts/db/api-parity.test.ts`).
+
+| Feature | Screen | Endpoint | Where it is computed | Decision |
+|---|---|---|---|---|
+| Stage what-if | Claim Detail, "Stage what-if" card (not saved, not a state change) | `GET /api/v1/claims/:claimId/what-if?to_stage=…` (`claims.whatIf`) | `src/rules/transitions.ts` builds the hypothetical event; `claimFacts` runs on it beside the real facts | DD-60 |
+| Rule editor | Rules (`/rules`, the Head of Claims edits, other personas read) | `rules.config`, `rules.save`, `rules.restore` | `src/read-model/ruleConfigEdits.ts`: validates, versions (a stale save is 409) and writes one audit entry per changed value; stored per tenant and data set in `rule_configs` and `rule_config_audit_entries`, or in browser storage in a prototype build; Reset restores it | DD-51, DD-61 |
+| Paid by month | Overview "Paid by month" card | `claims.paidTrend` (`GET /api/v1/paid-trend`) | `src/rules/trend.ts`: posted payments only, per calendar month up to the as-of date, over the filtered claims | DD-62 |
+| Wait percentiles | Supplier Insights table and chart | `suppliers.insights` | `src/rules/percentile.ts` (nearest rank) with a sample minimum from the rule config | DD-62 |
+| Digest | Digest (`/digest`, prints on one A4 page) | none: the endpoints the screens call | `features/digest` picks the first rows of what the other screens build | DD-63 |
+
+## Running the two modes
+
+- **API mode** (the default): `bun run supabase:start`, a filled `.env.local`, `bun run db:reset`, then `bun run dev`. The SPA signs in with Supabase Auth, calls `/api/v1` and every change is kept in the database until Reset.
+- **Prototype mode**: `bun run dev:prototype` or `bun run build:prototype`; no stack, no environment, the in-browser mock API, changes kept in the browser until Reset.
+- **Acceptance**: `bun run test:e2e` runs CLM-AT-01 to 16 in both modes (`docs/acceptance.md`); `bun run test:e2e:prototype` runs the prototype mode alone.
+
+## Database (Stage B)
+
+The local Supabase Postgres (127.0.0.1:54422) holds the application schema, built by the migrations in `supabase/migrations` (DD-49 to DD-53):
+
+- **Tables:** the 17 entities of `src/contracts/entities.ts`, each keyed `(tenant_id, <entity>_id)` with composite foreign keys that carry the tenant, plus `tasks`' audit trail (`task_audit_entries`, append only) and id counter (`task_counters`), `tenant_memberships` (Supabase Auth user, tenant, starting persona), `rule_configs` (the rule configuration per tenant and data set, with its `version`) and `rule_config_audit_entries` (append only: one row per changed rule value; DD-61). Money is `numeric(18,2)`; a contract `Moment` is text in the `moment` domain, a system `Instant` is `timestamptz`.
+- **Tenants:** `TEST` and `DEMO` are two tenants of one database. Isolation is two layers: the API runs each request in `withTenant` (role `claimsiq_app`, `app.tenant_id` set for the transaction, queries scoped by `tenant_id`), and row level security on every tenant table enforces the same by policy. The owner role bypasses RLS and is used only by migrations, the seed and the membership lookup. `anon` and `authenticated` have no table privileges.
+- **Types:** `src/server/lib/db/generated/schema.ts` is written by `bun run db:types` from the live schema; a test fails when it is stale.
+- **Data:** `bun run db:seed` loads `fixtures/v1/test` and `fixtures/v1/demo` through the `src/read-model` loader, the mock API's too (quarantined rows are reported, not inserted) and links the demo accounts to both tenants; `bun run db:reset` rebuilds everything locally. TEST reconciles to `expected_metrics.json` in the database too (6 claims, 9,000.00 paid, 68,000.00 reserve).
+- **For the API (DD-55 to DD-57):** `row_no` (the fixture's row order), `data_issues` (what the loader rejected or flagged at seed time) and `task_audit_entries.actor_user_id` (the signed-in account behind a task change). The seed and the API's Reset share `replaceDataSetRows`.
 
 ## Stack
 
-Bun (pinned in `.bun-version` and `packageManager`; `bun.lock` is committed) as package manager and script runner, TypeScript ~6 strict, ESM. SPA: React 18.3, Vite 8, Redux Toolkit 2, React Router 7, recharts 3, zod 4, supabase-js 2. Tests: Vitest 5, React Testing Library, jest-dom, Playwright, axe. Backend (declared, not built): Hono, Kysely, `pg`.
+Bun (pinned in `.bun-version` and `packageManager`; `bun.lock` is committed) as package manager and script runner, TypeScript ~6 strict, ESM. SPA: React 18.3, Vite 8, Redux Toolkit 2, React Router 7, recharts 3, zod 4, supabase-js 2. Tests: Vitest 5, React Testing Library, jest-dom, Playwright, axe. Backend: Kysely over `pg` (the database layer) and Hono (the API).
 
 Two TypeScript projects: `tsconfig.server.json` (NodeNext, `src/server`, `scripts`, `vitest.config.ts`; relative imports carry `.js`) and `src/ui/tsconfig.app.json` (bundler resolution, `jsx: react-jsx`). Two ESLint configs: the root one (backend, scripts) and `src/ui/eslint.config.js`.
 
 ## Authentication
 
-Sign-in is email and password through supabase-js against Supabase Auth in the local Docker stack. The browser Supabase client (`src/ui/src/auth/supabase.ts`) is used for authentication only. The stack signs tokens with an asymmetric ES256 key from `supabase/signing_keys.json`; `src/server/lib/auth/verify.ts` verifies a token against the published JWKS (algorithm allow-list, pinned issuer, `role = authenticated`). Self-signup is off; accounts are provisioned through the Auth Admin API (`bun run auth:personas`).
+Sign-in is email and password through supabase-js against Supabase Auth in the local Docker stack. The browser Supabase client (`src/ui/src/auth/supabase.ts`) is used for authentication only; the API receives the access token as a bearer token. The stack signs tokens with an asymmetric ES256 key from `supabase/signing_keys.json`; `src/server/lib/auth/verify.ts` verifies a token against the published JWKS (algorithm allow-list, pinned issuer, `role = authenticated`). Self-signup is off; accounts are provisioned through the Auth Admin API (`bun run auth:personas`).
+
+**Demo sign-in (DD-48)** happens on the server. The demo roles on the sign-in page send only an e-mail to `POST /api/v1/auth/demo-sign-in`, a public endpoint (`publicEndpoints`, served ahead of the session and tenant middleware, `src/server/domains/demo-sign-in`). The server checks the e-mail against `DEMO_ACCOUNTS` (`src/contracts/demoAccounts.ts`), signs in to Supabase Auth with `DEMO_SEED_PASSWORD` (the local default `test1234` only when `APP_ENV` is `local`, `resolveDemoPassword`) and returns the session, which the browser adopts with `setSession`. Any e-mail off the list and any failed sign-in answer the same 403 problem; a hosted environment without the password answers 503, and the page then fills the e-mail into the form. The SPA holds no password and `scan-bundle` fails a build that contains the local one.
 
 The persona switch is not authentication (DD-07).
 
@@ -42,12 +80,14 @@ A **prototype build** (`VITE_AUTH_MODE=prototype`, DD-45 to DD-47) has no Supaba
 
 ## Environment
 
-`.env.example` (deployed catalog) and `.env.local.example` (local) list exactly the variables of `src/server/lib/config/schema.ts` plus the browser-safe `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`; a unit test enforces that and that no value is a real key. Vite reads `.env.local` from the repository root (`envDir`). Nothing but the `VITE_` values (`VITE_AUTH_MODE` and the two Supabase ones) may reach the browser; a prototype build needs none of them set; `scan-bundle` fails the build if a server variable name, server code, a service-role key or the demo-accounts marker is in `src/ui/dist`.
+`.env.example` (deployed catalog) and `.env.local.example` (local) list exactly the variables of `src/server/lib/config/schema.ts` plus the browser-safe `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`; a unit test enforces that and that no value is a real key. Vite reads `.env.local` from the repository root (`envDir`). Nothing but the `VITE_` values (`VITE_AUTH_MODE` and the two Supabase ones) may reach the browser; a prototype build needs none of them set; `scan-bundle` fails the build if a server variable name, server code, a service-role key or the local demo password is in `src/ui/dist` (and, in a prototype build, a demo-account e-mail).
 
 ## Checks and CI
 
-`bun run verify` = typecheck, typecheck:ui, lint, lint:ui, test, test:ui, build:ui. CI (`ci.yml`) starts the local stack, writes a throwaway `.env.local`, seeds the demo accounts, then runs the same steps plus `ci:test:ui` (fails on skipped tests and below the count floor), `ci:security` and the Playwright suite. The count floors in `package.json` (`ci:test:ui`, `ci:test:unit`) are raised whenever tests are added.
+`bun run verify` = typecheck, typecheck:ui, lint, lint:ui, test, test:ui, build:ui. CI (`ci.yml`) starts the local stack, writes a throwaway `.env.local`, applies the migrations, rebuilds the database with `db:reset` (migrations, demo accounts, seed), then runs the same steps plus `ci:test:unit` and `ci:test:ui` (fails on skipped tests and below the count floor), `ci:security` and the Playwright suite. The count floors in `package.json` (`ci:test:ui`, `ci:test:unit`) are raised whenever tests are added.
 
 ## Deployment
+
+The hosted demo is the static prototype build below; it calls no API. `.vercelignore` leaves `api/` (the Hono function) out of the deploy, and `vercel.json` has no `/api/v1` rewrite or function entry, so the deploy has no function and needs no database environment; the API ships only once a hosted database exists, and DD-59 lists the three lines to restore (Reset also answers 403 unless `APP_ENV` is `local` or `dev`, DD-57).
 
 Vercel installs with `bun install --frozen-lockfile`, builds with `VITE_AUTH_MODE=prototype bun run build` (typecheck, then the SPA build in prototype mode: static files, no environment variables) and serves `src/ui/dist` with an SPA rewrite so deep links such as `/claims/DCLM-002` open. The Content-Security-Policy is a meta tag filled in by `vite.config.ts`: production allows scripts from the app's own origin and network to the app and the Supabase URL only (the app alone in a prototype build); the development server adds `'unsafe-inline'` scripts and websockets for hot reload.
