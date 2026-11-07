@@ -1,0 +1,117 @@
+import type { Catalog } from '../../../lib/i18n';
+
+const en = {
+  filters: {
+    label: 'Claim filters',
+    policy: 'Policy',
+    allPolicies: 'All policies',
+    broker: 'Broker',
+    allBrokers: 'All brokers',
+    product: 'Product',
+    allProducts: 'All products',
+    handler: 'Handler',
+    allHandlers: 'All handlers',
+    period: 'Period',
+    loadFailed: 'The filter choices could not be loaded',
+  },
+  export: {
+    button: 'Export CSV',
+  },
+  noBroker: 'No broker',
+  unknown: 'Unknown',
+  period: {
+    '7d': 'Last 7 days',
+    '30d': 'Last 30 days',
+    '90d': 'Last 90 days',
+    mtd: 'Month to date',
+  },
+  stage: {
+    New: 'New',
+    Triage: 'Triage',
+    Assessment: 'Assessment',
+    Negotiation: 'Negotiation',
+    Approved: 'Approved',
+    Settlement: 'Settlement',
+    Closed: 'Closed',
+    Reopened: 'Reopened',
+    unknown: 'Unknown',
+  },
+  age: {
+    bucket: '{bucket} days',
+    unknown: 'Age unknown',
+  },
+  sla: {
+    breached: 'Breached',
+    approaching: 'Approaching',
+    within: 'Within target',
+    unknown: 'Unknown',
+  },
+  severity: {
+    High: 'High',
+    Medium: 'Medium',
+    Low: 'Low',
+  },
+  reason: {
+    SLA_LATE: { label: 'Stage target missed by more than 2 days' },
+    SLA_BREACH: { label: 'Stage target missed' },
+    SLA_APPROACHING: { label: 'Stage target approaching' },
+    SLA_UNKNOWN: { label: 'SLA unknown' },
+    SUPPLIER_DELAY: { label: 'Supplier delay' },
+    SUPPLIER_UNVERIFIED: { label: 'Supplier delay unverified' },
+    HIGH_VALUE_DELAYED: { label: 'High value and delayed' },
+    RESERVE_CHANGE_AGED: { label: 'Material reserve change on an older claim' },
+    RESERVE_CHANGE: { label: 'Material reserve change' },
+    HIGH_VALUE: { label: 'High value' },
+    sla: {
+      over_one: '{stage}: {count} business day over a {target}-day target',
+      over_other: '{stage}: {count} business days over a {target}-day target',
+      approaching:
+        '{stage}: {spent} of {target} business days used, {left} left before the target is missed',
+      within: '{stage}: {spent} of {target} business days used',
+      unknown: '{stage}: {why}',
+      why: {
+        NO_STAGE_EVENT: 'no dated stage event, so the stage clock cannot start',
+        MISSING_EVENT_TIME: 'a stage event has no time, so the stage start cannot be trusted',
+        NO_TARGET_FOR_STAGE: 'this stage has no target configured',
+      },
+    },
+    supplier: {
+      delay: 'Request {request}: waiting {waited} business days against a {target}-day target',
+      unverified: 'Request {request}: no request time recorded, so the wait cannot be judged',
+    },
+    highValue: {
+      delayed:
+        'Incurred {incurred} is at or above the {threshold} high-value line and the claim is delayed',
+      flag: 'Incurred {incurred} is at or above the high-value line; nothing on it is delayed',
+    },
+    reserve: {
+      moved: 'Reserve moved {direction} {change}, {old} to {new} ({basis}). ',
+      up: 'up',
+      down: 'down',
+      byPercent: 'at least {percent}% of the earlier amount',
+      byAmount: 'at least {amount}',
+      aged: 'The claim is {age} days old, over the {limit}-day limit for a higher severity.',
+      young: 'The claim is {age} days old, within the {limit}-day limit.',
+    },
+  },
+  criteria: {
+    open: 'Open claims',
+    closed: 'Closed claims',
+    'sla-breached': 'Open claims past their stage target',
+    'high-value': 'High-value open claims',
+    paid: 'Claims with payments',
+    reserve: 'Claims with an outstanding reserve',
+    incurred: 'Claims with incurred cost',
+    stage: 'Open claims in {stage}',
+    age: 'Open claims aged {age}',
+    'new-in-period': 'Claims reported in the period',
+    'paid-in-period': 'Claims with payments posted in the period',
+    turnaround: 'Claims closed in the period with both dates (the claims averaged)',
+    'high-priority': 'Open claims with High severity',
+    supplier: 'Open claims assigned to {supplier} or waiting on a request to it',
+    stageUnknown: 'Open claims with no stage recorded',
+    ageUnknown: 'Open claims with no reported date',
+  },
+} satisfies Catalog;
+
+export default en;
