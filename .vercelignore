@@ -1,2 +1,2 @@
 # The hosted demo is the static prototype build: Vercel must not turn api/ into functions (DD-59).
-api/
+/api/
