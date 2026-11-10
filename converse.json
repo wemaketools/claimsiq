@@ -3,5 +3,8 @@
 	"port": 5185,
 	"autoStart": true,
 	"dir": "ai/converse",
-	"repo": "wemaketools/claimsiq"
+	"repo": "wemaketools/claimsiq",
+	"worktreeLinks": [
+		".claude/skills/converse"
+	]
 }
