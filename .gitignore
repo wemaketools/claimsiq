@@ -57,5 +57,4 @@ desktop.ini
 .idea/
 .vscode/*
 !.vscode/extensions.json
-.vercel
 .claude/skills/converse
