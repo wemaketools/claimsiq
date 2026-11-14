@@ -1,5 +1,5 @@
 /**
- * localStorage for conveniences only: the prototype session's role, the persona view, the theme, the data set, the as-of date and the screen filters. Nothing here is
+ * localStorage for conveniences only: the prototype session's role, the persona view, the theme, the sidebar width, the data set, the as-of date and the screen filters. Nothing here is
  * trusted or required (the changes made on top of a fixture are the mock API's, in its own keys).
  * Every access is guarded, because storage can be unavailable (private mode, blocked site data).
  */
@@ -39,6 +39,15 @@ function write(key: string, value: string | null): void {
   } catch {
     // Storage unavailable: the convenience is simply lost.
   }
+}
+
+/** Whether the user chose the full sidebar in the icon strip; anything but "expanded" (or no value) means collapsed. */
+export function readStoredSidebarExpanded(): boolean {
+  return read('sidebar') === 'expanded';
+}
+
+export function storeSidebarExpanded(expanded: boolean): void {
+  write('sidebar', expanded ? 'expanded' : 'collapsed');
 }
 
 export type StoredTheme = 'light' | 'dark';

@@ -104,4 +104,41 @@ describe('the app shell', () => {
     expect(menuButton).toHaveAttribute('aria-expanded', 'false');
     expect(screen.getByRole('main')).toHaveFocus();
   });
+
+  it('offers the full-sidebar toggle only in the icon rail, remembers the choice and treats an unknown value as collapsed', async () => {
+    const original = window.matchMedia;
+    const mockRail = (rail: boolean): void => {
+      vi.spyOn(window, 'matchMedia').mockImplementation((query: string) => ({
+        ...original(query),
+        matches: rail && query === '(min-width: 768px) and (max-width: 1279px)',
+      }));
+    };
+
+    mockRail(false);
+    const wide = renderShell({ state: { session: signedInSession() }, route: '/first' });
+    expect(screen.queryByRole('button', { name: 'Full sidebar' })).not.toBeInTheDocument();
+    wide.unmount();
+
+    window.localStorage.setItem('ciq.sidebar', 'sideways');
+    mockRail(true);
+    const rail = renderShell({ state: { session: signedInSession() }, route: '/first' });
+    const toggle = screen.getByRole('button', { name: 'Full sidebar' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(document.querySelector('.ciq-app')).not.toHaveClass('ciq-app--sidebar-expanded');
+
+    await userEvent.click(toggle);
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(toggle).toHaveFocus();
+    expect(document.querySelector('.ciq-app')).toHaveClass('ciq-app--sidebar-expanded');
+    expect(window.localStorage.getItem('ciq.sidebar')).toBe('expanded');
+    rail.unmount();
+
+    renderShell({ state: { session: signedInSession() }, route: '/first' });
+    const restored = screen.getByRole('button', { name: 'Full sidebar' });
+    expect(restored).toHaveAttribute('aria-expanded', 'true');
+    await userEvent.click(restored);
+    expect(restored).toHaveAttribute('aria-expanded', 'false');
+    expect(window.localStorage.getItem('ciq.sidebar')).toBe('collapsed');
+  });
 });

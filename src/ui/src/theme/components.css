@@ -530,6 +530,38 @@ button:disabled {
   text-overflow: ellipsis;
 }
 
+.ciq-sidebar-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--ciq-space-3);
+  width: calc(100% - 2 * var(--ciq-space-2));
+  margin: 0 var(--ciq-space-2) var(--ciq-space-2);
+  padding: var(--ciq-space-2-5) var(--ciq-space-3);
+  border: none;
+  border-radius: var(--ciq-radius-control);
+  background: none;
+  color: var(--ciq-text-on-sidebar);
+  font-size: 13.5px;
+  font-weight: 550;
+  text-align: left;
+  transition:
+    background 0.14s,
+    color 0.14s;
+}
+.ciq-sidebar-toggle:hover {
+  background: var(--ciq-sidebar-hover);
+  color: var(--ciq-sidebar-text-strong);
+}
+.ciq-sidebar-toggle .ciq-icon {
+  width: 19px;
+  height: 19px;
+  flex: none;
+  opacity: 0.9;
+}
+.ciq-app--sidebar-expanded .ciq-sidebar {
+  border-right: 1px solid var(--ciq-sidebar-separator);
+}
+
 .ciq-menu {
   list-style: none;
   margin: 0;
@@ -753,29 +785,43 @@ button:disabled {
   .ciq-app {
     grid-template-columns: var(--ciq-sidebar-rail-width) minmax(0, 1fr);
   }
-  .ciq-app:not(.ciq-app--drawer) .ciq-brand {
+  .ciq-app--sidebar-expanded {
+    grid-template-columns: var(--ciq-sidebar-width) minmax(0, 1fr);
+  }
+  /* The sidebar no longer clips: the profile menu opens past the 72px strip, over the page. The navigation scrolls
+     instead when the window is short. */
+  .ciq-app:not(.ciq-app--drawer) .ciq-sidebar {
+    overflow: visible;
+  }
+  .ciq-app:not(.ciq-app--drawer) .ciq-nav {
+    min-height: 0;
+    overflow-y: auto;
+  }
+  .ciq-app:not(.ciq-app--drawer, .ciq-app--sidebar-expanded) .ciq-brand {
     padding: var(--ciq-space-4) var(--ciq-space-2);
   }
-  .ciq-app:not(.ciq-app--drawer) .ciq-brand-tenant,
-  .ciq-app:not(.ciq-app--drawer) .ciq-brand-name,
-  .ciq-app:not(.ciq-app--drawer) .ciq-brand-sub,
-  .ciq-app:not(.ciq-app--drawer) .ciq-nav-label,
-  .ciq-app:not(.ciq-app--drawer) .ciq-user-card-who,
-  .ciq-app:not(.ciq-app--drawer) .ciq-user-card-chevron {
+  .ciq-app:not(.ciq-app--drawer, .ciq-app--sidebar-expanded) .ciq-brand-tenant,
+  .ciq-app:not(.ciq-app--drawer, .ciq-app--sidebar-expanded) .ciq-brand-name,
+  .ciq-app:not(.ciq-app--drawer, .ciq-app--sidebar-expanded) .ciq-brand-sub,
+  .ciq-app:not(.ciq-app--drawer, .ciq-app--sidebar-expanded) .ciq-nav-label,
+  .ciq-app:not(.ciq-app--drawer, .ciq-app--sidebar-expanded) .ciq-sidebar-toggle-label,
+  .ciq-app:not(.ciq-app--drawer, .ciq-app--sidebar-expanded) .ciq-user-card-who,
+  .ciq-app:not(.ciq-app--drawer, .ciq-app--sidebar-expanded) .ciq-user-card-chevron {
     display: none;
   }
-  .ciq-app:not(.ciq-app--drawer) .ciq-brand-mark {
+  .ciq-app:not(.ciq-app--drawer, .ciq-app--sidebar-expanded) .ciq-brand-mark {
     display: block;
   }
-  .ciq-app:not(.ciq-app--drawer) .ciq-nav-item {
+  .ciq-app:not(.ciq-app--drawer, .ciq-app--sidebar-expanded) .ciq-nav-item {
     justify-content: center;
     position: relative;
     padding: var(--ciq-space-2-5);
   }
-  .ciq-app:not(.ciq-app--drawer) .ciq-user-card-btn {
+  .ciq-app:not(.ciq-app--drawer, .ciq-app--sidebar-expanded) .ciq-sidebar-toggle,
+  .ciq-app:not(.ciq-app--drawer, .ciq-app--sidebar-expanded) .ciq-user-card-btn {
     justify-content: center;
   }
-  .ciq-app:not(.ciq-app--drawer) .ciq-user-card .ciq-menu {
+  .ciq-app:not(.ciq-app--drawer, .ciq-app--sidebar-expanded) .ciq-user-card .ciq-menu {
     left: 0;
     right: auto;
     width: 240px;
@@ -798,6 +844,22 @@ button:disabled {
   }
   .ciq-data-controls select {
     min-width: 0;
+  }
+}
+
+/* The full sidebar leaves the top bar too little room below 1200px: its data controls wrap onto a second row, as in
+   the drawer layout. */
+@media (min-width: 768px) and (max-width: 1199px) {
+  .ciq-app--sidebar-expanded .ciq-topbar {
+    height: auto;
+    min-height: var(--ciq-topbar-height);
+    flex-wrap: wrap;
+    padding-block: var(--ciq-space-2);
+  }
+  .ciq-app--sidebar-expanded .ciq-data-controls {
+    order: 10;
+    flex: 1 0 100%;
+    flex-wrap: wrap;
   }
 }
 
