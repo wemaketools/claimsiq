@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { Outlet } from 'react-router';
 
+import { LandingRedirect } from '../../app/LandingRedirect';
 import type { FeatureModule } from '../../app/featureRegistry';
 import { createAppStore } from '../../app/store';
 import { signedInSession } from '../../test/fixtures';
@@ -27,6 +28,7 @@ function renderShell(options: Parameters<typeof renderRouteTree>[1]) {
       {
         element: <AppShell modules={modules} />,
         children: [
+          { path: '/', element: <LandingRedirect destinations={['/first', '/digest']} /> },
           { path: 'first', element: <PageHeader title="First page" /> },
           { path: 'second', element: <Outlet /> },
           { path: 'digest', element: <PageHeader title="Digest page" /> },
@@ -61,10 +63,10 @@ describe('the app shell', () => {
         .map((option) => option.textContent),
     ).toEqual(['Head of Claims', 'Claims Handler', 'Supplier Coordinator', 'Finance']);
     await userEvent.selectOptions(persona, 'finance');
-    expect(router.state.location.pathname).toBe('/digest');
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Digest page' }),
     ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/digest');
     await userEvent.click(screen.getByRole('button', { name: 'Use dark theme' }));
 
     expect(store.getState().session).toMatchObject({ persona: 'finance', theme: 'dark' });

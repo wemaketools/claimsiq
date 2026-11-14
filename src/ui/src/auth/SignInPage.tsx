@@ -14,6 +14,7 @@ import { Suspense, lazy, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, Navigate, useLocation } from 'react-router';
 
+import { LANDING_ROUTE } from '../app/LandingRedirect';
 import { useAppDispatch, useAppSelector } from '../app/hooks';
 import type { PersonaId } from '../app/personas';
 import { choosePersona } from '../app/sessionActions';
@@ -45,7 +46,9 @@ export function SignInPage() {
   const from = (location.state as FromState | null)?.from;
 
   if (authStatus === 'signedIn') {
-    return <Navigate to={from !== undefined && from !== '/signin' ? from : '/'} replace />;
+    return (
+      <Navigate to={from !== undefined && from !== '/signin' ? from : LANDING_ROUTE} replace />
+    );
   }
   return auth.mode === 'prototype' ? <PrototypeSignIn auth={auth} /> : <PasswordSignIn />;
 }

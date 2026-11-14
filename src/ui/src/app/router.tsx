@@ -26,7 +26,7 @@ import { NotFoundPage } from '../pages/NotFoundPage';
 import { RouteErrorPage } from '../pages/RouteErrorPage';
 import { RootLayout } from './RootLayout';
 import { RouteGuard } from './RouteGuard';
-import { LandingRedirect } from './LandingRedirect';
+import { LANDING_ROUTE, LandingRedirect } from './LandingRedirect';
 import { features as registeredFeatures, navItemsFor } from './featureRegistry';
 import type { FeatureModule, FeatureRoute } from './featureRegistry';
 
@@ -75,7 +75,7 @@ export function buildRoutes(modules: readonly FeatureModule[]): RouteObject[] {
       errorElement: <RouteErrorPage />,
       children: [
         {
-          path: '/',
+          path: LANDING_ROUTE,
           element: (
             <RouteGuard>
               <LandingRedirect destinations={destinations} />
