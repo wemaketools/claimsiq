@@ -7,7 +7,6 @@ import { Navigate } from 'react-router';
 import { usePersona } from './hooks';
 import { PERSONA_LANDING } from './personas';
 
-/** The path whose element is `LandingRedirect`: what to navigate to in order to open the active persona's screen. */
 export const LANDING_ROUTE = '/';
 
 export function LandingRedirect({ destinations }: { readonly destinations: readonly string[] }) {
