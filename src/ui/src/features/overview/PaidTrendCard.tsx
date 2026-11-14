@@ -8,9 +8,11 @@ import { GroupedBarChart } from '../../components/charts';
 import { Card, EmptyState, QueryView, SkeletonBlock } from '../../components/ui';
 import { formatCalendarDate } from '../../lib/format';
 import { t } from '../../lib/i18n';
-import { plottedMoney, trendPoints } from './trends';
+import { monthLabel, plottedMoney, trendPoints } from './trends';
 
 export type PaidTrendAnswer = z.infer<typeof endpoints.claimsPaidTrend.response>;
+
+const MAX_BAR_WIDTH = 72;
 
 /** Posted paid per calendar month up to the as-of date for the claims in view; the period selector does not narrow it. */
 export function PaidTrendCard({ query }: { readonly query: QueryResult<PaidTrendAnswer> }) {
@@ -36,25 +38,35 @@ export function PaidTrendCard({ query }: { readonly query: QueryResult<PaidTrend
           />
         }
       >
-        {(data) => (
-          <div className="ciq-stack" aria-busy={query.isFetching}>
-            <GroupedBarChart
-              label={t('overview.trend.chart')}
-              categoryLabel={t('overview.trend.month')}
-              series={[{ key: 'paid', label: t('overview.trend.series'), tone: 'accent' }]}
-              points={trendPoints(data)}
-              formatValue={plottedMoney}
-              axisWidth={96}
-            />
-            <p className="ciq-text-muted">
-              {t('overview.trend.summary', {
-                total: formatMoney(data.total),
-                payments: t('overview.trend.payments', { count: data.payments }),
-                months: t('overview.trend.months', { count: data.buckets.length }),
-              })}
-            </p>
-          </div>
-        )}
+        {(data) => {
+          const paidMonths = data.buckets.filter((bucket) => bucket.payments > 0);
+          return (
+            <div className="ciq-stack" aria-busy={query.isFetching}>
+              <GroupedBarChart
+                label={t('overview.trend.chart')}
+                categoryLabel={t('overview.trend.month')}
+                series={[{ key: 'paid', label: t('overview.trend.series'), tone: 'accent' }]}
+                points={trendPoints(data)}
+                formatValue={plottedMoney}
+                axisWidth={96}
+                maxBarSize={MAX_BAR_WIDTH}
+                evenAxis
+              />
+              {paidMonths.length === 1 && (
+                <p className="ciq-text-muted">
+                  {t('overview.trend.oneMonth', { month: monthLabel(paidMonths[0]?.month ?? '') })}
+                </p>
+              )}
+              <p className="ciq-text-muted">
+                {t('overview.trend.summary', {
+                  total: formatMoney(data.total),
+                  payments: t('overview.trend.payments', { count: data.payments }),
+                  months: t('overview.trend.months', { count: data.buckets.length }),
+                })}
+              </p>
+            </div>
+          );
+        }}
       </QueryView>
     </Card>
   );

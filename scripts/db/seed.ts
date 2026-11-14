@@ -75,7 +75,7 @@ export async function seedDataSet(
   };
 }
 
-/** Seeds one data set from the committed fixtures in `fixtures/v1`. */
+/** Seeds one data set from the committed fixtures in `fixtures/v2`. */
 export async function seedFromFixtures(db: Db, dataSet: DataSetId, accounts: readonly PersonaAccount[]): Promise<SeedReport> {
   const { files, ruleConfig } = committedFixture(dataSet);
   return await seedDataSet(db, dataSet, files, ruleConfig, accounts);

@@ -7,6 +7,11 @@ import { captureDownloads, parseCsv } from '../../test/csv';
 import { renderApp, tableRows } from '../../test/renderApp';
 
 const card = (name: string) => screen.getByRole('region', { name });
+const group = (heading: string) => {
+  const section = screen.getByRole('heading', { name: heading }).closest('section');
+  if (section === null) throw new Error(`${heading} is not in a group`);
+  return within(section);
+};
 const listed = () => tableRows('Claims').map((row) => row[0]);
 
 describe('Overview', () => {
@@ -26,13 +31,14 @@ describe('Overview', () => {
       Incurred: 'P77,000.00',
       'SLA breaches': '3',
       'High-value claims': '1',
+      'High-priority exceptions': '3',
       // The period cards over the last 30 days, 22 Sep to 21 Oct, worked by hand from the fixture: CLM-101, 103, 104, 105
       // and 106 were reported in it (CLM-102 on 1 Sep was not); CLM-102's P5,000 was paid on 22 Sep and CLM-103's P4,000
-      // on 13 Oct; CLM-103 closed on 15 Oct, 5 days after it was reported; CLM-101, 102 and 106 are High.
+      // on 13 Oct; CLM-103 closed on 15 Oct, 5 days after it was reported. CLM-101, 102 and 106 are High, an as-of
+      // figure that the period does not narrow.
       'New claims': '5',
       'Paid in period': 'P9,000.00',
       'Average closed turnaround': '5.0 days',
-      'High-priority exceptions': '3',
     };
     for (const [label, value] of Object.entries(figures)) {
       expect(card(label)).toHaveTextContent(value);
@@ -40,8 +46,11 @@ describe('Overview', () => {
     expect(card('Average closed turnaround')).toHaveTextContent(
       'Claims averaged: 1. Left out for missing dates: 0',
     );
+    const periodCards = group('Last 30 days: 22 Sep 2026 to 21 Oct 2026');
+    expect(periodCards.getByText(/These cards follow the period selector/)).toBeInTheDocument();
+    expect(periodCards.queryByRole('region', { name: 'High-priority exceptions' })).toBeNull();
     expect(
-      screen.getByRole('heading', { name: 'Last 30 days: 22 Sep 2026 to 21 Oct 2026' }),
+      group('As of 21 Oct 2026').getByRole('region', { name: 'High-priority exceptions' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('list', { name: 'Open claims by stage' })).toHaveTextContent(
       /New1.*Triage1.*Assessment2.*Negotiation0.*Approved1.*Settlement0/,
@@ -105,7 +114,6 @@ describe('Overview', () => {
       [period, 'Paid in period', '', '9000.00', ''],
       [period, 'Average closed turnaround', '1', '', '5.0'],
       [period, leftOut, '0', '', ''],
-      [period, 'High-priority exceptions', '3', '', ''],
     ]);
     expect(rows.filter((row) => row[0] === 'Open claims by stage')).toEqual([
       ['Open claims by stage', 'New', '1', '', ''],
@@ -181,5 +189,39 @@ describe('Overview', () => {
     fireEvent.change(screen.getByLabelText('As of'), { target: { value: '2026-01-01' } });
     expect(await screen.findByText('No claims to summarize')).toBeInTheDocument();
     expect(screen.getByLabelText('Broker')).toBeInTheDocument();
+  });
+
+  it('moves the DEMO period cards and the paid chart with the period, from July to October', async () => {
+    const user = userEvent.setup();
+    renderApp('/overview', { dataSet: 'DEMO' });
+    await screen.findByRole('region', { name: 'Open claims' });
+
+    // DEMO's 20 payments run from 20 Jul to 20 Oct and its 5 closings from 14 Aug to 19 Oct (fixtures/v2), so each window
+    // holds different claims; the turnaround is the mean of the closings in the window (the 2 of the last 7 days: 79.0).
+    const byPeriod = {
+      'Last 7 days': { new: '0', paid: 'P4,500.00', turnaround: '79.0 days' },
+      'Last 30 days': { new: '6', paid: 'P28,000.00', turnaround: '74.7 days' },
+      'Last 90 days': { new: '25', paid: 'P66,500.00', turnaround: '60.2 days' },
+    };
+    for (const [period, expected] of Object.entries(byPeriod)) {
+      await user.selectOptions(screen.getByLabelText('Period'), period);
+      await waitFor(() => expect(card('New claims')).toHaveTextContent(expected.new));
+      expect(card('Paid in period')).toHaveTextContent(expected.paid);
+      expect(card('Average closed turnaround')).toHaveTextContent(expected.turnaround);
+    }
+
+    await waitFor(() => expect(card('Paid by month')).toHaveTextContent('Oct 2026'));
+    expect(
+      within(screen.getByRole('table', { name: 'Posted paid by month' }))
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => row.textContent),
+    ).toEqual([
+      'Jul 2026P17,000.00',
+      'Aug 2026P7,500.00',
+      'Sep 2026P36,000.00',
+      'Oct 2026P17,000.00',
+    ]);
+    expect(card('Paid by month')).not.toHaveTextContent('All posted payments fall in');
   });
 });

@@ -36,6 +36,7 @@ const en = {
   group: {
     asOf: 'As of {date}',
     period: '{period}: {from} to {to}',
+    periodNote: 'These cards follow the period selector above; the other figures do not.',
   },
   stage: {
     title: 'Open claims by stage',
@@ -58,6 +59,7 @@ const en = {
     chart: 'Posted paid by month',
     month: 'Month',
     series: 'Posted paid (BWP)',
+    oneMonth: 'All posted payments fall in {month}.',
     summary: '{total} posted on {payments} over {months}.',
     payments_one: '{count} payment',
     payments_other: '{count} payments',

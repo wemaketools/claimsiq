@@ -62,7 +62,7 @@ The schema is plain SQL in `supabase/migrations`. The tables are keyed `(tenant_
 |---|---|
 | `bun run db:migrate` | Applies the migrations the local database has not seen (`supabase migration up --local`) |
 | `bun run db:reset` | Rebuilds the local database from empty: all migrations, the demo accounts (`auth:personas`), then the seed. Refuses any database that is not the local stack |
-| `bun run db:seed` | Replaces the TEST and DEMO rows from `fixtures/v1` through the fixture loader and links the four demo accounts to both tenants. Prints the row counts and every quarantined row. `-- --data-set TEST` seeds one |
+| `bun run db:seed` | Replaces the TEST and DEMO rows from `fixtures/v2` through the fixture loader and links the four demo accounts to both tenants. Prints the row counts and every quarantined row. `-- --data-set TEST` seeds one |
 | `bun run db:types` | Regenerates the Kysely table types (`src/server/lib/db/generated/schema.ts`) after a migration |
 
 A new migration is a new file in `supabase/migrations` (never an edit of an applied one), then `bun run db:migrate` and `bun run db:types`.

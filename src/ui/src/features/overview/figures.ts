@@ -32,6 +32,8 @@ export interface FigureGroup {
   /** What the figures are about: the as-of date, or the period window. */
   readonly heading: string;
   readonly figures: OverviewFigure[];
+  /** Says what moves the group's cards, when the heading alone does not. */
+  readonly note?: string;
 }
 
 const base = (
@@ -118,6 +120,9 @@ export function overviewFigures(summary: ClaimsSummary): FigureGroup[] {
         counted('highValue', summary.high_value_open_claims, 'flag', 'warning', {
           kind: 'high-value',
         }),
+        counted('highPriority', summary.severity.High, 'alertTriangle', 'danger', {
+          kind: 'high-priority',
+        }),
       ],
     },
     {
@@ -152,10 +157,8 @@ export function overviewFigures(summary: ClaimsSummary): FigureGroup[] {
             days: days === null ? '' : days.toFixed(1),
           },
         },
-        counted('highPriority', period.high_priority, 'alertTriangle', 'danger', {
-          kind: 'high-priority',
-        }),
       ],
+      note: t('overview.group.periodNote'),
     },
   ];
 }

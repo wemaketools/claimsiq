@@ -1,5 +1,5 @@
 /**
- * The claims rule config (`fixtures/v1/proposed_rule_config.json`), validated, and the part of it the rule editor
+ * The claims rule config (`fixtures/v2/proposed_rule_config.json`), validated, and the part of it the rule editor
  * changes. The thresholds the spec states in prose but its config file does not carry (the approaching window, the
  * severity cut-offs and the age buckets) are optional fields with the spec's proposed values as defaults; the supplier
  * sample minimum is ours (the spec only asks that a small sample not mislead).

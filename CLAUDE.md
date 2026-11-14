@@ -57,7 +57,7 @@ The work is tracked as GitHub issues of `wemaketools/claimsiq` under the Stage A
 |---|---|
 | `bun run supabase:start` / `supabase:stop` / `supabase:status` | Local Supabase stack in Docker (generates the git-ignored ES256 signing key first) |
 | `bun run auth:personas` | Creates or updates the four demo accounts in local Supabase Auth (password `DEMO_SEED_PASSWORD`, else `test1234` locally) |
-| `bun run db:migrate` / `db:reset` / `db:seed` / `db:types` | Apply the migrations / rebuild the local database (migrations, demo accounts, seed) / reseed TEST and DEMO from `fixtures/v1` / regenerate the Kysely types after a migration |
+| `bun run db:migrate` / `db:reset` / `db:seed` / `db:types` | Apply the migrations / rebuild the local database (migrations, demo accounts, seed) / reseed TEST and DEMO from `fixtures/v2` / regenerate the Kysely types after a migration |
 | `bun run dev` | The API (http://127.0.0.1:5274, `API_PORT`) and the SPA (http://localhost:5273, proxying `/api` to it) together (needs `.env.local` and the built database; `run.ps1` does both) |
 | `bun run dev:api` / `dev:ui` | The API server alone / the SPA alone |
 | `bun run dev:prototype` / `build:prototype` | The same in prototype mode (`VITE_AUTH_MODE=prototype`): sign in by clicking a role, no Supabase, no env; Vercel builds this way |

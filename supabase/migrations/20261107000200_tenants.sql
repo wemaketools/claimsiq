@@ -21,7 +21,7 @@ create table tenant_memberships (
 create index tenant_memberships_user_idx on tenant_memberships (auth_user_id);
 select enable_tenant_isolation('tenant_memberships', 'read_only');
 
--- The claims rule configuration (the shape of src/rules/config.ts, seeded from fixtures/v1/proposed_rule_config.json),
+-- The claims rule configuration (the shape of src/rules/config.ts, seeded from fixtures/v2/proposed_rule_config.json),
 -- one per tenant and data set so the rule editor can change a tenant's thresholds. `version` counts the saves.
 create table rule_configs (
   tenant_id  text not null,

@@ -4,7 +4,7 @@
  * Vite dev server over the Hono API and the local Supabase database). The screens, the steps and the figures are the
  * same; every assertion block is a `test.step` named after its scenario, so a failure names the CLM-AT it breaks. Two flows:
  * - the TEST data set as shipped: AT-01 to 08 and AT-12 to 15, walked as a Head of Claims;
- * - the same data set with a few test-only rows (testOnlyRows.ts; `fixtures/v1` is untouched): AT-09 (a missing stage
+ * - the same data set with a few test-only rows (testOnlyRows.ts; `fixtures/v2` is untouched): AT-09 (a missing stage
  *   time), AT-10 (events out of order), AT-11 (pending and rejected payments) and AT-16 (a reopened claim), which the
  *   shipped data has no row for.
  *

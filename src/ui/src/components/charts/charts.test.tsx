@@ -3,7 +3,7 @@ import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
 import { BarList } from './BarList';
-import { chartColor } from './chartTheme';
+import { chartColor, evenTicks } from './chartTheme';
 import { DonutChart } from './DonutChart';
 import { GroupedBarChart } from './GroupedBarChart';
 import { StackedBarChart } from './StackedBarChart';
@@ -13,6 +13,9 @@ describe('charts', () => {
   it('colour from design tokens; the bar list shows shares, links and a full-label tooltip, and every chart is empty-aware', () => {
     expect(chartColor('danger', 0)).toBe('var(--ciq-chart-6)');
     expect(chartColor(undefined, 7)).toBe('var(--ciq-chart-2)');
+    expect(evenTicks(36000)).toEqual([0, 10000, 20000, 30000, 40000]);
+    expect(evenTicks(5000)).toEqual([0, 1250, 2500, 3750, 5000]);
+    expect(evenTicks(0)).toEqual([0, 1]);
 
     render(
       <MemoryRouter>
