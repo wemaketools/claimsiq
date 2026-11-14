@@ -1,20 +1,22 @@
 /**
  * The demo accounts: one per persona, created in Supabase Auth by `bun run auth:personas` and the demo seed, listed on
  * the sign-in page, and the only e-mails the demo sign-in endpoint accepts. The list holds no password: the server
- * reads it from its own environment (`DEMO_SEED_PASSWORD`). An account does not decide the persona view; the persona
- * switch does.
+ * reads it from its own environment (`DEMO_SEED_PASSWORD`). `persona` is the view a click on the account's card sets;
+ * it is never authentication, and a typed sign-in leaves the stored persona alone.
  */
+import type { PersonaId } from './personas.js';
 
 export interface DemoAccount {
   readonly email: string;
   readonly fullName: string;
+  readonly persona: PersonaId;
 }
 
 export const DEMO_ACCOUNTS: readonly DemoAccount[] = [
-  { email: 'head.of.claims@claimsiq.local', fullName: 'Head of Claims' },
-  { email: 'claims.handler@claimsiq.local', fullName: 'Claims Handler' },
-  { email: 'supplier.coordinator@claimsiq.local', fullName: 'Supplier Coordinator' },
-  { email: 'finance@claimsiq.local', fullName: 'Finance' },
+  { email: 'head.of.claims@claimsiq.local', fullName: 'Head of Claims', persona: 'head-of-claims' },
+  { email: 'claims.handler@claimsiq.local', fullName: 'Claims Handler', persona: 'claims-handler' },
+  { email: 'supplier.coordinator@claimsiq.local', fullName: 'Supplier Coordinator', persona: 'supplier-coordinator' },
+  { email: 'finance@claimsiq.local', fullName: 'Finance', persona: 'finance' },
 ];
 
 /** True for an e-mail on the list (case and surrounding spaces ignored). */
