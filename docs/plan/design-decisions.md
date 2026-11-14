@@ -85,7 +85,7 @@ Why: SF §5 forbids float sums; `decimal.js` has its own types, rounds half-up b
 
 ### DD-15 Fixtures: versioned CSV folders, the tenant follows the data set
 
-The spec's CSV files live in `fixtures/v1/test` and `fixtures/v1/demo`, next to `expected_metrics.json`, `proposed_rule_config.json` and the README of the spec pack; a changed fixture becomes `fixtures/v2` (DD-65 did this, and `fixtures/v2` is the only copy in the tree). The SPA bundles the CSV text with Vite and the loader (`src/read-model/fixtures`) parses it in the browser. TEST is tenant `TEST` "Fixture validation", DEMO is tenant `DEMO` "Fictional Botswana insurer demo"; the shell takes both from `DATA_SETS` in `src/contracts/datasets.ts` (a test checks they equal `tenants.csv`). The default data set is DEMO. A row whose `tenant_id` is not the data set's tenant is rejected, so the two never mix. Replaces the fixed tenant constant of DD-10.
+The spec's CSV files live in `fixtures/v2/test` and `fixtures/v2/demo` (first `fixtures/v1`), next to `expected_metrics.json`, `proposed_rule_config.json` and the README of the spec pack; a changed fixture becomes the next version (DD-65 made `fixtures/v2`, now the only copy in the tree). The SPA bundles the CSV text with Vite and the loader (`src/read-model/fixtures`) parses it in the browser. TEST is tenant `TEST` "Fixture validation", DEMO is tenant `DEMO` "Fictional Botswana insurer demo"; the shell takes both from `DATA_SETS` in `src/contracts/datasets.ts` (a test checks they equal `tenants.csv`). The default data set is DEMO. A row whose `tenant_id` is not the data set's tenant is rejected, so the two never mix. Replaces the fixed tenant constant of DD-10.
 
 ### DD-16 The mock API runs in the browser behind the client's transport
 
