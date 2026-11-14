@@ -1,7 +1,7 @@
 /**
  * The route tree, built from the feature registry:
  *
- * - `/` goes to the active persona's screen (`PERSONA_LANDING`), or to the first sidebar destination when that screen
+ * - `/` goes to the active persona's screen (`landingPathFor`), or to the first sidebar destination when that screen
  *   is not registered; with no destination at all the router cannot be built. A signed-out visitor is sent to
  *   `/signin` from `/`, so the screen is chosen after sign-in, with the persona the sign-in set.
  * - `/signin`, `/forgot-password`, `/reset-password`: auth pages outside any shell. A prototype build has no
@@ -26,7 +26,8 @@ import { NotFoundPage } from '../pages/NotFoundPage';
 import { RouteErrorPage } from '../pages/RouteErrorPage';
 import { RootLayout } from './RootLayout';
 import { RouteGuard } from './RouteGuard';
-import { LANDING_ROUTE, LandingRedirect } from './LandingRedirect';
+import { LANDING_ROUTE } from './landing';
+import { LandingRedirect } from './LandingRedirect';
 import { features as registeredFeatures, navItemsFor } from './featureRegistry';
 import type { FeatureModule, FeatureRoute } from './featureRegistry';
 

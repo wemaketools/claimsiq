@@ -18,6 +18,7 @@ const modules: FeatureModule[] = [
     nav: [
       { id: 'second', label: 'ui.action.dismiss', path: 'second', order: 2, icon: 'list' },
       { id: 'first', label: 'ui.action.retry', path: 'first', order: 1, icon: 'dashboard' },
+      { id: 'digest', label: 'ui.action.close', path: 'digest', order: 3, icon: 'list' },
     ],
   },
 ];
@@ -25,10 +26,11 @@ const modules: FeatureModule[] = [
 function renderShell(options: Parameters<typeof renderRouteTree>[1]) {
   return renderRouteTree(
     [
+      // Outside the shell, as in the real router.
+      { path: '/', element: <LandingRedirect destinations={['/first', '/digest']} /> },
       {
         element: <AppShell modules={modules} />,
         children: [
-          { path: '/', element: <LandingRedirect destinations={['/first', '/digest']} /> },
           { path: 'first', element: <PageHeader title="First page" /> },
           { path: 'second', element: <Outlet /> },
           { path: 'digest', element: <PageHeader title="Digest page" /> },
@@ -52,7 +54,11 @@ describe('the app shell', () => {
     const links = within(screen.getByRole('navigation', { name: 'Main navigation' })).getAllByRole(
       'link',
     );
-    expect(links.map((link) => link.getAttribute('href'))).toEqual(['/first', '/second']);
+    expect(links.map((link) => link.getAttribute('href'))).toEqual([
+      '/first',
+      '/second',
+      '/digest',
+    ]);
     expect(links[0]).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('heading', { level: 1, name: 'First page' })).toBeInTheDocument();
 
@@ -67,6 +73,9 @@ describe('the app shell', () => {
       await screen.findByRole('heading', { level: 1, name: 'Digest page' }),
     ).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/digest');
+    // The shell stayed mounted: the switch that was used still has focus and the page title was not remounted.
+    expect(persona).toBeInTheDocument();
+    expect(persona).toHaveFocus();
     await userEvent.click(screen.getByRole('button', { name: 'Use dark theme' }));
 
     expect(store.getState().session).toMatchObject({ persona: 'finance', theme: 'dark' });

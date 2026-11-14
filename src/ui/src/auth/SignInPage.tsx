@@ -14,7 +14,7 @@ import { Suspense, lazy, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, Navigate, useLocation } from 'react-router';
 
-import { LANDING_ROUTE } from '../app/LandingRedirect';
+import { LANDING_ROUTE } from '../app/landing';
 import { useAppDispatch, useAppSelector } from '../app/hooks';
 import type { PersonaId } from '../app/personas';
 import { choosePersona } from '../app/sessionActions';
