@@ -20,7 +20,7 @@ import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import type { Page, TestInfo } from '@playwright/test';
 
-import { resetData } from './support';
+import { resetData, selectDataSet } from './support';
 import { addTestOnlyRowsToBundle, addTestOnlyRowsToDatabase, removeTestOnlyRowsFromDatabase } from './testOnlyRows';
 
 const inStack = (testInfo: TestInfo): boolean => testInfo.project.name === 'stack';
@@ -31,7 +31,7 @@ async function openTestDataSet(page: Page): Promise<void> {
   await page.goto('/');
   await page.getByRole('button', { name: /^Head of Claims/ }).click();
   await expect(page.getByRole('heading', { name: 'Overview', level: 1 })).toBeVisible();
-  await page.getByLabel('Data set').selectOption('TEST');
+  await selectDataSet(page, 'TEST');
   await resetData(page, 'TEST');
 }
 
@@ -287,7 +287,8 @@ test.describe('acceptance scenarios CLM-AT-01 to CLM-AT-16', () => {
     } else {
       const applied = await addTestOnlyRowsToBundle(page);
       await openTestDataSet(page);
-      expect(applied).toHaveLength(2);
+      // Each page load fetches the bundle again, so an anchor is applied once per load; both must have been found.
+      expect(new Set(applied).size).toBe(2);
     }
 
     await test.step('CLM-AT-09 missing timestamps: a claim with an event of no time shows SLA unknown, never within target', async () => {

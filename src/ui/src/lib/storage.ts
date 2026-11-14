@@ -1,5 +1,5 @@
 /**
- * localStorage for conveniences only: the prototype session's role, the persona view, the theme, the sidebar width, the data set, the as-of date and the screen filters. Nothing here is
+ * localStorage for conveniences only: the prototype session's role, the persona view, the theme, the sidebar width, the data set (and the key that sets a prototype build's), the as-of date and the screen filters. Nothing here is
  * trusted or required (the changes made on top of a fixture are the mock API's, in its own keys).
  * Every access is guarded, because storage can be unavailable (private mode, blocked site data).
  */
@@ -90,6 +90,15 @@ export function readStoredDataSet(): DataSetId | null {
 
 export function storeDataSet(dataSet: DataSetId): void {
   write('dataSet', dataSet);
+}
+
+/**
+ * The data set a prototype build serves instead of the stored choice: only a value written under this key, which
+ * the app never writes, counts, so the TEST that an earlier build's switch left under `ciq.dataSet` is ignored.
+ */
+export function readStoredPrototypeDataSet(): DataSetId | null {
+  const raw = read('prototype.dataSet');
+  return isDataSetId(raw) ? raw : null;
 }
 
 /** The as-of date the user last chose, or `null`; a value that is not a real date is ignored. */

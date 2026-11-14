@@ -1,11 +1,12 @@
 /**
  * The top bar (at least 64px high, sticky; below 768px it wraps the data controls onto a second row): the menu button below 768px, the page title (from PageHeader), the data controls, the
- * persona switch and the theme toggle. The persona switch and the toggle are always the last items, so they never move between pages.
+ * persona switch and the theme toggle. Switching the persona opens the screen of the new persona (`PERSONA_LANDING`). The persona switch and the toggle are always the last items, so they never move between pages.
  * Pages never put actions here; their primary action renders in the page head (PageHeader).
  */
 import type { Ref } from 'react';
+import { useNavigate } from 'react-router';
 
-import { PERSONA_IDS, isPersonaId } from '../../app/personas';
+import { PERSONA_IDS, PERSONA_LANDING, isPersonaId } from '../../app/personas';
 import { useAppDispatch, usePersona } from '../../app/hooks';
 import { choosePersona } from '../../app/sessionActions';
 import { t } from '../../lib/i18n';
@@ -28,6 +29,7 @@ const SWITCH_ID = 'ciq-persona-switch';
 
 export function Topbar({ titleRef, onOpenMenu, menuOpen, sidebarId, menuButtonRef }: TopbarProps) {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const persona = usePersona();
   const themeToggle = useThemeToggle();
 
@@ -55,6 +57,7 @@ export function Topbar({ titleRef, onOpenMenu, menuOpen, sidebarId, menuButtonRe
           onChange={(event) => {
             if (isPersonaId(event.target.value)) {
               dispatch(choosePersona(event.target.value));
+              void navigate(PERSONA_LANDING[event.target.value]);
             }
           }}
         >

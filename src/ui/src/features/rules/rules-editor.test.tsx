@@ -198,6 +198,7 @@ describe('Rules editor', () => {
       screen.getByRole('combobox', { name: 'Viewing as' }),
       'claims-handler',
     );
+    await user.click(await screen.findByRole('link', { name: 'Rules' }));
     expect(await screen.findByText('Read-only for this persona')).toBeInTheDocument();
     expect(screen.getByText(/You are viewing as Claims Handler/)).toBeInTheDocument();
     expect(screen.queryByLabelText('High-value line')).not.toBeInTheDocument();
@@ -212,6 +213,7 @@ describe('Rules editor', () => {
     expect(screen.getByRole('table', { name: AUDIT })).toBeInTheDocument();
 
     await user.selectOptions(screen.getByRole('combobox', { name: 'Viewing as' }), 'finance');
+    await user.click(await screen.findByRole('link', { name: 'Rules' }));
     expect(await screen.findByLabelText('High-value line')).toBeInTheDocument();
     expect(screen.queryByText('Read-only for this persona')).not.toBeInTheDocument();
   });

@@ -29,6 +29,7 @@ function renderShell(options: Parameters<typeof renderRouteTree>[1]) {
         children: [
           { path: 'first', element: <PageHeader title="First page" /> },
           { path: 'second', element: <Outlet /> },
+          { path: 'digest', element: <PageHeader title="Digest page" /> },
         ],
       },
     ],
@@ -40,7 +41,7 @@ describe('the app shell', () => {
   it('shows the tenant, brand, ordered nav and page title; switches persona and theme and remembers them; signs out', async () => {
     const auth = stubAuth();
     const store = createAppStore({ session: signedInSession() });
-    renderShell({ store, auth, route: '/first' });
+    const { router } = renderShell({ store, auth, route: '/first' });
 
     const sidebar = screen.getByRole('complementary', { name: 'Main navigation and account' });
     expect(within(sidebar).getByText('Fictional Botswana insurer demo')).toBeInTheDocument();
@@ -60,6 +61,10 @@ describe('the app shell', () => {
         .map((option) => option.textContent),
     ).toEqual(['Head of Claims', 'Claims Handler', 'Supplier Coordinator', 'Finance']);
     await userEvent.selectOptions(persona, 'finance');
+    expect(router.state.location.pathname).toBe('/digest');
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Digest page' }),
+    ).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Use dark theme' }));
 
     expect(store.getState().session).toMatchObject({ persona: 'finance', theme: 'dark' });

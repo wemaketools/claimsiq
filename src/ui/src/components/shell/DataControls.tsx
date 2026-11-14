@@ -1,5 +1,5 @@
 /**
- * The data controls of the top bar: the data set switch (TEST or DEMO), the as-of date, the data issues of the
+ * The data controls of the top bar: the data set switch (TEST or DEMO; a prototype build has none and serves DEMO), the as-of date, the data issues of the
  * loaded fixture and Reset. The choices are remembered in the browser; Reset removes the changes made on top of the
  * fixture.
  */
@@ -9,6 +9,7 @@ import { DATA_SET_IDS, endpoints, isDataSetId, isRealDate } from '../../../../co
 import { invalidateApiQueries, useApiMutation, useApiQuery } from '../../api/hooks';
 import { chooseAsOf, chooseDataSet } from '../../app/dataContextActions';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
+import { authMode } from '../../auth/authMode';
 import { t } from '../../lib/i18n';
 import { Button } from '../ui/Button';
 import { ConfirmActionDialog } from '../ui/ConfirmActionDialog';
@@ -31,26 +32,28 @@ export function DataControls() {
 
   return (
     <div className="ciq-data-controls" role="group" aria-label={t('shell.data.label')}>
-      <div className="ciq-persona-switch">
-        <label htmlFor={setId} className="ciq-persona-switch-label ciq-data-controls-label">
-          {t('shell.data.dataSet')}
-        </label>
-        <select
-          id={setId}
-          value={dataSet}
-          onChange={(event) => {
-            if (isDataSetId(event.target.value)) {
-              dispatch(chooseDataSet(event.target.value));
-            }
-          }}
-        >
-          {DATA_SET_IDS.map((id) => (
-            <option key={id} value={id}>
-              {t(`shell.data.set.${id}`)}
-            </option>
-          ))}
-        </select>
-      </div>
+      {authMode() !== 'prototype' && (
+        <div className="ciq-persona-switch">
+          <label htmlFor={setId} className="ciq-persona-switch-label ciq-data-controls-label">
+            {t('shell.data.dataSet')}
+          </label>
+          <select
+            id={setId}
+            value={dataSet}
+            onChange={(event) => {
+              if (isDataSetId(event.target.value)) {
+                dispatch(chooseDataSet(event.target.value));
+              }
+            }}
+          >
+            {DATA_SET_IDS.map((id) => (
+              <option key={id} value={id}>
+                {t(`shell.data.set.${id}`)}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       <div className="ciq-persona-switch">
         <label htmlFor={asOfId} className="ciq-persona-switch-label ciq-data-controls-label">
           {t('shell.data.asOf')}

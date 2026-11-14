@@ -3,7 +3,7 @@
  * Reset step, the Digest's one-A4-page check, and the sidebar's destinations.
  */
 import AxeBuilder from '@axe-core/playwright';
-import { expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
 export async function expectNoAxeViolations(page: Page): Promise<void> {
@@ -31,6 +31,19 @@ export async function expectNoHorizontalScroll(page: Page): Promise<void> {
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
   expect(overflow).toBeLessThanOrEqual(0);
+}
+
+/**
+ * Make `dataSet` the data set in view. The stack's top bar has a Data set select; a prototype build has none (it serves DEMO),
+ * so there the data set is the key that only a test writes, picked up by a reload.
+ */
+export async function selectDataSet(page: Page, dataSet: 'TEST' | 'DEMO'): Promise<void> {
+  if (test.info().project.name === 'prototype') {
+    await page.evaluate((value) => localStorage.setItem('ciq.prototype.dataSet', value), dataSet);
+    await page.reload();
+  } else {
+    await page.getByLabel('Data set').selectOption(dataSet);
+  }
 }
 
 /** Reset from the top bar, confirmed in its dialog, and the toast that says the data set is back as loaded. */

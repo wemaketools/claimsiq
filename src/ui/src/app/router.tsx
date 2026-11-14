@@ -1,7 +1,9 @@
 /**
  * The route tree, built from the feature registry:
  *
- * - `/` goes to the first sidebar destination; with none registered the router cannot be built.
+ * - `/` goes to the active persona's screen (`PERSONA_LANDING`), or to the first sidebar destination when that screen
+ *   is not registered; with no destination at all the router cannot be built. A signed-out visitor is sent to
+ *   `/signin` from `/`, so the screen is chosen after sign-in, with the persona the sign-in set.
  * - `/signin`, `/forgot-password`, `/reset-password`: auth pages outside any shell. A prototype build has no
  *   passwords, so the last two go to `/signin`.
  * - Every feature route: signed in, inside AppShell.
@@ -24,6 +26,7 @@ import { NotFoundPage } from '../pages/NotFoundPage';
 import { RouteErrorPage } from '../pages/RouteErrorPage';
 import { RootLayout } from './RootLayout';
 import { RouteGuard } from './RouteGuard';
+import { LandingRedirect } from './LandingRedirect';
 import { features as registeredFeatures, navItemsFor } from './featureRegistry';
 import type { FeatureModule, FeatureRoute } from './featureRegistry';
 
@@ -60,8 +63,8 @@ function passwordPage(page: ReactNode): ReactNode {
 
 /** The route objects for a set of feature modules (exported for tests). */
 export function buildRoutes(modules: readonly FeatureModule[]): RouteObject[] {
-  const home = navItemsFor(modules)[0]?.to;
-  if (home === undefined) {
+  const destinations = navItemsFor(modules).map((item) => item.to);
+  if (destinations.length === 0) {
     throw new Error(
       'No navigation destination is registered: add a features/<feature>/routes.tsx with a nav item.',
     );
@@ -71,7 +74,14 @@ export function buildRoutes(modules: readonly FeatureModule[]): RouteObject[] {
       element: <RootLayout />,
       errorElement: <RouteErrorPage />,
       children: [
-        { path: '/', element: <Navigate to={home} replace /> },
+        {
+          path: '/',
+          element: (
+            <RouteGuard>
+              <LandingRedirect destinations={destinations} />
+            </RouteGuard>
+          ),
+        },
         { path: '/signin', element: <SignInPage /> },
         { path: '/forgot-password', element: passwordPage(<ForgotPasswordPage />) },
         { path: '/reset-password', element: passwordPage(<ResetPasswordPage />) },

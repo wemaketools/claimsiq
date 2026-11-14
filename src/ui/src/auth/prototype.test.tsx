@@ -70,7 +70,7 @@ describe('prototype build', () => {
 
     // A refresh (a fresh store and router over the same browser storage) is still signed in; the password pages are gone.
     const second = renderPrototype('/forgot-password');
-    expect(await screen.findByRole('heading', { name: 'Overview', level: 1 })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Digest', level: 1 })).toBeInTheDocument();
     expect(second.store.getState().session.user?.fullName).toBe('Tiro Demo');
 
     // Sign out returns to sign-in and the next refresh stays signed out.
@@ -79,5 +79,32 @@ describe('prototype build', () => {
     expect(await screen.findByRole('heading', { name: 'Sign in', level: 1 })).toBeInTheDocument();
     expect(second.router.state.location.pathname).toBe('/signin');
     expect(window.localStorage.getItem('ciq.prototype.role')).toBeNull();
+
+    // Each role lands on its own screen when it signs in with no address asked for, and switching it in the top bar goes there.
+    const roleScreens = [
+      ['Claims Handler', 'Action Queue', 'claims-handler'],
+      ['Supplier Coordinator', 'Suppliers', 'supplier-coordinator'],
+      ['Head of Claims', 'Overview', 'head-of-claims'],
+    ] as const;
+    for (const [role, screenTitle, persona] of roleScreens) {
+      await userEvent.click(screen.getByRole('button', { name: new RegExp(`^${role}`) }));
+      expect(
+        await screen.findByRole('heading', { name: screenTitle, level: 1 }),
+      ).toBeInTheDocument();
+      expect(screen.getByRole('combobox', { name: 'Viewing as' })).toHaveValue(persona);
+      await userEvent.click(screen.getByRole('button', { name: /Demo/ }));
+      await userEvent.click(screen.getByRole('menuitem', { name: 'Sign out' }));
+      await screen.findByRole('heading', { name: 'Sign in', level: 1 });
+    }
+    await userEvent.click(screen.getByRole('button', { name: /^Finance/ }));
+    await screen.findByRole('heading', { name: 'Digest', level: 1 });
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', { name: 'Viewing as' }),
+      'claims-handler',
+    );
+    expect(
+      await screen.findByRole('heading', { name: 'Action Queue', level: 1 }),
+    ).toBeInTheDocument();
+    expect(second.router.state.location.pathname).toBe('/actions');
   });
 });

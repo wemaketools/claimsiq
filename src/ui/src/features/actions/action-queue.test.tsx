@@ -174,10 +174,13 @@ describe('Action Queue', () => {
         .map((option) => option.textContent),
     ).toEqual(['Choose a status', 'Open']);
     await user.click(within(reopen).getByRole('button', { name: 'Cancel' }));
+    // A switch opens the persona's landing screen, Overview for Head of Claims.
     await user.selectOptions(
       screen.getByRole('combobox', { name: 'Viewing as' }),
       'head-of-claims',
     );
+    await user.click(await screen.findByRole('link', { name: 'Action Queue' }));
+    await screen.findByRole('table', { name: NAME });
 
     // Done is never overdue, so TASK-0001 drops its flag and takes its place by priority and due date: it is Medium, due 19 Oct.
     expect(queue()).toEqual([

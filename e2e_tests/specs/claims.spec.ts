@@ -89,9 +89,11 @@ test.describe('claim screens', () => {
     await expect(card('High-value claims')).toContainText('0');
     await nav.getByRole('link', { name: 'Rules' }).click();
     await page.getByRole('combobox', { name: 'Viewing as' }).selectOption('claims-handler');
+    await nav.getByRole('link', { name: 'Rules' }).click();
     await expect(page.getByText('Read-only for this persona')).toBeVisible();
     await expect(highValue).toHaveCount(0);
     await page.getByRole('combobox', { name: 'Viewing as' }).selectOption('head-of-claims');
+    await nav.getByRole('link', { name: 'Rules' }).click();
     await page.getByRole('button', { name: 'Restore defaults' }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Restore defaults' }).click();
     await expect(page.getByText('The spec’s rules are back (version 3).')).toBeVisible();

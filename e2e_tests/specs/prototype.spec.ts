@@ -15,6 +15,7 @@ import {
   expectNoHorizontalScroll,
   expectOneLightA4Page,
   resetData,
+  selectDataSet,
 } from './support';
 
 test.describe('prototype build', () => {
@@ -88,7 +89,14 @@ test.describe('prototype build', () => {
     await expect(page.getByRole('table', { name: 'Invoices of the policy' })).toBeVisible();
 
     // A reload keeps the session (a deep link opens directly: the SPA fallback), persona and theme; the banner stays.
+    // The switch opens the persona's own screen, and a prototype build has no Data set switch (it serves DEMO).
     await page.getByRole('combobox', { name: 'Viewing as' }).selectOption('finance');
+    await expect(page).toHaveURL(/\/digest$/);
+    await page.getByRole('combobox', { name: 'Viewing as' }).selectOption('claims-handler');
+    await expect(page).toHaveURL(/\/actions$/);
+    await expect(page.getByLabel('Data set')).toHaveCount(0);
+    await page.getByRole('combobox', { name: 'Viewing as' }).selectOption('finance');
+    await expect(page).toHaveURL(/\/digest$/);
     await nav.getByRole('link', { name: 'Overview' }).click();
     await page.reload();
     await expect(page.getByRole('heading', { name: 'Overview', level: 1 })).toBeVisible();
@@ -105,8 +113,8 @@ test.describe('prototype build', () => {
     // Digest in the dark theme: both data sets print light on one A4 page, DEMO with its many more claims too.
     await nav.getByRole('link', { name: 'Digest' }).click();
     const sheet = page.getByRole('article', { name: 'Claims digest' });
-    for (const dataSet of ['DEMO', 'TEST']) {
-      await page.getByLabel('Data set').selectOption(dataSet);
+    for (const dataSet of ['DEMO', 'TEST'] as const) {
+      await selectDataSet(page, dataSet);
       await expect(sheet).toContainText(`Data set${dataSet}`);
       await expect(sheet.getByRole('region', { name: 'Open claims', exact: true })).toContainText(/\d/);
       await expect(sheet.getByRole('table', { name: 'Open actions' })).not.toHaveAttribute('aria-busy', 'true');
@@ -123,7 +131,7 @@ test.describe('prototype build', () => {
       await page.getByRole('button', { name: 'Save changes' }).click();
       await page.getByRole('dialog').getByRole('button', { name: 'Save changes' }).click();
     };
-    await page.getByLabel('Data set').selectOption('TEST');
+    await selectDataSet(page, 'TEST');
     await nav.getByRole('link', { name: 'Overview' }).click();
     await expect(card('High-value claims')).toContainText('1');
     await nav.getByRole('link', { name: 'Rules' }).click();
@@ -140,11 +148,13 @@ test.describe('prototype build', () => {
     await expect(card('High-value claims')).toContainText('0');
     await nav.getByRole('link', { name: 'Rules' }).click();
     await page.getByRole('combobox', { name: 'Viewing as' }).selectOption('claims-handler');
+    await nav.getByRole('link', { name: 'Rules' }).click();
     await expect(page.getByText('Read-only for this persona')).toBeVisible();
     await expect(highValue).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Save changes' })).toHaveCount(0);
     await expectNoAxeViolations(page);
     await page.getByRole('combobox', { name: 'Viewing as' }).selectOption('finance');
+    await nav.getByRole('link', { name: 'Rules' }).click();
     await page.getByRole('button', { name: 'Restore defaults' }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Restore defaults' }).click();
     await expect(page.getByText('The spec’s rules are back (version 3).')).toBeVisible();

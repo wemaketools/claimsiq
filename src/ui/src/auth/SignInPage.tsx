@@ -1,6 +1,6 @@
 /**
  * Sign-in. Prototype builds show the roles card and no form (PrototypeSignIn). Otherwise: email and password through supabase-js. Any failure shows ONE generic message, so the form cannot reveal
- * which accounts exist. After sign-in the user lands on the page they asked for, or on the first destination.
+ * which accounts exist. After sign-in the user lands on the page they asked for, or on the screen of the active persona (`/`).
  *
  * While a request runs the fields are read-only (not disabled), so keyboard focus stays in the form; after a failure
  * focus returns to the password field.
