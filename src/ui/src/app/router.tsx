@@ -28,7 +28,7 @@ import { RootLayout } from './RootLayout';
 import { RouteGuard } from './RouteGuard';
 import { LANDING_ROUTE } from './landing';
 import { LandingRedirect } from './LandingRedirect';
-import { features as registeredFeatures, navItemsFor } from './featureRegistry';
+import { destinationsOf, features as registeredFeatures } from './featureRegistry';
 import type { FeatureModule, FeatureRoute } from './featureRegistry';
 
 const lazyComponents = new WeakMap<FeatureRoute, ComponentType>();
@@ -64,7 +64,7 @@ function passwordPage(page: ReactNode): ReactNode {
 
 /** The route objects for a set of feature modules (exported for tests). */
 export function buildRoutes(modules: readonly FeatureModule[]): RouteObject[] {
-  const destinations = navItemsFor(modules).map((item) => item.to);
+  const destinations = destinationsOf(modules);
   if (destinations.length === 0) {
     throw new Error(
       'No navigation destination is registered: add a features/<feature>/routes.tsx with a nav item.',

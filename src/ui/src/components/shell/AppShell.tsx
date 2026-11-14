@@ -8,7 +8,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Outlet } from 'react-router';
 
-import { features, navItemsFor } from '../../app/featureRegistry';
+import { destinationsOf, features } from '../../app/featureRegistry';
 import type { FeatureModule } from '../../app/featureRegistry';
 import { t } from '../../lib/i18n';
 import { readStoredSidebarExpanded, storeSidebarExpanded } from '../../lib/storage';
@@ -47,7 +47,7 @@ export function AppShell({ modules = features }: { readonly modules?: readonly F
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [open]);
 
-  const destinations = useMemo(() => navItemsFor(modules).map((item) => item.to), [modules]);
+  const destinations = useMemo(() => destinationsOf(modules), [modules]);
   const slots = useMemo<PageSlots>(() => ({ title: titleSlot }), [titleSlot]);
 
   const classes = ['ciq-app'];

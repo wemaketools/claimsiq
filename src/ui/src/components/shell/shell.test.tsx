@@ -73,7 +73,7 @@ describe('the app shell', () => {
       await screen.findByRole('heading', { level: 1, name: 'Digest page' }),
     ).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/digest');
-    // The shell stayed mounted: the switch that was used still has focus and the page title was not remounted.
+    // The shell stayed mounted: the switch that was used is the same element and still has focus.
     expect(persona).toBeInTheDocument();
     expect(persona).toHaveFocus();
     await userEvent.click(screen.getByRole('button', { name: 'Use dark theme' }));
