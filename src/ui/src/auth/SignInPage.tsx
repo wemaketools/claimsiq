@@ -1,19 +1,23 @@
 /**
  * Sign-in. Prototype builds show the roles card and no form (PrototypeSignIn). Otherwise: email and password through supabase-js. Any failure shows ONE generic message, so the form cannot reveal
- * which accounts exist. After sign-in the user lands on the page they asked for, or on the first destination.
+ * which accounts exist. After sign-in the user lands on the page they asked for, or on the screen of the active persona (`/`).
  *
  * While a request runs the fields are read-only (not disabled), so keyboard focus stays in the form; after a failure
  * focus returns to the password field.
  *
  * Below the card, the demo accounts: a click sends the account's email to the server, which signs it in with the demo
- * password of its environment (the browser holds no password). When the server cannot (no password configured, or it
- * refuses), the email is filled into the form and a short message says why.
+ * password of its environment (the browser holds no password), and sets the persona to the account's, as a role click
+ * does in a prototype build. When the server cannot (no password configured, or it refuses), the email is filled into
+ * the form, a short message says why and the persona stays as it was. A typed sign-in never touches the persona.
  */
 import { Suspense, lazy, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, Navigate, useLocation } from 'react-router';
 
-import { useAppSelector } from '../app/hooks';
+import { LANDING_ROUTE } from '../app/landing';
+import { useAppDispatch, useAppSelector } from '../app/hooks';
+import type { PersonaId } from '../app/personas';
+import { choosePersona } from '../app/sessionActions';
 import { Banner } from '../components/ui/Banner';
 import { Button } from '../components/ui/Button';
 import { TextField } from '../components/ui/FormFields';
@@ -42,7 +46,9 @@ export function SignInPage() {
   const from = (location.state as FromState | null)?.from;
 
   if (authStatus === 'signedIn') {
-    return <Navigate to={from !== undefined && from !== '/signin' ? from : '/'} replace />;
+    return (
+      <Navigate to={from !== undefined && from !== '/signin' ? from : LANDING_ROUTE} replace />
+    );
   }
   return auth.mode === 'prototype' ? <PrototypeSignIn auth={auth} /> : <PasswordSignIn />;
 }
@@ -50,6 +56,7 @@ export function SignInPage() {
 function PasswordSignIn() {
   const auth = usePasswordAuth();
   const session = useAppSelector((state) => state.session);
+  const dispatch = useAppDispatch();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -69,13 +76,18 @@ function PasswordSignIn() {
     }
   };
 
-  const signInAsDemo = async (address: string): Promise<void> => {
+  const signInAsDemo = async (address: string, persona: PersonaId): Promise<void> => {
     setSubmitting(true);
     setFailed(false);
     setDemoNotice(null);
+    // Set before the call and put back on a failure: the session event of a success sends the visitor to `/` at once,
+    // and `/` reads the persona.
+    const previous = session.persona;
+    dispatch(choosePersona(persona));
     const result = await auth.signInAsDemo(address);
     setSubmitting(false);
     if (!result.ok) {
+      dispatch(choosePersona(previous));
       setEmail(address);
       setPassword('');
       setDemoNotice(result.reason);
@@ -97,7 +109,7 @@ function PasswordSignIn() {
           <Suspense fallback={null}>
             <DemoSignInAccounts
               disabled={submitting}
-              onPick={(address) => void signInAsDemo(address)}
+              onPick={(address, persona) => void signInAsDemo(address, persona)}
             />
           </Suspense>
         ) : undefined

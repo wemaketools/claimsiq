@@ -46,7 +46,7 @@ import type { KeyValueStore } from './storage.js';
 export interface MockApiOptions {
   readonly fixtures: Readonly<Record<DataSetId, FixtureFiles>>;
   readonly storage: KeyValueStore;
-  /** The spec's rule config as JSON (`fixtures/v1/proposed_rule_config.json`), the defaults a saved one is kept over; an invalid one fails when the API is created. */
+  /** The spec's rule config as JSON (`fixtures/v2/proposed_rule_config.json`), the defaults a saved one is kept over; an invalid one fails when the API is created. */
   readonly ruleConfig: unknown;
   readonly now?: () => Date;
 }

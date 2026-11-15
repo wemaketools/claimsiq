@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { Outlet } from 'react-router';
 
+import { LandingRedirect } from '../../app/LandingRedirect';
 import type { FeatureModule } from '../../app/featureRegistry';
 import { createAppStore } from '../../app/store';
 import { signedInSession } from '../../test/fixtures';
@@ -17,6 +18,7 @@ const modules: FeatureModule[] = [
     nav: [
       { id: 'second', label: 'ui.action.dismiss', path: 'second', order: 2, icon: 'list' },
       { id: 'first', label: 'ui.action.retry', path: 'first', order: 1, icon: 'dashboard' },
+      { id: 'digest', label: 'ui.action.close', path: 'digest', order: 3, icon: 'list' },
     ],
   },
 ];
@@ -24,11 +26,14 @@ const modules: FeatureModule[] = [
 function renderShell(options: Parameters<typeof renderRouteTree>[1]) {
   return renderRouteTree(
     [
+      // Outside the shell, as in the real router.
+      { path: '/', element: <LandingRedirect destinations={['/first', '/digest']} /> },
       {
         element: <AppShell modules={modules} />,
         children: [
           { path: 'first', element: <PageHeader title="First page" /> },
           { path: 'second', element: <Outlet /> },
+          { path: 'digest', element: <PageHeader title="Digest page" /> },
         ],
       },
     ],
@@ -40,7 +45,7 @@ describe('the app shell', () => {
   it('shows the tenant, brand, ordered nav and page title; switches persona and theme and remembers them; signs out', async () => {
     const auth = stubAuth();
     const store = createAppStore({ session: signedInSession() });
-    renderShell({ store, auth, route: '/first' });
+    const { router } = renderShell({ store, auth, route: '/first' });
 
     const sidebar = screen.getByRole('complementary', { name: 'Main navigation and account' });
     expect(within(sidebar).getByText('Fictional Botswana insurer demo')).toBeInTheDocument();
@@ -49,7 +54,11 @@ describe('the app shell', () => {
     const links = within(screen.getByRole('navigation', { name: 'Main navigation' })).getAllByRole(
       'link',
     );
-    expect(links.map((link) => link.getAttribute('href'))).toEqual(['/first', '/second']);
+    expect(links.map((link) => link.getAttribute('href'))).toEqual([
+      '/first',
+      '/second',
+      '/digest',
+    ]);
     expect(links[0]).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('heading', { level: 1, name: 'First page' })).toBeInTheDocument();
 
@@ -60,6 +69,13 @@ describe('the app shell', () => {
         .map((option) => option.textContent),
     ).toEqual(['Head of Claims', 'Claims Handler', 'Supplier Coordinator', 'Finance']);
     await userEvent.selectOptions(persona, 'finance');
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Digest page' }),
+    ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/digest');
+    // The shell stayed mounted: the switch that was used is the same element and still has focus.
+    expect(persona).toBeInTheDocument();
+    expect(persona).toHaveFocus();
     await userEvent.click(screen.getByRole('button', { name: 'Use dark theme' }));
 
     expect(store.getState().session).toMatchObject({ persona: 'finance', theme: 'dark' });
@@ -103,5 +119,42 @@ describe('the app shell', () => {
 
     expect(menuButton).toHaveAttribute('aria-expanded', 'false');
     expect(screen.getByRole('main')).toHaveFocus();
+  });
+
+  it('offers the full-sidebar toggle only in the icon rail, remembers the choice and treats an unknown value as collapsed', async () => {
+    const original = window.matchMedia;
+    const mockRail = (rail: boolean): void => {
+      vi.spyOn(window, 'matchMedia').mockImplementation((query: string) => ({
+        ...original(query),
+        matches: rail && query === '(min-width: 768px) and (max-width: 1279px)',
+      }));
+    };
+
+    mockRail(false);
+    const wide = renderShell({ state: { session: signedInSession() }, route: '/first' });
+    expect(screen.queryByRole('button', { name: 'Full sidebar' })).not.toBeInTheDocument();
+    wide.unmount();
+
+    window.localStorage.setItem('ciq.sidebar', 'sideways');
+    mockRail(true);
+    const rail = renderShell({ state: { session: signedInSession() }, route: '/first' });
+    const toggle = screen.getByRole('button', { name: 'Full sidebar' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(document.querySelector('.ciq-app')).not.toHaveClass('ciq-app--sidebar-expanded');
+
+    await userEvent.click(toggle);
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(toggle).toHaveFocus();
+    expect(document.querySelector('.ciq-app')).toHaveClass('ciq-app--sidebar-expanded');
+    expect(window.localStorage.getItem('ciq.sidebar')).toBe('expanded');
+    rail.unmount();
+
+    renderShell({ state: { session: signedInSession() }, route: '/first' });
+    const restored = screen.getByRole('button', { name: 'Full sidebar' });
+    expect(restored).toHaveAttribute('aria-expanded', 'true');
+    await userEvent.click(restored);
+    expect(restored).toHaveAttribute('aria-expanded', 'false');
+    expect(window.localStorage.getItem('ciq.sidebar')).toBe('collapsed');
   });
 });

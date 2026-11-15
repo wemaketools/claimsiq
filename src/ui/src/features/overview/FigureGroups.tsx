@@ -8,17 +8,21 @@ export function FigureGroups({
   summary,
   Heading,
   headingClassName,
+  withNotes = false,
 }: {
   readonly summary: ClaimsSummary;
   /** The element of a group's heading, chosen by where the groups sit in the page's outline. */
   readonly Heading: 'h2' | 'h4';
   readonly headingClassName: string;
+  /** Shows the line under a group's heading that says what moves its cards; the Digest's printed sheet leaves it out. */
+  readonly withNotes?: boolean;
 }) {
   return (
     <>
       {overviewFigures(summary).map((group) => (
         <section key={group.heading} className="ciq-stack">
           <Heading className={headingClassName}>{group.heading}</Heading>
+          {withNotes && group.note !== undefined && <p className="ciq-text-muted">{group.note}</p>}
           <KpiGrid>
             {group.figures.map((figure) => (
               <KpiCard

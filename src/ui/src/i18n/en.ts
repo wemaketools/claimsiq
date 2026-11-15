@@ -14,7 +14,7 @@ export const shellCatalog = {
       iq: 'IQ',
       sub: 'Claims Intelligence',
     },
-    sidebar: { label: 'Main navigation and account' },
+    sidebar: { label: 'Main navigation and account', expand: 'Full sidebar' },
     nav: {
       label: 'Main navigation',
     },

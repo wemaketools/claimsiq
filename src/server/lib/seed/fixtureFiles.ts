@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import type { DataSetId } from '../../../contracts/index.js';
 import type { FixtureFiles } from '../../../read-model/index.js';
 
-const FIXTURE_ROOT = fileURLToPath(new URL('../../../../fixtures/v1/', import.meta.url));
+const FIXTURE_ROOT = fileURLToPath(new URL('../../../../fixtures/v2/', import.meta.url));
 
 export function readFixtureFiles(folder: 'test' | 'demo'): FixtureFiles {
   const dir = `${FIXTURE_ROOT}${folder}/`;

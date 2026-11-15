@@ -55,12 +55,13 @@ test.describe('shell', () => {
     await expect(page).toHaveURL(/\/signin$/);
   });
 
-  test('a demo account signs in to Overview, walks the eight destinations, keeps persona and theme across a reload, and signs out', async ({
+  test('a demo account signs in to the screen of its role, walks the eight destinations, keeps persona and theme across a reload, and signs out', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1366, height: 768 });
     await signInAsRole(page, 'Finance', 'finance');
-    await expect(page).toHaveURL(/\/overview$/);
+    await expect(page).toHaveURL(/\/digest$/);
+    await expect(page.getByRole('combobox', { name: 'Viewing as' })).toHaveValue('finance');
     await resetData(page, 'DEMO');
     const sidebar = page.getByRole('complementary', { name: 'Main navigation and account' });
     await expect(sidebar.locator('.ciq-brand-name')).toHaveText('ClaimsIQ');
@@ -113,7 +114,7 @@ test.describe('shell', () => {
     await expect(queueRow).toContainText('In progress');
     await queueRow.getByRole('button', { name: /^History of/ }).click();
     const history = page.getByRole('dialog', { name: /^Task TASK-/ });
-    await expect(history.getByRole('listitem').filter({ hasText: 'Created as Open' })).toContainText('Head of Claims');
+    await expect(history.getByRole('listitem').filter({ hasText: 'Created as Open' })).toContainText('Finance');
     await expect(history.getByText('Status changed from Open to In progress')).toBeVisible();
     await expectNoAxeViolations(page);
     await page.keyboard.press('Escape');

@@ -4,10 +4,10 @@
  */
 import { createMockApi } from '../../../mock-api/index';
 import type { KeyValueStore } from '../../../mock-api/index';
-import ruleConfig from '../../../../fixtures/v1/proposed_rule_config.json';
+import ruleConfig from '../../../../fixtures/v2/proposed_rule_config.json';
 import type { ApiTransport } from './client';
 
-const files = import.meta.glob('../../../../fixtures/v1/*/*.csv', {
+const files = import.meta.glob('../../../../fixtures/v2/*/*.csv', {
   query: '?raw',
   import: 'default',
   eager: true,
@@ -16,7 +16,7 @@ const files = import.meta.glob('../../../../fixtures/v1/*/*.csv', {
 function folderFiles(folder: 'test' | 'demo'): Record<string, string> {
   return Object.fromEntries(
     Object.entries(files)
-      .filter(([path]) => path.includes(`/v1/${folder}/`))
+      .filter(([path]) => path.includes(`/v2/${folder}/`))
       .map(([path, text]) => [path.slice(path.lastIndexOf('/') + 1), text]),
   );
 }

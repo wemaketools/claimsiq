@@ -82,3 +82,7 @@ export function navItemsFor(modules: readonly FeatureModule[]): ResolvedNavItem[
     .map((item) => ({ ...item, to: appPath(item.path) }))
     .sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
 }
+
+export function destinationsOf(modules: readonly FeatureModule[]): string[] {
+  return navItemsFor(modules).map((item) => item.to);
+}

@@ -1,10 +1,12 @@
 /**
  * The top bar (at least 64px high, sticky; below 768px it wraps the data controls onto a second row): the menu button below 768px, the page title (from PageHeader), the data controls, the
- * persona switch and the theme toggle. The persona switch and the toggle are always the last items, so they never move between pages.
+ * persona switch and the theme toggle. Switching the persona navigates straight to the new persona's screen (`landingPathFor`), so the shell stays mounted. The persona switch and the toggle are always the last items, so they never move between pages.
  * Pages never put actions here; their primary action renders in the page head (PageHeader).
  */
 import type { Ref } from 'react';
+import { useNavigate } from 'react-router';
 
+import { landingPathFor } from '../../app/landing';
 import { PERSONA_IDS, isPersonaId } from '../../app/personas';
 import { useAppDispatch, usePersona } from '../../app/hooks';
 import { choosePersona } from '../../app/sessionActions';
@@ -20,14 +22,24 @@ export interface TopbarProps {
   readonly onOpenMenu: () => void;
   readonly menuOpen: boolean;
   readonly sidebarId: string;
+  /** The registered nav destinations, which `landingPathFor` picks the persona's screen from. */
+  readonly destinations: readonly string[];
   /** Receives the menu button, so the drawer can return focus to it. */
   readonly menuButtonRef?: Ref<HTMLButtonElement>;
 }
 
 const SWITCH_ID = 'ciq-persona-switch';
 
-export function Topbar({ titleRef, onOpenMenu, menuOpen, sidebarId, menuButtonRef }: TopbarProps) {
+export function Topbar({
+  titleRef,
+  onOpenMenu,
+  menuOpen,
+  sidebarId,
+  menuButtonRef,
+  destinations,
+}: TopbarProps) {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const persona = usePersona();
   const themeToggle = useThemeToggle();
 
@@ -55,6 +67,7 @@ export function Topbar({ titleRef, onOpenMenu, menuOpen, sidebarId, menuButtonRe
           onChange={(event) => {
             if (isPersonaId(event.target.value)) {
               dispatch(choosePersona(event.target.value));
+              void navigate(landingPathFor(event.target.value, destinations));
             }
           }}
         >

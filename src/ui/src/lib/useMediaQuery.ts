@@ -1,9 +1,10 @@
 /**
- * Subscribes to a CSS media query (the shell is an icon rail below 1280px by CSS alone and a drawer below 768px).
+ * Subscribes to a CSS media query (the drawer below 768px and the icon rail from 768 to 1279px are also set by CSS).
  */
 import { useCallback, useSyncExternalStore } from 'react';
 
 export const DRAWER_QUERY = '(max-width: 767px)';
+export const RAIL_QUERY = '(min-width: 768px) and (max-width: 1279px)';
 
 function media(query: string): MediaQueryList | null {
   return typeof window !== 'undefined' && typeof window.matchMedia === 'function'

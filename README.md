@@ -7,7 +7,7 @@
 Stage A builds the P0 requirements of `ai/specs` on the specs' synthetic TEST and DEMO data, and is complete: the stack, the design system, the app shell, real sign-in against a local Supabase stack (or a role click in the hosted prototype), the persona switch, CI, the typed in-browser mock API over the fixtures, the rules engine, and all six screens of the shell (Overview, Stages & Aging, Exceptions & SLA, Claims, Suppliers, Action Queue) plus Claim Detail and the policy invoices, each with its loading, empty and error states. Stage B adds the real backend: the local Supabase stack also holds the database (schema, tenant isolation and the fixture seed, see "The local database") and a Hono API serves every screen from it (see "The API"). Signed in against the local stack, the app reads and writes the database through the API and what you change (tasks, assignments, status, the audit trail) is kept there until Reset; the hosted prototype build is unchanged and still runs on the in-browser mock API, with changes kept in the browser. The P1 features are in both modes (see "The P1 screens"), and the 16 acceptance tests of the spec pass in both (`bun run test:e2e`).
 
 - `docs/acceptance.md`: the spec's 16 acceptance tests (CLM-AT-01 to 16), where each is asserted in the prototype and in the API mode, and the result.
-- `docs/demo-script.md`: the 7 to 9 minute Head of Claims demo, step by step, for the hosted prototype, and a 4 minute click-through of the P1 features.
+- `docs/demo-script.md`: the 7 to 9 minute Head of Claims demo, step by step, for the hosted prototype (DEMO data), and a 4 minute click-through of the P1 features.
 - `docs/technical/`: how it is built (architecture and the database, the frontend, testing and CI).
 - `CLAUDE.md`: the order of truth and the rules; `docs/plan/design-decisions.md`: the decisions.
 
@@ -37,7 +37,7 @@ bun run db:reset              # build the local database: migrations, demo accou
 bun run dev                   # the API on http://127.0.0.1:5274 and the SPA on http://localhost:5273
 ```
 
-Open http://localhost:5273 and sign in. The sign-in page lists the demo accounts; a click signs in through the server (see Demo accounts below), and a prototype build lists roles instead. Stop the stack with `bun run supabase:stop`.
+Open http://localhost:5273 and sign in. The sign-in page lists the demo accounts; a click signs in through the server (see Demo accounts below), and a prototype build lists roles instead. Each role lands on its own screen: Head of Claims on Overview, Claims Handler on Action Queue, Supplier Coordinator on Suppliers and Finance on Digest. Stop the stack with `bun run supabase:stop`.
 
 If you only want to look at the app, skip Supabase and `.env.local`: `bun run dev:prototype` runs the same app with a role click instead of a password (see "Prototype mode" below).
 
@@ -62,7 +62,7 @@ The schema is plain SQL in `supabase/migrations`. The tables are keyed `(tenant_
 |---|---|
 | `bun run db:migrate` | Applies the migrations the local database has not seen (`supabase migration up --local`) |
 | `bun run db:reset` | Rebuilds the local database from empty: all migrations, the demo accounts (`auth:personas`), then the seed. Refuses any database that is not the local stack |
-| `bun run db:seed` | Replaces the TEST and DEMO rows from `fixtures/v1` through the fixture loader and links the four demo accounts to both tenants. Prints the row counts and every quarantined row. `-- --data-set TEST` seeds one |
+| `bun run db:seed` | Replaces the TEST and DEMO rows from `fixtures/v2` through the fixture loader and links the four demo accounts to both tenants. Prints the row counts and every quarantined row. `-- --data-set TEST` seeds one |
 | `bun run db:types` | Regenerates the Kysely table types (`src/server/lib/db/generated/schema.ts`) after a migration |
 
 A new migration is a new file in `supabase/migrations` (never an edit of an applied one), then `bun run db:migrate` and `bun run db:types`.
@@ -98,12 +98,12 @@ curl -s localhost:5274/api/v1/claim-facts -H "Authorization: Bearer $TOKEN" -H '
 
 ### The P1 screens
 
-The P1 requirements (CL §2) work in both modes, on TEST and DEMO, and follow the shared filters and the as-of date.
+The P1 requirements (CL §2) work in both modes, on the data set in view (DEMO in the hosted prototype, TEST or DEMO in the local build), and follow the shared filters and the as-of date.
 
 | Screen | What it does |
 |---|---|
 | **Claim Detail, Stage what-if** | On any claim, choose a stage the claim may move to and read the stage clock, SLA and severity the rules engine would give it, beside the real view. Nothing is saved, and Reset or a reload drops it. A closed claim offers only Reopened |
-| **Rules** (`/rules`) | The editor of the rule configuration for the selected data set: the target days of each stage, the supplier wait target and sample minimum, the money thresholds (material reserve change, high-value line) and the severity and age-bucket values. The Head of Claims edits it; other personas read it. Save and Restore defaults are confirmed, each changed value is audited with who and when, a stale save is refused, and every figure follows the new values. **Reset** restores the spec's configuration |
+| **Rules** (`/rules`) | The editor of the rule configuration for the selected data set: the target days of each stage, the supplier wait target and sample minimum, the money thresholds (material reserve change, high-value line) and the severity and age-bucket values. The Head of Claims and Finance edit it; other personas read it. Save and Restore defaults are confirmed, each changed value is audited with who and when, a stale save is refused, and every figure follows the new values. **Reset** restores the spec's configuration |
 | **Overview, Paid by month** and **Suppliers, Waits against the baseline** | Posted paid per calendar month up to the as-of date (it adds up to Paid to date), and the median and 90th percentile open-request wait of each supplier against the target and against all suppliers together. A supplier with fewer requests than the sample minimum shows its count and no percentile |
 | **Digest** (`/digest`) | The position on one printable page: headline figures, top exceptions, material reserve movements, supplier delays and open actions, with the data set, the as-of date and the filters in its header. **Print or save as PDF** gives one A4 page, light whatever the screen theme. It adds no figure of its own |
 
@@ -120,7 +120,11 @@ There is one account per persona. Locally they all have the password **`test1234
 | `supplier.coordinator@claimsiq.local` | Supplier Coordinator |
 | `finance@claimsiq.local` | Finance |
 
-The account only signs you in. The **Viewing as** switch in the top bar chooses the persona the shell shows; it is a demo convenience and not authentication, and it is remembered in the browser.
+The account only signs you in. The **Viewing as** switch in the top bar chooses the persona the shell shows and opens that persona's landing screen; it is a demo convenience and not authentication, and it is remembered in the browser. A click on a demo account sets the persona to that account's, so it lands on that role's screen; a sign-in by typed e-mail and password keeps the stored persona. A signed-out deep link still wins.
+
+### The sidebar
+
+Below 1280px the sidebar is an icon strip; between 768 and 1279px the profile menu opens in full over the page and a **Full sidebar** toggle at the bottom expands the strip to the full sidebar. The choice is remembered in the browser (`ciq.sidebar`). Below 768px the sidebar is a drawer.
 
 ### The data controls
 
@@ -128,14 +132,14 @@ The top bar carries the controls that decide which figures you see, and they are
 
 | Control | What it does |
 |---|---|
-| **Data set** | `TEST` is the spec's golden set (6 claims, 5 open, P9,000 paid, P68,000 reserve, P77,000 incurred); `DEMO` is the 30-claim fictional insurer. The app opens on DEMO. The two never mix. |
+| **Data set** | `TEST` is the spec's golden set (6 claims, 5 open, P9,000 paid, P68,000 reserve, P77,000 incurred); `DEMO` is the 30-claim fictional insurer. The app opens on DEMO. The two never mix. This switch is in the local (password) build only; the hosted prototype serves DEMO. |
 | **As of** | The snapshot date (21 Oct 2026 by default). Every figure, age and service-level count is derived at this date. |
 | **Data issues (n)** | Lists rows the loader left out or flagged, each with its file, row, field, problem and fix. |
 | **Reset** | Asks to confirm, then removes the tasks and status changes you made on the selected data set (in the database through the API, or in the browser in a prototype build); the fixture shows exactly as loaded. The data set and the as-of date stay. |
 
 ## Prototype mode and the hosted demo
 
-A **prototype build** is a static demo: no Supabase, no passwords, no environment variables. The sign-in page lists the four demo roles, a click signs in as that role, every screen runs on the in-browser mock API over the synthetic fixtures, and every page shows the banner "Prototype: synthetic demo data". The mode is chosen when the app is built, by `VITE_AUTH_MODE=prototype`.
+A **prototype build** is a static demo: no Supabase, no passwords, no environment variables. The sign-in page lists the four demo roles, a click signs in as that role and opens that role's landing screen, every screen runs on the in-browser mock API over the synthetic fixtures, and every page shows the banner "Prototype: synthetic demo data". It serves the DEMO data set only and has no Data set switch; the golden TEST set is in the local build, and the acceptance spec (`e2e_tests/specs/acceptance.spec.ts`) reaches it in the prototype through a storage key that only tests write. The mode is chosen when the app is built, by `VITE_AUTH_MODE=prototype`.
 
 ```bash
 bun run dev:prototype      # the SPA on http://localhost:5273 in prototype mode (no stack, no .env.local)
@@ -148,7 +152,7 @@ bun run build:prototype    # the static build in src/ui/dist
 
 1. In Vercel choose **Add New, Project**, import this repository and pick the branch to deploy. Leave the framework (Vite), install command, build command and output directory as the project detects them from `vercel.json`.
 2. Do not add any environment variable. `vercel.json` already sets what the build needs: it installs with `bun install --frozen-lockfile`, builds with `VITE_AUTH_MODE=prototype bun run build` (typecheck, then the SPA in prototype mode), serves `src/ui/dist`, and rewrites every other path to `index.html`, so a link such as `/claims/DCLM-002` (a claim in the DEMO data set the prototype opens on) opens directly. The deploy has no function either: `.vercelignore` leaves `api/` out, because the API ships only once a hosted database exists (DD-59).
-3. Deploy. Open the URL, click a role: it lands on Overview under the banner.
+3. Deploy. Open the URL, click a role: it lands on that role's screen (Head of Claims on Overview) under the banner.
 
 The deployed site is static files only. It calls no server, and the data it shows is synthetic. What a visitor changes (tasks, status) stays in their own browser until **Reset**. To check a build before deploying: `bun run build:prototype`, then `bun run --filter @claimsiq/ui preview` and open http://localhost:4273.
 

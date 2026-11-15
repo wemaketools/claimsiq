@@ -1,12 +1,15 @@
-import { screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { DEMO_ACCOUNTS } from '../../../contracts/index';
-import { PERSONA_IDS } from '../app/personas';
+import { LandingRedirect } from '../app/LandingRedirect';
+import { PERSONA_IDS, PERSONA_LANDING } from '../app/personas';
+import { authSignedIn, personaChanged, signedOut as signedOutAction } from '../app/slices/session';
+import { createAppStore } from '../app/store';
 import { t } from '../lib/i18n';
 import { LocationProbe, renderWithProviders, stubAuth } from '../test/render';
-import { signedInSession, signedOutSession } from '../test/fixtures';
+import { makeUser, signedInSession, signedOutSession } from '../test/fixtures';
 import { ForgotPasswordPage } from './ForgotPasswordPage';
 import { ResetPasswordPage } from './ResetPasswordPage';
 import { SignInPage } from './SignInPage';
@@ -50,22 +53,37 @@ describe('sign-in', () => {
     error.mockRestore();
   });
 
-  it('lists one demo account per persona and signs in as the chosen one through the server; when the server cannot, it fills the email and says why; a signed-in visitor is sent on', async () => {
+  it('lists one demo account per persona and signs in as the chosen one through the server; a success sets that persona and lands on its screen unless a deep link was asked for, a failure fills the email, says why and keeps the persona, and a typed sign-in leaves it alone; a signed-in visitor is sent on', async () => {
+    const store = createAppStore({ session: signedOut });
+    const markSignedIn = (): void => {
+      store.dispatch(authSignedIn({ user: makeUser() }));
+    };
     const auth = stubAuth({
       signInAsDemo: vi
         .fn()
         .mockResolvedValueOnce({ ok: false, reason: 'not_configured' })
         .mockResolvedValueOnce({ ok: false, reason: 'failed' })
-        .mockResolvedValue({ ok: true }),
+        .mockImplementation(() => {
+          markSignedIn();
+          return Promise.resolve({ ok: true });
+        }),
+      signIn: vi.fn(() => {
+        markSignedIn();
+        return Promise.resolve({ ok: true });
+      }),
     });
-    const { unmount } = renderWithProviders(<SignInPage />, {
-      state: { session: signedOut },
-      auth,
-    });
+    const landingRoutes = [
+      { path: '/', element: <LandingRedirect destinations={Object.values(PERSONA_LANDING)} /> },
+      { path: '/digest', element: <LocationProbe label="digest" /> },
+      { path: '/claims', element: <LocationProbe label="claims" /> },
+    ];
+    const options = { store, path: '/signin', route: '/signin', routes: landingRoutes };
+    const first = renderWithProviders(<SignInPage />, { ...options, auth });
     expect(screen.getByRole('heading', { name: 'Demo accounts' })).toBeInTheDocument();
     expect(DEMO_ACCOUNTS.map((account) => account.fullName)).toEqual(
       PERSONA_IDS.map((id) => t(`shell.persona.${id}`)),
     );
+    expect(DEMO_ACCOUNTS.map((account) => account.persona)).toEqual(PERSONA_IDS);
 
     await userEvent.click(await screen.findByRole('button', { name: /Finance/ }));
     expect(auth.signInAsDemo).toHaveBeenLastCalledWith('finance@claimsiq.local');
@@ -74,19 +92,40 @@ describe('sign-in', () => {
     ).toBeInTheDocument();
     expect(screen.getByLabelText(/Email address/)).toHaveValue('finance@claimsiq.local');
     expect(screen.getByLabelText(/Password/)).toHaveFocus();
+    expect(store.getState().session.persona).toBe('head-of-claims');
 
     await userEvent.click(screen.getByRole('button', { name: /Claims Handler/ }));
     expect(
       await screen.findByText(/Demo sign-in did not work for this account/),
     ).toBeInTheDocument();
     expect(screen.getByLabelText(/Email address/)).toHaveValue('claims.handler@claimsiq.local');
+    expect(store.getState().session.persona).toBe('head-of-claims');
+    expect(window.localStorage.getItem('ciq.persona')).toBe('head-of-claims');
 
-    await userEvent.click(screen.getByRole('button', { name: /Head of Claims/ }));
-    await waitFor(() =>
-      expect(screen.queryByText(/Demo sign-in did not work/)).not.toBeInTheDocument(),
-    );
+    await userEvent.click(screen.getByRole('button', { name: /Finance/ }));
+    expect(await screen.findByTestId('location-probe')).toHaveTextContent('digest');
+    expect(store.getState().session.persona).toBe('finance');
     expect(auth.signIn).not.toHaveBeenCalled();
-    unmount();
+    first.unmount();
+
+    // A signed-out deep link still wins over the landing screen of the account's persona.
+    store.dispatch(signedOutAction());
+    const deepLinked = renderWithProviders(<SignInPage />, { ...options, auth });
+    await act(() => deepLinked.router.navigate('/signin', { state: { from: '/claims' } }));
+    await userEvent.click(await screen.findByRole('button', { name: /Head of Claims/ }));
+    expect(await screen.findByTestId('location-probe')).toHaveTextContent('claims');
+    expect(store.getState().session.persona).toBe('head-of-claims');
+    deepLinked.unmount();
+
+    // A typed sign-in keeps the stored persona.
+    store.dispatch(signedOutAction());
+    store.dispatch(personaChanged('finance'));
+    const typed = renderWithProviders(<SignInPage />, { ...options, auth });
+    await userEvent.type(screen.getByLabelText(/Email address/), 'head.of.claims@claimsiq.local');
+    await userEvent.type(screen.getByLabelText(/Password/), 'secret{Enter}');
+    expect(await screen.findByTestId('location-probe')).toHaveTextContent('digest');
+    expect(store.getState().session.persona).toBe('finance');
+    typed.unmount();
 
     renderWithProviders(<SignInPage />, {
       state: { session: signedInSession() },

@@ -1,14 +1,15 @@
 /**
  * Data context slice: the data set (TEST or DEMO; its tenant follows) and the as-of date every read uses. Both are
  * remembered in the browser and read once when the store is created, so a refresh keeps them. Writing them is the
- * job of the actions in `../dataContextActions.ts`.
+ * job of the actions in `../dataContextActions.ts`. A prototype build has no data set switch and serves DEMO.
  */
 import { createSlice } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
 
 import { DEFAULT_AS_OF, DEFAULT_DATA_SET } from '../../../../contracts/index';
 import type { DataSetId } from '../../../../contracts/index';
-import { readStoredAsOf, readStoredDataSet } from '../../lib/storage';
+import { authMode } from '../../auth/authMode';
+import { readStoredAsOf, readStoredDataSet, readStoredPrototypeDataSet } from '../../lib/storage';
 
 export interface DataContextState {
   readonly dataSet: DataSetId;
@@ -18,7 +19,9 @@ export interface DataContextState {
 
 function initialDataContext(): DataContextState {
   return {
-    dataSet: readStoredDataSet() ?? DEFAULT_DATA_SET,
+    dataSet:
+      (authMode() === 'prototype' ? readStoredPrototypeDataSet() : readStoredDataSet()) ??
+      DEFAULT_DATA_SET,
     asOf: readStoredAsOf() ?? DEFAULT_AS_OF,
   };
 }

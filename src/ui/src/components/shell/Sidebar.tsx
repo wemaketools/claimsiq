@@ -1,7 +1,7 @@
 /**
  * The sidebar: the tenant label, the wordmark Claims + accent IQ and "Claims Intelligence"; navigation built from
- * the feature registry; the user card at the bottom. Below 1280px it collapses to an icon rail, below 768px it is a
- * drawer.
+ * the feature registry; the user card and, in the icon rail, the toggle for the full sidebar at the bottom. Below
+ * 1280px it collapses to an icon rail, below 768px it is a drawer.
  */
 import { NavLink } from 'react-router';
 
@@ -18,9 +18,11 @@ export interface SidebarProps {
   readonly id?: string;
   /** The feature modules to build the navigation from (default: the registry). */
   readonly modules?: readonly FeatureModule[];
+  /** Given only in the icon rail (768 to 1279px): the full-sidebar toggle at the bottom. */
+  readonly widthToggle?: { readonly expanded: boolean; readonly onToggle: () => void };
 }
 
-export function Sidebar({ onNavigate, id, modules = features }: SidebarProps) {
+export function Sidebar({ onNavigate, id, modules = features, widthToggle }: SidebarProps) {
   const items = navItemsFor(modules);
   const tenant = useTenant();
   return (
@@ -62,6 +64,18 @@ export function Sidebar({ onNavigate, id, modules = features }: SidebarProps) {
         </ul>
       </nav>
       <UserCard />
+      {widthToggle !== undefined && (
+        <button
+          type="button"
+          className="ciq-sidebar-toggle"
+          title={t('shell.sidebar.expand')}
+          aria-expanded={widthToggle.expanded}
+          onClick={widthToggle.onToggle}
+        >
+          <Icon name={widthToggle.expanded ? 'chevronsLeft' : 'chevronsRight'} />
+          <span className="ciq-sidebar-toggle-label">{t('shell.sidebar.expand')}</span>
+        </button>
+      )}
     </aside>
   );
 }

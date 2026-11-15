@@ -1,4 +1,17 @@
 {
-  "version": 1,
-  "verify": ["bun", "run", "verify"]
+	"version": 1,
+	"verify": [
+		"bun",
+		"run",
+		"verify"
+	],
+	"resumeBuffer": "ai/current.md",
+	"gates": {
+		"codeRoots": [
+			"api",
+			"e2e_tests",
+			"scripts",
+			"src"
+		]
+	}
 }

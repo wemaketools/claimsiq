@@ -52,5 +52,12 @@ describe('Overview paid by month', () => {
     // On 10 Oct the 13 Oct payment is not posted yet: October is a month of 0.00, not a gap, and stops at the as-of date.
     fireEvent.change(screen.getByLabelText('As of'), { target: { value: '2026-10-10' } });
     await waitFor(() => expect(months()).toEqual(['Sep 2026P5,000.00', 'Oct 2026P0.00']));
+
+    // Before the October payment every payment falls in September, and the card says so.
+    fireEvent.change(screen.getByLabelText('As of'), { target: { value: '2026-09-30' } });
+    await waitFor(() => expect(months()).toEqual(['Sep 2026P5,000.00']));
+    expect(screen.getByRole('region', { name: 'Paid by month' })).toHaveTextContent(
+      'All posted payments fall in Sep 2026.',
+    );
   });
 });

@@ -140,7 +140,12 @@ export default function OverviewPage() {
       >
         {(data) => (
           <div className="ciq-page" aria-busy={scope.facts.isFetching}>
-            <FigureGroups summary={data.summary} Heading="h2" headingClassName="ciq-card-title" />
+            <FigureGroups
+              summary={data.summary}
+              Heading="h2"
+              headingClassName="ciq-card-title"
+              withNotes
+            />
             <PaidTrendCard query={trend} />
             <Breakdowns summary={data.summary} />
           </div>

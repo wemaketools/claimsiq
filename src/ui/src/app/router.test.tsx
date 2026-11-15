@@ -1,14 +1,14 @@
-import { act, screen, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
 import type { ApiTransport } from '../api/client';
 import { createMockTransport } from '../api/mockTransport';
-import { signedInSession } from '../test/fixtures';
+import { makeUser, signedInSession } from '../test/fixtures';
 import { renderRouteTree } from '../test/render';
 import { features } from './featureRegistry';
 import { buildRoutes } from './router';
-import { signedOut } from './slices/session';
+import { authSignedIn, personaChanged, signedOut } from './slices/session';
 import { createAppStore } from './store';
 
 const PAGES = [
@@ -56,6 +56,51 @@ describe('the application routes', () => {
       await screen.findByRole('heading', { level: 1, name: 'Page not found' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: 'Main navigation' })).toBeInTheDocument();
+  });
+
+  it('opens each persona on its own screen at "/", and after a sign-in sends a deep link where it was asked and "/" to the persona\'s screen', async () => {
+    const landings = [
+      ['head-of-claims', '/overview', 'Overview'],
+      ['claims-handler', '/actions', 'Action Queue'],
+      ['supplier-coordinator', '/suppliers', 'Suppliers'],
+      ['finance', '/digest', 'Digest'],
+    ] as const;
+    for (const [persona, path, title] of landings) {
+      const { router, unmount } = renderRouteTree(buildRoutes(features), {
+        state: { session: signedInSession({ persona }) },
+        transport: createMockTransport(),
+      });
+
+      expect(await screen.findByRole('heading', { level: 1, name: title })).toBeInTheDocument();
+      expect(router.state.location.pathname).toBe(path);
+      unmount();
+    }
+
+    // Signed out: "/" and a deep link both go to sign-in; once signed in as another persona, "/" opens that
+    // persona's screen and the deep link still opens the address that was asked for.
+    for (const [asked, expected] of [
+      ['/', '/actions'],
+      ['/claims/CLM-101', '/claims/CLM-101'],
+    ] as const) {
+      const store = createAppStore();
+      const { router, unmount } = renderRouteTree(buildRoutes(features), {
+        store,
+        route: asked,
+        transport: createMockTransport(),
+      });
+      act(() => {
+        store.dispatch(signedOut());
+      });
+      expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
+
+      act(() => {
+        store.dispatch(personaChanged('claims-handler'));
+        store.dispatch(authSignedIn({ user: makeUser() }));
+      });
+
+      await waitFor(() => expect(router.state.location.pathname).toBe(expected));
+      unmount();
+    }
   });
 
   it('shows the loading screen while the session is established, then sends a signed-out user to sign-in', async () => {

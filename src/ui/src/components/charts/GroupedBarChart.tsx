@@ -17,7 +17,7 @@ import {
 import { formatCount } from '../../lib/format';
 import { t } from '../../lib/i18n';
 import { EmptyState } from '../ui/EmptyState';
-import { AXIS_STYLE, GRID_STROKE, TOOLTIP_STYLE, chartColor } from './chartTheme';
+import { AXIS_STYLE, GRID_STROKE, TOOLTIP_STYLE, chartColor, evenTicks } from './chartTheme';
 import { SeriesChartFrame } from './SeriesChartFrame';
 import type { TrendPoint, TrendSeries } from './TrendChart';
 
@@ -39,6 +39,10 @@ export interface GroupedBarChartProps {
   readonly reference?: ChartReference;
   /** Width of the value axis, for labels longer than a count. */
   readonly axisWidth?: number;
+  /** Widest a bar may be, in pixels, so one or two categories do not fill the chart with bars. */
+  readonly maxBarSize?: number;
+  /** Puts the value axis ticks at an even step up to a round top (for amounts, not for counts of days). */
+  readonly evenAxis?: boolean;
 }
 
 export function GroupedBarChart({
@@ -50,11 +54,18 @@ export function GroupedBarChart({
   categoryLabel,
   reference,
   axisWidth = 60,
+  maxBarSize,
+  evenAxis = false,
 }: GroupedBarChartProps) {
   if (points.length === 0 || series.length === 0) {
     return <EmptyState compact title={t('charts.empty')} />;
   }
   const data = points.map((point) => ({ x: point.x, ...point.values }));
+  const top = Math.max(
+    reference?.value ?? 0,
+    ...points.flatMap((point) => Object.values(point.values).map((value) => value ?? 0)),
+  );
+  const ticks = evenAxis ? evenTicks(top) : undefined;
   const referenceColor = 'var(--ciq-chart-axis)';
   return (
     <SeriesChartFrame
@@ -82,7 +93,12 @@ export function GroupedBarChart({
               tickLine={false}
               tickFormatter={formatValue}
               width={axisWidth}
-              domain={[0, (max: number) => Math.max(max, reference?.value ?? 0)]}
+              ticks={ticks}
+              domain={
+                ticks === undefined
+                  ? [0, (max: number) => Math.max(max, reference?.value ?? 0)]
+                  : [0, ticks[ticks.length - 1] ?? top]
+              }
             />
             <Tooltip
               contentStyle={TOOLTIP_STYLE}
@@ -96,6 +112,7 @@ export function GroupedBarChart({
                 dataKey={item.key}
                 name={item.label}
                 fill={chartColor(item.tone, index)}
+                maxBarSize={maxBarSize}
                 isAnimationActive={false}
               />
             ))}

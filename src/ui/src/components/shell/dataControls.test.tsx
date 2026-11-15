@@ -1,6 +1,6 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { endpoints } from '../../../../contracts/index';
 import { call } from '../../api/client';
@@ -103,5 +103,27 @@ describe('the data controls', () => {
       '"Reviewing" is not an allowed value',
       'Use one of: New, Triage.',
     ]);
+  });
+
+  it('has no data set switch in a prototype build, which serves DEMO whatever an earlier build stored and TEST only from its own key', () => {
+    vi.stubEnv('VITE_AUTH_MODE', 'prototype');
+    window.localStorage.setItem('ciq.dataSet', 'TEST');
+
+    const first = renderRouteTree(ROUTES, {
+      state: { session: signedInSession(), dataContext: createAppStore().getState().dataContext },
+      route: '/first',
+      transport: createMockTransport(),
+    });
+
+    expect(first.store.getState().dataContext.dataSet).toBe('DEMO');
+    expect(screen.queryByLabelText('Data set')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('As of')).toBeInTheDocument();
+    window.localStorage.setItem('ciq.prototype.dataSet', 'TEST');
+    expect(createAppStore().getState().dataContext.dataSet).toBe('TEST');
+    vi.stubEnv('VITE_AUTH_MODE', 'supabase');
+    window.localStorage.removeItem('ciq.prototype.dataSet');
+    expect(createAppStore().getState().dataContext.dataSet).toBe('TEST');
+    window.localStorage.clear();
+    expect(createAppStore().getState().dataContext.dataSet).toBe('DEMO');
   });
 });

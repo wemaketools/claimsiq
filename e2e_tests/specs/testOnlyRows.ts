@@ -1,5 +1,5 @@
 /**
- * Test-only rows added to the TEST data set for the scenarios the shipped data has no row for. `fixtures/v1` is never
+ * Test-only rows added to the TEST data set for the scenarios the shipped data has no row for. `fixtures/v2` is never
  * edited; the same rows reach each mode its own way:
  * - prototype: the SPA bundles the CSV text, so the page's script response is rewritten on its way in;
  * - stack: the rows are inserted into the local database, and taken out again afterwards (Reset would too).
